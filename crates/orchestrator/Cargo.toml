@@ -4,11 +4,13 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Orchestrateur — Esprit (use cases, facade, skills, bridge, TUI) — Phase 5"
+description = "Cœur applicatif de l'Orchestrateur (facade, bridge, use cases, sécurité)"
 
 [features]
 default = []
+cli = []
 tui = ["dep:ratatui", "dep:crossterm"]
+http = ["dep:axum", "dep:tower-http"]
 
 [dependencies]
 async-trait.workspace = true
@@ -24,6 +26,8 @@ toml.workspace = true
 tracing.workspace = true
 ratatui = { workspace = true, optional = true }
 crossterm = { workspace = true, optional = true }
+axum = { workspace = true, optional = true }
+tower-http = { workspace = true, optional = true }
 
 [dev-dependencies]
 infrastructure = { workspace = true }

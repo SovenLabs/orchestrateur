@@ -232,6 +232,7 @@ impl SecurityConfig {
             max_tags: self.max_tags,
             max_backlinks: self.max_backlinks,
             detect_injection_patterns: self.detect_injection_patterns,
+            blocking_risk_threshold: 0.85,
         }
     }
 }

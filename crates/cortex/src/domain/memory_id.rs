@@ -18,10 +18,18 @@ impl MemoryId {
         Self(Uuid::now_v7())
     }
 
-    /// Construit depuis un UUID existant (doit être v7 ou valide).
-    #[must_use]
-    pub fn from_uuid(uuid: Uuid) -> Self {
-        Self(uuid)
+    /// Construit depuis un UUID **v7 uniquement**.
+    ///
+    /// # Errors
+    ///
+    /// Retourne [`CortexError::InvalidMemoryId`] si la version n'est pas UUID v7.
+    pub fn from_uuid(uuid: Uuid) -> Result<Self, CortexError> {
+        if uuid.get_version() != Some(uuid::Version::SortRand) {
+            return Err(CortexError::InvalidMemoryId(
+                "UUID doit être de version 7 (UUIDv7)".to_string(),
+            ));
+        }
+        Ok(Self(uuid))
     }
 
     /// Accès à l'UUID sous-jacent.
@@ -53,9 +61,8 @@ impl FromStr for MemoryId {
     type Err = CortexError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Uuid::parse_str(s)
-            .map(Self)
-            .map_err(|e| CortexError::InvalidMemoryId(e.to_string()))
+        let uuid = Uuid::parse_str(s).map_err(|e| CortexError::InvalidMemoryId(e.to_string()))?;
+        Self::from_uuid(uuid)
     }
 }
 
@@ -79,6 +86,21 @@ mod tests {
     #[test]
     fn invalid_str_returns_error() {
         let err = "not-a-uuid".parse::<MemoryId>().unwrap_err();
+        assert!(matches!(err, CortexError::InvalidMemoryId(_)));
+    }
+
+    #[test]
+    fn from_uuid_rejects_non_v7() {
+        let v4: Uuid = "550e8400-e29b-41d4-a716-446655440000".parse().unwrap();
+        assert_eq!(v4.get_version(), Some(uuid::Version::Random));
+        assert!(MemoryId::from_uuid(v4).is_err());
+    }
+
+    #[test]
+    fn from_str_rejects_non_v7() {
+        let err = "550e8400-e29b-41d4-a716-446655440000"
+            .parse::<MemoryId>()
+            .unwrap_err();
         assert!(matches!(err, CortexError::InvalidMemoryId(_)));
     }
 

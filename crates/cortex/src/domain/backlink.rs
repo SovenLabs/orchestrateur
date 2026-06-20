@@ -23,6 +23,22 @@ pub struct Backlink {
     pub kind: BacklinkKind,
 }
 
+/// Déduplique les backlinks par cible en conservant le score maximal.
+#[must_use]
+pub fn deduplicate(backlinks: Vec<Backlink>) -> Vec<Backlink> {
+    let mut out: Vec<Backlink> = Vec::new();
+    for bl in backlinks {
+        if let Some(existing) = out.iter_mut().find(|b| b.target == bl.target) {
+            if bl.score > existing.score {
+                *existing = bl;
+            }
+        } else {
+            out.push(bl);
+        }
+    }
+    out
+}
+
 impl Backlink {
     /// Construit un backlink validé (score ∈ [0.0, 1.0]).
     ///
@@ -56,6 +72,16 @@ mod tests {
     #[test]
     fn rejects_score_above_one() {
         assert!(Backlink::new(MemoryId::new(), 1.1, BacklinkKind::Semantic).is_err());
+    }
+
+    #[test]
+    fn deduplicate_keeps_highest_score_per_target() {
+        let target = MemoryId::new();
+        let low = Backlink::new(target, 0.3, BacklinkKind::Semantic).unwrap();
+        let high = Backlink::new(target, 0.9, BacklinkKind::Semantic).unwrap();
+        let out = deduplicate(vec![low, high]);
+        assert_eq!(out.len(), 1);
+        assert!((out[0].score - 0.9).abs() < f32::EPSILON);
     }
 
     #[test]

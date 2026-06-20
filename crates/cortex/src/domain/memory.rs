@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use super::{Backlink, CortexError, MemoryId, Tag};
+use super::{deduplicate, Backlink, CortexError, MemoryId, Tag};
 
 /// Entité centrale : un souvenir persistant en Markdown.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -29,12 +29,12 @@ impl Memory {
     ///
     /// Retourne [`CortexError::EmptyTitle`] ou [`CortexError::EmptyContent`] si un champ est vide.
     pub fn new(title: impl Into<String>, content: impl Into<String>) -> Result<Self, CortexError> {
-        let title = title.into();
-        let content = content.into();
-        if title.trim().is_empty() {
+        let title = title.into().trim().to_string();
+        let content = content.into().trim().to_string();
+        if title.is_empty() {
             return Err(CortexError::EmptyTitle);
         }
-        if content.trim().is_empty() {
+        if content.is_empty() {
             return Err(CortexError::EmptyContent);
         }
         let now = Utc::now();
@@ -56,17 +56,19 @@ impl Memory {
     /// Retourne [`CortexError::EmptyTitle`] ou [`CortexError::EmptyContent`] si un champ est vide.
     pub fn reconstruct(
         id: MemoryId,
-        title: String,
-        content: String,
+        title: impl Into<String>,
+        content: impl Into<String>,
         tags: Vec<Tag>,
         created_at: DateTime<Utc>,
         updated_at: DateTime<Utc>,
         backlinks: Vec<Backlink>,
     ) -> Result<Self, CortexError> {
-        if title.trim().is_empty() {
+        let title = title.into().trim().to_string();
+        let content = content.into().trim().to_string();
+        if title.is_empty() {
             return Err(CortexError::EmptyTitle);
         }
-        if content.trim().is_empty() {
+        if content.is_empty() {
             return Err(CortexError::EmptyContent);
         }
         Ok(Self {
@@ -86,8 +88,8 @@ impl Memory {
     ///
     /// Retourne [`CortexError::EmptyContent`] si le nouveau contenu est vide.
     pub fn update_content(&mut self, content: impl Into<String>) -> Result<(), CortexError> {
-        let content = content.into();
-        if content.trim().is_empty() {
+        let content = content.into().trim().to_string();
+        if content.is_empty() {
             return Err(CortexError::EmptyContent);
         }
         self.content = content;
@@ -105,7 +107,7 @@ impl Memory {
 
     /// Remplace les backlinks (dédupliqués par cible) et met à jour l'horodatage.
     pub fn set_backlinks(&mut self, backlinks: Vec<Backlink>) {
-        self.backlinks = dedupe_backlinks(backlinks);
+        self.backlinks = deduplicate(backlinks);
         self.updated_at = Utc::now();
     }
 
@@ -138,21 +140,6 @@ impl Memory {
     }
 }
 
-/// Déduplique les backlinks par `target` en conservant le score maximal.
-pub(crate) fn dedupe_backlinks(backlinks: Vec<Backlink>) -> Vec<Backlink> {
-    let mut out: Vec<Backlink> = Vec::new();
-    for bl in backlinks {
-        if let Some(existing) = out.iter_mut().find(|b| b.target == bl.target) {
-            if bl.score > existing.score {
-                *existing = bl;
-            }
-        } else {
-            out.push(bl);
-        }
-    }
-    out
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -167,14 +154,26 @@ mod tests {
     }
 
     #[test]
+    fn new_trims_title_and_content() {
+        let mem = Memory::new("  Titre  ", "  Contenu  ").unwrap();
+        assert_eq!(mem.title, "Titre");
+        assert_eq!(mem.content, "Contenu");
+    }
+
+    #[test]
     fn rejects_empty_title() {
         assert!(matches!(Memory::new("", "x"), Err(CortexError::EmptyTitle)));
+        assert!(matches!(Memory::new("   ", "x"), Err(CortexError::EmptyTitle)));
     }
 
     #[test]
     fn rejects_empty_content() {
         assert!(matches!(
             Memory::new("t", ""),
+            Err(CortexError::EmptyContent)
+        ));
+        assert!(matches!(
+            Memory::new("t", "   "),
             Err(CortexError::EmptyContent)
         ));
     }
@@ -214,11 +213,12 @@ mod tests {
     }
 
     #[test]
-    fn update_content_refreshes_timestamp() {
+    fn update_content_refreshes_timestamp_and_trims() {
         let mut mem = Memory::new("T", "C").unwrap();
         let before = mem.updated_at;
         std::thread::sleep(std::time::Duration::from_millis(5));
-        mem.update_content("Nouveau").unwrap();
+        mem.update_content("  Nouveau  ").unwrap();
+        assert_eq!(mem.content, "Nouveau");
         assert!(mem.updated_at > before);
     }
 }

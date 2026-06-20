@@ -131,7 +131,7 @@ impl TuiApp {
 
     fn poll_events(&mut self) {
         while let Ok(event) = self.event_rx.try_recv() {
-            let action = self.state.apply_domain_event(event);
+            let action = self.state.apply_domain_event(&event);
             self.handle_action(action);
         }
     }

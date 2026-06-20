@@ -56,8 +56,8 @@ function Ensure-InnoSetup {
 }
 
 if (-not $SkipBuild) {
-    Write-Host "Compilation release (CLI tui+http, HUD)..."
-    cargo build --release -p orchestrateur-cli --features "tui,http" -p orchestrateur-hud
+    Write-Host "Compilation release (CLI+http, TUI, HUD)..."
+    cargo build --release -p orchestrateur-cli --features http -p orchestrateur-tui -p orchestrateur-hud
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

@@ -31,7 +31,7 @@ Orchestrateur — pas de binaire pre-compile pour ${os} pour l'instant.
 Installation depuis les sources:
   git clone https://github.com/${REPO}.git
   cd orchestrateur
-  cargo build --release -p orchestrateur-cli --features tui -p orchestrateur-hud
+  cargo build --release -p orchestrateur-cli -p orchestrateur-tui -p orchestrateur-hud
 
 Windows (Setup.exe):
   curl -fsSL ${RAW_BASE}/install.sh | sh

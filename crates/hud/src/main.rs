@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use eframe::egui;
 use infrastructure::bootstrap_workspace;
-use orchestrator::spawn_orchestrator_bridge;
+use orchestrator_client::OrchestratorClient;
 use tracing_subscriber::EnvFilter;
 
 use app::HudApp;
@@ -26,7 +26,7 @@ use icon::app_icon;
 #[command(
     name = "orchestrateur-hud",
     version,
-    about = "Orchestrateur HUD egui — Phase 4"
+    about = "Orchestrateur HUD egui — v0.6.0"
 )]
 struct Cli {
     /// Racine du workspace (défaut: ./workspace).
@@ -45,8 +45,12 @@ async fn main() -> anyhow::Result<()> {
         .await
         .map_err(|err| anyhow::anyhow!(err.with_context("HUD")))?;
 
-    let (handle, thread) = spawn_orchestrator_bridge(deps)
+    let mut client = OrchestratorClient::connect(deps)
         .map_err(|err| anyhow::anyhow!("démarrage bridge orchestrateur: {err}"))?;
+    let handle = client.handle().clone();
+    let thread = client
+        .take_thread()
+        .ok_or_else(|| anyhow::anyhow!("thread orchestrateur indisponible"))?;
 
     let icon = app_icon();
     let options = eframe::NativeOptions {

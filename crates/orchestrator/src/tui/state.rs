@@ -1,7 +1,8 @@
 //! État du TUI — testable, sans logique domaine.
 
 use crate::{
-    format_health_status, AuditEvent, DomainEvent, HubSummary, MemoryDetailView, MemorySummary,
+    audit_from_response, domain_event_action, graph_from_response, health_from_response,
+    AuditEvent, BridgeUiAction, DomainEvent, HubSummary, MemoryDetailView, MemorySummary,
     Response,
 };
 
@@ -118,17 +119,13 @@ impl AppState {
     #[must_use]
     pub fn apply_response(&mut self, response: Response) -> TuiAction {
         match response {
-            Response::Health {
-                status,
-                version,
-                llm_available,
-                embedding_available,
-            } => {
-                self.version = Some(version);
-                self.llm_available = llm_available;
-                self.embedding_available = embedding_available;
-                self.status_message =
-                    format_health_status(&status, llm_available, embedding_available);
+            Response::Health { .. } => {
+                if let Some(update) = health_from_response(&response) {
+                    self.version = Some(update.version);
+                    self.llm_available = update.llm_available;
+                    self.embedding_available = update.embedding_available;
+                    self.status_message = update.status_message;
+                }
                 TuiAction::None
             }
             Response::MemoryList { items, total } => {
@@ -178,28 +175,22 @@ impl AppState {
                 self.status_message = format!("Assimilé : {title} ({memory_id})");
                 TuiAction::RefreshList
             }
-            Response::GraphSummary {
-                node_count,
-                edge_count,
-                hubs,
-            } => {
-                self.graph_node_count = node_count;
-                self.graph_edge_count = edge_count;
-                self.graph_hubs = hubs;
-                self.clamp_graph_selection();
-                self.status_message =
-                    format!("Graphe : {node_count} nœuds, {edge_count} arêtes");
+            Response::GraphSummary { .. } => {
+                if let Some(update) = graph_from_response(&response) {
+                    self.graph_node_count = update.node_count;
+                    self.graph_edge_count = update.edge_count;
+                    self.graph_hubs = update.hubs;
+                    self.clamp_graph_selection();
+                    self.status_message = update.status_message;
+                }
                 TuiAction::None
             }
-            Response::AuditLog {
-                entries,
-                chain_intact,
-            } => {
-                self.audit_entries = entries;
-                self.audit_chain_intact = chain_intact;
-                let status = if chain_intact { "intacte" } else { "ROMPUE" };
-                self.status_message =
-                    format!("Audit : {} entrée(s), chaîne {status}", self.audit_entries.len());
+            Response::AuditLog { .. } => {
+                if let Some(update) = audit_from_response(&response) {
+                    self.audit_entries = update.entries;
+                    self.audit_chain_intact = update.chain_intact;
+                    self.status_message = update.status_message;
+                }
                 TuiAction::None
             }
             Response::ChatReply { reply } => {
@@ -211,26 +202,18 @@ impl AppState {
                 self.status_message = format!("{} skill(s) disponibles", skills.len());
                 TuiAction::None
             }
-            Response::Event(event) => self.apply_domain_event(event),
+            Response::Event(event) => self.apply_domain_event(&event),
         }
     }
 
     /// Applique un événement domaine poussé par le fan-out.
     #[must_use]
-    pub fn apply_domain_event(&mut self, event: DomainEvent) -> TuiAction {
-        match event {
-            DomainEvent::MemoryAssimilated(payload) => {
-                self.status_message =
-                    format!("Événement : assimilation {}", payload.memory_id);
-                TuiAction::RefreshList
-            }
-            DomainEvent::KnowledgeGraphValidated(payload) => {
-                self.status_message = format!(
-                    "Graphe validé — {} nœuds, {} arêtes",
-                    payload.node_count, payload.edge_count
-                );
-                TuiAction::None
-            }
+    pub fn apply_domain_event(&mut self, event: &DomainEvent) -> TuiAction {
+        let (action, message) = domain_event_action(event);
+        self.status_message = message;
+        match action {
+            BridgeUiAction::RefreshList => TuiAction::RefreshList,
+            BridgeUiAction::None => TuiAction::None,
         }
     }
 
@@ -347,7 +330,8 @@ mod tests {
     #[test]
     fn domain_event_assimilation_requests_refresh() {
         let mut state = AppState::default();
-        let action = state.apply_domain_event(DomainEvent::memory_assimilated(MemoryId::new(), 2));
+        let event = DomainEvent::memory_assimilated(MemoryId::new(), 2);
+        let action = state.apply_domain_event(&event);
         assert_eq!(action, TuiAction::RefreshList);
     }
 

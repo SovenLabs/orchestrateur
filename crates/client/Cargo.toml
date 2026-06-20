@@ -1,0 +1,19 @@
+[package]
+name = "orchestrator-client"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Client haut niveau pour le Bridge Orchestrateur (TUI, HUD)"
+publish = false
+
+[dependencies]
+cortex.workspace = true
+flume.workspace = true
+orchestrator.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["sync", "time"] }
+tracing.workspace = true
+
+[lints.rust]
+unsafe_code = "forbid"

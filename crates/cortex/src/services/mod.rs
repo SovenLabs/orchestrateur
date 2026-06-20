@@ -9,5 +9,6 @@ pub use markdown_parser::{
     parse_memory_markdown, serialize_memory, MarkdownParser, MemoryDocument,
 };
 pub use memory_draft_validator::{
-    MemoryDraftValidator, MemoryDraftValidatorConfig, ValidationError,
+    find_injection_pattern, MemoryDraftValidator, MemoryDraftValidatorConfig, ValidationError,
+    ValidationResult, ValidationWarning,
 };

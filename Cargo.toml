@@ -5,17 +5,21 @@ members = [
     "crates/orchestrator",
     "crates/infrastructure",
     "crates/cli",
+    "crates/tui",
     "crates/hud",
+    "crates/client",
 ]
 default-members = [
     "crates/cortex",
     "crates/orchestrator",
     "crates/infrastructure",
     "crates/cli",
+    "crates/tui",
+    "crates/client",
 ]
 
 [workspace.package]
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 authors = ["Sovën"]
 license = "MIT OR Apache-2.0"
@@ -29,6 +33,7 @@ async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 cortex = { path = "crates/cortex" }
 orchestrator = { path = "crates/orchestrator" }
+orchestrator-client = { path = "crates/client" }
 infrastructure = { path = "crates/infrastructure" }
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"

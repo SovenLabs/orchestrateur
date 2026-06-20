@@ -4,11 +4,10 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Orchestrateur — Binaire cœur (CLI + TUI optionnel) — Phase 5"
+description = "Orchestrateur — Binaire CLI headless (sans TUI) — v0.6.0"
 
 [features]
-default = ["tui"]
-tui = ["orchestrator/tui"]
+default = []
 http = ["dep:axum", "dep:tower", "dep:tower-http"]
 
 [[bin]]

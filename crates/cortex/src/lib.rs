@@ -31,7 +31,8 @@ pub use ports::{
     SearchFilter, SearchHit, VectorStore,
 };
 pub use services::{
-    cosine_similarity, parse_memory_markdown, serialize_memory, BacklinkCalculator,
-    BacklinkCandidate, MarkdownParser, MemoryDocument, MemoryDraftValidator,
-    MemoryDraftValidatorConfig, SimilarityThresholds, ValidationError,
+    cosine_similarity, find_injection_pattern, parse_memory_markdown, serialize_memory,
+    BacklinkCalculator, BacklinkCandidate, MarkdownParser, MemoryDocument, MemoryDraftValidator,
+    MemoryDraftValidatorConfig, SimilarityThresholds, ValidationError, ValidationResult,
+    ValidationWarning,
 };

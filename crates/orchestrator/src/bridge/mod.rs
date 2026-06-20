@@ -32,6 +32,7 @@ mod response;
 mod runtime;
 mod types;
 pub mod ui_common;
+pub mod ui_response;
 
 pub use command::Command;
 pub use error::BridgeError;
@@ -42,6 +43,10 @@ pub use runtime::{
     execute_command, format_assimilate_user_prompt, spawn_orchestrator_bridge, OrchestratorThread,
 };
 pub use ui_common::{format_health_status, MemoryDetailView};
+pub use ui_response::{
+    audit_from_response, domain_event_action, graph_from_response, graph_status_message,
+    health_from_response, AuditUpdate, BridgeUiAction, GraphUpdate, HealthUpdate,
+};
 pub use types::{
     AppError, BridgeSearchHit, BridgeSkillContext, HubSummary, MemorySummary, SkillSummary,
 };

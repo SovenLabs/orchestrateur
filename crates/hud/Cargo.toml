@@ -20,6 +20,7 @@ egui.workspace = true
 infrastructure.workspace = true
 flume.workspace = true
 orchestrator.workspace = true
+orchestrator-client.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

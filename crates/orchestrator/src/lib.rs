@@ -41,10 +41,12 @@ pub mod use_cases;
 pub mod testing;
 
 pub use bridge::{
-    execute_command, format_assimilate_user_prompt, format_health_status, spawn_orchestrator_bridge,
-    AppError, BridgeError, BridgeSearchHit, ChannelHandle, Command, FanoutEventPublisher,
-    BridgeSkillContext, HubSummary, MemoryDetailView, MemorySummary, OrchestratorHandle,
-    OrchestratorThread, Response, SkillSummary,
+    audit_from_response, domain_event_action, execute_command, format_assimilate_user_prompt,
+    format_health_status, graph_from_response, graph_status_message, health_from_response,
+    spawn_orchestrator_bridge, AppError, AuditUpdate, BridgeError, BridgeSearchHit, BridgeUiAction,
+    ChannelHandle, Command, FanoutEventPublisher, BridgeSkillContext, GraphUpdate, HealthUpdate,
+    HubSummary, MemoryDetailView, MemorySummary, OrchestratorHandle, OrchestratorThread, Response,
+    SkillSummary,
 };
 pub use config::{
     AuditConfig, BehavioralConfig, ConfigError, IntegrityConfig, OllamaConfig, OrchestratorConfig,

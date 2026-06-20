@@ -1,49 +1,38 @@
-//! CLI Orchestrateur — Phase 5 : CLI + TUI intégré au cœur (feature `tui`).
+//! CLI Orchestrateur — headless (sans TUI). Interface terminal : voir `orchestrateur-tui`.
 
-#[cfg(feature = "tui")]
-use std::io::IsTerminal;
-use std::path::{Path, PathBuf};
 #[cfg(feature = "http")]
 use std::sync::Arc;
+use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
+#[cfg(feature = "http")]
+use anyhow::Context;
 use clap::{Parser, Subcommand};
 use infrastructure::bootstrap_workspace;
-#[cfg(feature = "tui")]
-use orchestrator::spawn_orchestrator_bridge;
-#[cfg(feature = "tui")]
-use orchestrator::TuiApp;
 use orchestrator::{
     execute_command, BridgeSkillContext, Command, OrchestratorFacade, Response,
 };
 
 use tracing_subscriber::EnvFilter;
 
-/// Orchestrateur — second cerveau local souverain.
+/// Orchestrateur — second cerveau local souverain (CLI headless).
 #[derive(Parser)]
 #[command(
     name = "orchestrateur",
     version,
-    about = "Orchestrateur v0.5.0 — Cortex + Esprit + CLI/TUI/HTTP"
+    about = "Orchestrateur v0.6.0 — CLI headless (TUI : orchestrateur-tui)"
 )]
 struct Cli {
     /// Racine du workspace (défaut: ./workspace).
     #[arg(long, global = true, default_value = "workspace")]
     workspace: PathBuf,
 
-    /// Force le mode interface terminal (ratatui).
-    #[arg(long, global = true)]
-    tui: bool,
-
     #[command(subcommand)]
-    command: Option<Commands>,
+    command: Commands,
 }
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Lance l'interface terminal (ratatui).
-    #[cfg(feature = "tui")]
-    Tui,
     /// Santé du service (équivalent `HealthCheck` bridge).
     Health,
     /// Liste les mémoires persistées (pagination / filtre).
@@ -97,6 +86,12 @@ enum Commands {
         #[command(subcommand)]
         command: SkillCommands,
     },
+    /// Journal d'audit récent (chaîne BLAKE3).
+    Audit {
+        /// Nombre maximal d'entrées.
+        #[arg(long, default_value = "50")]
+        limit: usize,
+    },
     /// Démarre le daemon HTTP (feature `http`).
     #[cfg(feature = "http")]
     Serve {
@@ -140,25 +135,12 @@ async fn main() -> Result<()> {
 
     let cli = Cli::parse();
 
-    if should_launch_tui(&cli) {
-        #[cfg(feature = "tui")]
-        return run_tui(cli.workspace).await;
-        #[cfg(not(feature = "tui"))]
-        anyhow::bail!("TUI non compilé — recompilez avec `--features tui`");
-    }
-
-    let command = cli.command.context(
-        "aucune commande — lancez sans argument dans un terminal interactif (TUI) ou utilisez --help",
-    )?;
-
     let deps = bootstrap_workspace(&cli.workspace)
         .await
         .map_err(|err| anyhow::anyhow!(err.with_context("CLI")))?;
     let facade = OrchestratorFacade::new(deps);
 
-    match command {
-        #[cfg(feature = "tui")]
-        Commands::Tui => unreachable!("sous-commande `tui` interceptée par should_launch_tui"),
+    match cli.command {
         Commands::Health => run_bridge_command(&facade, Command::HealthCheck).await?,
         Commands::List {
             filter,
@@ -202,6 +184,9 @@ async fn main() -> Result<()> {
         Commands::Chat { message } => {
             run_bridge_command(&facade, Command::Chat { message }).await?;
         }
+        Commands::Audit { limit } => {
+            run_bridge_command(&facade, Command::Audit { limit }).await?;
+        }
         Commands::Skill { command } => match command {
             SkillCommands::List => run_bridge_command(&facade, Command::ListSkills).await?,
             SkillCommands::Run {
@@ -231,50 +216,6 @@ async fn main() -> Result<()> {
         Commands::Serve { port, bind } => run_http_server(facade, &bind, port).await?,
     }
     Ok(())
-}
-
-fn should_launch_tui(cli: &Cli) -> bool {
-    if cli.tui {
-        return true;
-    }
-    #[cfg(feature = "tui")]
-    if matches!(cli.command, Some(Commands::Tui)) {
-        return true;
-    }
-    if cli.command.is_some() {
-        return false;
-    }
-    #[cfg(feature = "tui")]
-    {
-        std::io::stdin().is_terminal()
-    }
-    #[cfg(not(feature = "tui"))]
-    {
-        false
-    }
-}
-
-#[cfg(feature = "tui")]
-async fn run_tui(workspace: PathBuf) -> Result<()> {
-    if !std::io::stdin().is_terminal() {
-        anyhow::bail!("TUI requiert un terminal interactif (stdin n'est pas un TTY)");
-    }
-
-    let deps = bootstrap_workspace(&workspace)
-        .await
-        .map_err(|err| anyhow::anyhow!(err.with_context("TUI")))?;
-
-    let (handle, thread) = spawn_orchestrator_bridge(deps)
-        .map_err(|err| anyhow::anyhow!("démarrage bridge orchestrateur: {err}"))?;
-
-    let mut app = TuiApp::new(handle, thread);
-    let run_result = tokio::task::spawn_blocking(move || app.run()).await;
-
-    match run_result {
-        Ok(Ok(())) => Ok(()),
-        Ok(Err(err)) => Err(anyhow::anyhow!("TUI: {err}")),
-        Err(join_err) => Err(anyhow::anyhow!("TUI thread: {join_err}")),
-    }
 }
 
 async fn run_bridge_command(facade: &OrchestratorFacade, command: Command) -> Result<()> {

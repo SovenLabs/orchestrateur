@@ -16,8 +16,10 @@ if (-not $StagingDir) {
 }
 
 $CliExe = Join-Path $Root "target\release\orchestrateur.exe"
+$TuiExe = Join-Path $Root "target\release\orchestrateur-tui.exe"
 $HudExe = Join-Path $Root "target\release\orchestrateur-hud.exe"
 if (-not (Test-Path $CliExe)) { throw "Missing binary: $CliExe (run cargo build --release first)" }
+if (-not (Test-Path $TuiExe)) { throw "Missing binary: $TuiExe (run cargo build --release first)" }
 if (-not (Test-Path $HudExe)) { throw "Missing binary: $HudExe (run cargo build --release first)" }
 
 Write-Host "Staging v$Version -> $StagingDir"
@@ -29,6 +31,7 @@ New-Item -ItemType Directory -Path (Join-Path $WsDir "memories") -Force | Out-Nu
 New-Item -ItemType Directory -Path (Join-Path $WsDir "logs") -Force | Out-Null
 
 Copy-Item $CliExe $StagingDir
+Copy-Item $TuiExe $StagingDir
 Copy-Item $HudExe $StagingDir
 Copy-Item "workspace\config\orchestrator.toml.example" (Join-Path $WsDir "orchestrator.toml.example")
 Copy-Item "README.md" $StagingDir
@@ -37,8 +40,9 @@ Copy-Item "README.md" $StagingDir
 Orchestrateur v$Version - Windows package
 
 Installed binaries (Program Files):
-  orchestrateur.exe      CLI + TUI
-  orchestrateur-hud.exe  egui HUD
+  orchestrateur.exe      CLI headless
+  orchestrateur-tui.exe  interface terminal (ratatui)
+  orchestrateur-hud.exe  interface graphique (egui)
 
 User workspace (memories, LanceDB, config):
   %APPDATA%\Orchestrateur\workspace

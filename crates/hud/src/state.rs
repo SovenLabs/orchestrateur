@@ -1,7 +1,8 @@
 //! État UI pur — testable sans egui, sans logique métier.
 
 use orchestrator::{
-    format_health_status, AuditEvent, BridgeSearchHit, DomainEvent, HubSummary, MemoryDetailView,
+    audit_from_response, domain_event_action, graph_from_response, health_from_response,
+    AuditEvent, BridgeSearchHit, BridgeUiAction, DomainEvent, HubSummary, MemoryDetailView,
     MemorySummary, Response,
 };
 
@@ -189,17 +190,13 @@ impl HudState {
     #[must_use]
     pub fn apply_response(&mut self, response: Response) -> HudAction {
         match response {
-            Response::Health {
-                status,
-                version,
-                llm_available,
-                embedding_available,
-            } => {
-                self.version = Some(version);
-                self.llm_available = llm_available;
-                self.embedding_available = embedding_available;
-                self.status =
-                    format_health_status(&status, llm_available, embedding_available);
+            Response::Health { .. } => {
+                if let Some(update) = health_from_response(&response) {
+                    self.version = Some(update.version);
+                    self.llm_available = update.llm_available;
+                    self.embedding_available = update.embedding_available;
+                    self.status = update.status_message;
+                }
                 self.clear_busy();
                 HudAction::None
             }
@@ -227,7 +224,7 @@ impl HudState {
                 self.push_info(format!("Recherche : {count} hit(s)"));
                 HudAction::None
             }
-            Response::Event(event) => self.apply_domain_event(event),
+            Response::Event(event) => self.apply_domain_event(&event),
             Response::Error(err) => {
                 self.status.clone_from(&err.message);
                 self.clear_busy();
@@ -250,52 +247,32 @@ impl HudState {
                 self.push_success(format!("Assimilation réussie — {title}"));
                 HudAction::RefreshList
             }
-            Response::GraphSummary {
-                node_count,
-                edge_count,
-                hubs,
-            } => self.apply_graph_summary(node_count, edge_count, hubs),
-            Response::AuditLog {
-                entries,
-                chain_intact,
-            } => self.apply_audit_log(entries, chain_intact),
+            Response::GraphSummary { .. } => {
+                if let Some(update) = graph_from_response(&response) {
+                    self.graph_node_count = update.node_count;
+                    self.graph_edge_count = update.edge_count;
+                    self.graph_hubs = update.hubs;
+                    self.status = update.status_message;
+                }
+                self.clear_busy();
+                HudAction::None
+            }
+            Response::AuditLog { .. } => {
+                if let Some(update) = audit_from_response(&response) {
+                    self.audit_entries = update.entries;
+                    self.audit_chain_intact = update.chain_intact;
+                    self.status = update.status_message;
+                    if let Some(alert) = update.chain_broken_alert {
+                        self.push_error(alert);
+                    }
+                }
+                self.clear_busy();
+                HudAction::None
+            }
             Response::ChatReply { reply } => self.apply_chat_reply(reply),
             Response::SkillList { skills } => self.apply_skill_list(&skills),
             Response::SkillResult { message } => self.apply_skill_result(message),
         }
-    }
-
-    fn apply_graph_summary(
-        &mut self,
-        node_count: usize,
-        edge_count: usize,
-        hubs: Vec<orchestrator::HubSummary>,
-    ) -> HudAction {
-        self.graph_node_count = node_count;
-        self.graph_edge_count = edge_count;
-        self.graph_hubs = hubs;
-        self.status = format!("Graphe : {node_count} nœuds, {edge_count} arêtes");
-        self.clear_busy();
-        HudAction::None
-    }
-
-    fn apply_audit_log(
-        &mut self,
-        entries: Vec<orchestrator::AuditEvent>,
-        chain_intact: bool,
-    ) -> HudAction {
-        self.audit_entries = entries;
-        self.audit_chain_intact = chain_intact;
-        let chain = if chain_intact { "intacte" } else { "ROMPUE" };
-        self.status = format!(
-            "Audit : {} entrée(s), chaîne {chain}",
-            self.audit_entries.len()
-        );
-        self.clear_busy();
-        if !chain_intact {
-            self.push_error("Chaîne d'audit compromise — vérification requise");
-        }
-        HudAction::None
     }
 
     fn apply_chat_reply(&mut self, reply: String) -> HudAction {
@@ -321,19 +298,15 @@ impl HudState {
 
     /// Applique un événement domaine poussé par le fan-out.
     #[must_use]
-    pub fn apply_domain_event(&mut self, event: DomainEvent) -> HudAction {
+    pub fn apply_domain_event(&mut self, event: &DomainEvent) -> HudAction {
+        let (action, message) = domain_event_action(event);
         match event {
-            DomainEvent::MemoryAssimilated(payload) => {
-                self.push_success(format!("Assimilation réussie ({})", payload.memory_id));
-                HudAction::RefreshList
-            }
-            DomainEvent::KnowledgeGraphValidated(payload) => {
-                self.push_info(format!(
-                    "Graphe validé — {} nœuds, {} arêtes",
-                    payload.node_count, payload.edge_count
-                ));
-                HudAction::None
-            }
+            DomainEvent::MemoryAssimilated(_) => self.push_success(message),
+            DomainEvent::KnowledgeGraphValidated(_) => self.push_info(message),
+        }
+        match action {
+            BridgeUiAction::RefreshList => HudAction::RefreshList,
+            BridgeUiAction::None => HudAction::None,
         }
     }
 
@@ -454,7 +427,8 @@ mod tests {
     #[test]
     fn domain_event_assimilation_requests_refresh() {
         let mut state = HudState::default();
-        let action = state.apply_domain_event(DomainEvent::memory_assimilated(MemoryId::new(), 2));
+        let event = DomainEvent::memory_assimilated(MemoryId::new(), 2);
+        let action = state.apply_domain_event(&event);
         assert_eq!(action, HudAction::RefreshList);
     }
 

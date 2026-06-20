@@ -24,7 +24,7 @@ pub struct SearchFilter {
     pub limit: Option<usize>,
 }
 
-/// Port du vector store local (LanceDB derrière l'infrastructure).
+/// Port du vector store local (`LanceDB` derrière l'infrastructure).
 #[async_trait]
 pub trait VectorStore: Send + Sync {
     /// Insère ou met à jour le vecteur d'une mémoire.

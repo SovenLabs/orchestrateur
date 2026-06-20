@@ -39,6 +39,10 @@ impl BacklinkCalculator {
     ///
     /// `embedding` : vecteur de la mémoire source.
     /// `corpus` : paires (id, embedding) des autres mémoires.
+    ///
+    /// # Errors
+    ///
+    /// Propage [`CortexError::InvalidBacklink`] si un score calculé est invalide.
     pub fn compute_semantic_backlinks(
         source_id: MemoryId,
         embedding: &[f32],
@@ -76,6 +80,7 @@ impl BacklinkCalculator {
     }
 
     /// Extrait les wikilinks explicites `[[uuid]]` du contenu Markdown.
+    #[must_use]
     pub fn extract_wikilinks(content: &str) -> Vec<MemoryId> {
         let mut ids = Vec::new();
         let mut rest = content;
@@ -95,6 +100,10 @@ impl BacklinkCalculator {
     }
 
     /// Fusionne backlinks sémantiques et wikilinks explicites (dédupliqués).
+    ///
+    /// # Errors
+    ///
+    /// Propage [`CortexError::InvalidBacklink`] si un wikilink explicite ne peut pas être créé.
     pub fn merge_backlinks(
         semantic: Vec<Backlink>,
         explicit_targets: Vec<MemoryId>,
@@ -116,6 +125,7 @@ impl BacklinkCalculator {
 }
 
 /// Similarité cosinus entre deux vecteurs de même dimension.
+#[must_use]
 pub fn cosine_similarity(a: &[f32], b: &[f32]) -> Option<f32> {
     if a.len() != b.len() || a.is_empty() {
         return None;

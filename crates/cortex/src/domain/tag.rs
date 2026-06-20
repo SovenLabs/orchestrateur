@@ -15,12 +15,16 @@ pub struct Tag(String);
 
 impl Tag {
     /// Crée un tag normalisé.
+    ///
+    /// # Errors
+    ///
+    /// Retourne [`CortexError::InvalidTag`] ou [`CortexError::TagTooLong`] si le tag est invalide.
     pub fn new(raw: impl AsRef<str>) -> Result<Self, CortexError> {
         let normalized = raw.as_ref().trim().to_lowercase();
         if normalized.is_empty() {
             return Err(CortexError::InvalidTag("tag vide".into()));
         }
-        if normalized.chars().any(|c| c.is_whitespace()) {
+        if normalized.chars().any(char::is_whitespace) {
             return Err(CortexError::InvalidTag(
                 "les tags ne peuvent pas contenir d'espaces".into(),
             ));
@@ -32,6 +36,7 @@ impl Tag {
     }
 
     /// Retourne la représentation normalisée du tag.
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }

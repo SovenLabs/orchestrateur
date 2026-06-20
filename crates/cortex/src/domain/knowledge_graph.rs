@@ -12,11 +12,13 @@ pub struct KnowledgeGraph {
 
 impl KnowledgeGraph {
     /// Crée un graphe vide.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Reconstruit le graphe depuis une collection de mémoires.
+    #[must_use]
     pub fn from_memories(memories: &[Memory]) -> Self {
         let mut graph = Self::new();
         for memory in memories {
@@ -41,11 +43,13 @@ impl KnowledgeGraph {
     }
 
     /// Retourne les backlinks sortants d'une mémoire.
+    #[must_use]
     pub fn outgoing(&self, id: MemoryId) -> &[Backlink] {
-        self.edges.get(&id).map(|v| v.as_slice()).unwrap_or(&[])
+        self.edges.get(&id).map_or(&[][..], Vec::as_slice)
     }
 
     /// Voisins directs (cibles des backlinks).
+    #[must_use]
     pub fn neighbors(&self, id: MemoryId) -> Vec<MemoryId> {
         self.outgoing(id)
             .iter()
@@ -54,16 +58,22 @@ impl KnowledgeGraph {
     }
 
     /// Nombre de nœuds connus.
+    #[must_use]
     pub fn node_count(&self) -> usize {
         self.nodes.len()
     }
 
     /// Nombre total d'arêtes.
+    #[must_use]
     pub fn edge_count(&self) -> usize {
-        self.edges.values().map(|v| v.len()).sum()
+        self.edges.values().map(Vec::len).sum()
     }
 
     /// Vérifie l'intégrité : toutes les cibles existent comme nœuds.
+    ///
+    /// # Errors
+    ///
+    /// Retourne [`CortexError::GraphError`] si une arête pointe vers un nœud absent.
     pub fn validate(&self) -> Result<(), CortexError> {
         for (source, links) in &self.edges {
             for link in links {
@@ -79,6 +89,7 @@ impl KnowledgeGraph {
     }
 
     /// Mémoires triées par nombre de backlinks entrants (hubs).
+    #[must_use]
     pub fn hub_ranking(&self) -> Vec<(MemoryId, usize)> {
         let mut inbound: HashMap<MemoryId, usize> = HashMap::new();
         for links in self.edges.values() {
@@ -87,7 +98,7 @@ impl KnowledgeGraph {
             }
         }
         let mut ranking: Vec<_> = inbound.into_iter().collect();
-        ranking.sort_by(|a, b| b.1.cmp(&a.1));
+        ranking.sort_by_key(|b| std::cmp::Reverse(b.1));
         ranking
     }
 }

@@ -13,21 +13,25 @@ pub struct MemoryId(Uuid);
 
 impl MemoryId {
     /// Génère un nouvel identifiant UUID v7.
+    #[must_use]
     pub fn new() -> Self {
         Self(Uuid::now_v7())
     }
 
     /// Construit depuis un UUID existant (doit être v7 ou valide).
+    #[must_use]
     pub fn from_uuid(uuid: Uuid) -> Self {
         Self(uuid)
     }
 
     /// Accès à l'UUID sous-jacent.
+    #[must_use]
     pub fn as_uuid(&self) -> &Uuid {
         &self.0
     }
 
     /// Représentation canonique string.
+    #[must_use]
     pub fn as_str(&self) -> String {
         self.0.to_string()
     }

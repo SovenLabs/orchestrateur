@@ -25,6 +25,10 @@ pub struct Backlink {
 
 impl Backlink {
     /// Construit un backlink validé (score ∈ [0.0, 1.0]).
+    ///
+    /// # Errors
+    ///
+    /// Retourne [`CortexError::InvalidBacklink`] si le score est hors de l'intervalle [0.0, 1.0].
     pub fn new(target: MemoryId, score: f32, kind: BacklinkKind) -> Result<Self, CortexError> {
         if !(0.0..=1.0).contains(&score) {
             return Err(CortexError::InvalidBacklink(format!(

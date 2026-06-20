@@ -34,18 +34,31 @@ pub struct MarkdownParser;
 
 impl MarkdownParser {
     /// Parse un document Markdown vers une [`Memory`] validée.
+    ///
+    /// # Errors
+    ///
+    /// Propage les erreurs de [`parse_memory_markdown`] et de validation domaine.
     pub fn parse(markdown: &str) -> Result<Memory, CortexError> {
         let doc = parse_memory_markdown(markdown)?;
         Ok(doc.memory)
     }
 
     /// Sérialise une mémoire au format Markdown canonique.
+    ///
+    /// # Errors
+    ///
+    /// Propage les erreurs de [`serialize_memory`].
     pub fn serialize(memory: &Memory) -> Result<String, CortexError> {
         serialize_memory(memory)
     }
 }
 
 /// Parse le format Markdown canonique (`---` / YAML / `---` / contenu).
+///
+/// # Errors
+///
+/// Retourne [`CortexError::InvalidMarkdown`], [`CortexError::InvalidFrontmatter`]
+/// ou une erreur de validation [`Memory::reconstruct`].
 pub fn parse_memory_markdown(raw: &str) -> Result<MemoryDocument, CortexError> {
     let (yaml_part, body_part) = split_frontmatter(raw.trim())?;
 
@@ -67,6 +80,10 @@ pub fn parse_memory_markdown(raw: &str) -> Result<MemoryDocument, CortexError> {
 }
 
 /// Sérialise une mémoire au format Markdown canonique.
+///
+/// # Errors
+///
+/// Retourne [`CortexError::InvalidFrontmatter`] si la sérialisation YAML échoue.
 pub fn serialize_memory(memory: &Memory) -> Result<String, CortexError> {
     let frontmatter = MemoryFrontmatter {
         id: memory.id,

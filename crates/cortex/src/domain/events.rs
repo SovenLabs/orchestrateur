@@ -22,6 +22,7 @@ pub enum DomainEvent {
 
 impl DomainEvent {
     /// Fabrique un événement d'assimilation avec l'horodatage courant.
+    #[must_use]
     pub fn memory_assimilated(memory_id: MemoryId, backlink_count: usize) -> Self {
         Self::MemoryAssimilated(MemoryAssimilated {
             memory_id,

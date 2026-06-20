@@ -24,6 +24,10 @@ pub struct Memory {
 
 impl Memory {
     /// Crée une nouvelle mémoire avec horodatage courant.
+    ///
+    /// # Errors
+    ///
+    /// Retourne [`CortexError::EmptyTitle`] ou [`CortexError::EmptyContent`] si un champ est vide.
     pub fn new(title: impl Into<String>, content: impl Into<String>) -> Result<Self, CortexError> {
         let title = title.into();
         let content = content.into();
@@ -46,6 +50,10 @@ impl Memory {
     }
 
     /// Reconstruit une mémoire depuis ses champs (ex: parsing Markdown).
+    ///
+    /// # Errors
+    ///
+    /// Retourne [`CortexError::EmptyTitle`] ou [`CortexError::EmptyContent`] si un champ est vide.
     pub fn reconstruct(
         id: MemoryId,
         title: String,
@@ -73,6 +81,10 @@ impl Memory {
     }
 
     /// Met à jour le contenu et rafraîchit `updated_at`.
+    ///
+    /// # Errors
+    ///
+    /// Retourne [`CortexError::EmptyContent`] si le nouveau contenu est vide.
     pub fn update_content(&mut self, content: impl Into<String>) -> Result<(), CortexError> {
         let content = content.into();
         if content.trim().is_empty() {
@@ -114,11 +126,13 @@ impl Memory {
     }
 
     /// Nombre de backlinks sortants.
+    #[must_use]
     pub fn backlink_count(&self) -> usize {
         self.backlinks.len()
     }
 
     /// Indique si la mémoire possède ce tag.
+    #[must_use]
     pub fn has_tag(&self, tag: &Tag) -> bool {
         self.tags.iter().any(|t| t == tag)
     }

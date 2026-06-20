@@ -1,0 +1,35 @@
+# Orchestrateur — configuration workspace (copier vers orchestrator.toml)
+
+[workspace]
+root = "./workspace"
+
+[memory]
+directory = "memories"
+
+[vector]
+directory = ".vector"
+
+[embeddings]
+provider = "ollama"
+model = "nomic-embed-text"
+ollama_url = "http://127.0.0.1:11434"
+
+[orchestrator]
+default_model = "grok"
+# XAI_API_KEY via variable d'environnement — jamais hardcodé
+
+[grok]
+api_base = "https://api.x.ai/v1"
+model = "grok-3-mini"
+
+[ollama]
+chat_model = "llama3.2"
+fallback_enabled = true
+
+[backlinks]
+semantic_min = 0.75
+max_links = 10
+
+[logging]
+directory = "logs"
+level = "info"

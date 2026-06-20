@@ -1,0 +1,16 @@
+[package]
+name = "orchestrateur-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Orchestrateur — Binaire CLI (contrôle total terminal / VS Code) — Phase 5"
+
+[[bin]]
+name = "orchestrateur"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+cortex.workspace = true
+orchestrator.workspace = true

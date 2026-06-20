@@ -1,0 +1,11 @@
+[package]
+name = "infrastructure"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Orchestrateur — Adapters (FS, LanceDB, Ollama, Grok) — Phase 3"
+
+[dependencies]
+cortex.workspace = true
+async-trait.workspace = true

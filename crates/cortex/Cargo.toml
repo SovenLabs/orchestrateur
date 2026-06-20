@@ -1,0 +1,30 @@
+[package]
+name = "cortex"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Cortex — squelette hexagonal de l'Orchestrateur (mémoires, graphe, ports)"
+keywords = ["orchestrateur", "cortex", "knowledge-graph", "hexagonal"]
+categories = ["data-structures", "parsing"]
+
+[dependencies]
+async-trait.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_yaml.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+pedantic = "warn"

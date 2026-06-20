@@ -1,6 +1,6 @@
 # Orchestrateur — Second cerveau local souverain
 
-**Version Cargo workspace : 0.3.0** · **Rust 1.80+** · **Juin 2026**
+**Version Cargo workspace : 0.5.0** · **Rust 1.80+** · **Juin 2026**
 
 > Documentation architecte : [`docs/prompt/PROMPT_MAITRE.md`](docs/prompt/PROMPT_MAITRE.md) · Archives phases : [`docs/`](docs/)
 
@@ -81,7 +81,60 @@ Configurer `type = "lancedb"` dans `[vector_store]`. Les providers IA (xAI, Olla
 
 ---
 
-## 4. Compilation et binaires
+## 4. Installation utilisateur (one-liner)
+
+Les binaires Windows sont publiés sur **[GitHub Releases](https://github.com/SovenLabs/orchestrateur/releases)**.  
+Les scripts d’installation sont servis depuis la branche `main` (raw GitHub).
+
+### Windows — PowerShell
+
+```powershell
+irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 | iex
+```
+
+Version fixe, installation silencieuse :
+
+```powershell
+$env:ORCHESTRATEUR_VERSION = "0.5.0"
+$env:ORCHESTRATEUR_SILENT = "1"
+irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 | iex
+```
+
+Alternative (télécharger puis exécuter, plus lisible) :
+
+```powershell
+irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 -OutFile install.ps1
+.\install.ps1
+```
+
+### Git Bash / WSL sous Windows
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.sh | sh
+```
+
+### Linux / macOS
+
+Pas de binaire précompilé pour l’instant — `install.sh` affiche les instructions de compilation depuis les sources.
+
+### Où c’est hébergé ?
+
+| Élément | URL |
+|---------|-----|
+| Scripts `install.ps1` / `install.sh` | `raw.githubusercontent.com/SovenLabs/orchestrateur/main/...` |
+| Setup.exe + zip | `github.com/SovenLabs/orchestrateur/releases/download/vX.Y.Z/...` |
+
+### Publier une release (mainteneurs)
+
+```powershell
+.\scripts\build-installer.ps1 -InstallInno
+.\scripts\publish-github-release.ps1          # necessite `gh auth login`
+# ou: git tag v0.5.0 && git push origin v0.5.0   # declenche .github/workflows/release.yml
+```
+
+---
+
+## 5. Compilation et binaires
 
 ### Prérequis
 
@@ -131,7 +184,7 @@ cargo build --release -p orchestrateur-cli --no-default-features
 
 ---
 
-## 5. Mode local sans IA (dégradé)
+## 6. Mode local sans IA (dégradé)
 
 L’application **démarre toujours** même si xAI/Ollama sont absents ou hors ligne.
 
@@ -151,7 +204,7 @@ $env:XAI_API_KEY = "sk-..."
 
 ---
 
-## 6. Tests
+## 7. Tests
 
 ```powershell
 cargo test -p cortex
@@ -162,7 +215,7 @@ cargo test -p infrastructure
 
 ---
 
-## 7. Documentation
+## 8. Documentation
 
 | Document | Contenu |
 |----------|---------|
@@ -176,7 +229,7 @@ Tags Git : `phase1-closed`, `phase2-closed`, `phase3-v0.1.0`, `phase4-v0.3.0`.
 
 ---
 
-## 8. Phases livrées (résumé)
+## 9. Phases livrées (résumé)
 
 | Phase | Livrable |
 |-------|----------|

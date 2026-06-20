@@ -46,6 +46,12 @@ Types : `BridgeSkillContext`, `SkillSummary`.
 - `scripts/package-windows.ps1` — zip uniquement
 - `installer/orchestrateur.iss` — script Inno (raccourcis, workspace `%APPDATA%`)
 
+### Installation one-liner (utilisateurs)
+
+- `install.ps1` / `install.sh` à la racine du dépôt (raw GitHub `main`)
+- `scripts/publish-github-release.ps1` — publie Setup.exe sur GitHub Releases
+- `.github/workflows/release.yml` — CI sur tag `v*`
+
 ---
 
 ## Vérification

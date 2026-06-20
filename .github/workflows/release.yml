@@ -1,0 +1,52 @@
+# Build Windows installer et publie sur GitHub Releases (tag v*).
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install Inno Setup
+        run: winget install --id JRSoftware.InnoSetup --accept-package-agreements --accept-source-agreements --silent
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe introuvable" }
+          ./scripts/build-installer.ps1 -InstallInno
+
+      - name: SHA256 checksums
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path Cargo.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+          $setup = "dist/Orchestrateur-v$v-Setup-win64.exe"
+          $zip = "dist/Orchestrateur-v$v-win64.zip"
+          $h1 = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLower()
+          $h2 = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          @"
+          $h1  $(Split-Path $setup -Leaf)
+          $h2  $(Split-Path $zip -Leaf)
+          "@ | Set-Content dist/SHA256SUMS.txt -Encoding ASCII
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/Orchestrateur-v*-Setup-win64.exe
+            dist/Orchestrateur-v*-win64.zip
+            dist/SHA256SUMS.txt
+          generate_release_notes: true

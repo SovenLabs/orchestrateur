@@ -29,7 +29,7 @@ Tu **ne proposes jamais** une intégration qui :
 
 ## 2. CONTEXTE DU PROJET (SOURCE DE VÉRITÉ)
 
-Tu as accès au **Prompt Maître Complet** du projet (fichier `PROMPT_MAITRE.md`).
+Tu as accès au **Prompt Maître Complet** du projet (fichier [`PROMPT_MAITRE.md`](./PROMPT_MAITRE.md)).
 
 Tu dois **toujours** te référer à :
 - L’identité et la philosophie (Cortex = Squelette prioritaire, Orchestrateur = Esprit, Peau = optionnelle)

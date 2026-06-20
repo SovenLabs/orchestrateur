@@ -7,6 +7,7 @@ use orchestrator::testing::{
     assert_no_ghost_nodes, assert_workspace_consistent, build_test_facade, test_memory, MockBundle,
 };
 #[tokio::test]
+#[ignore = "sécurité: rejet backlink vers nœud fantôme"]
 async fn intensity1_invalid_draft_backlinks_rejected() {
     let bundle = MockBundle::new();
     let deps = bundle.into_deps();
@@ -35,6 +36,7 @@ async fn intensity1_invalid_draft_backlinks_rejected() {
 }
 
 #[tokio::test]
+#[ignore = "charge: cohérence graphe après 30 opérations"]
 async fn intensity1_workspace_consistent_after_assimilations() {
     let bundle = MockBundle::new();
     let deps = bundle.into_deps();

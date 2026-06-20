@@ -11,6 +11,7 @@ use orchestrator::testing::{
 use orchestrator::{AppDependencies, OrchestratorError};
 
 #[tokio::test]
+#[ignore = "intégration: erreur structurée JSON LLM invalide"]
 async fn intensity1_invalid_json_returns_structured_error() {
     let bundle = MockBundle::new();
     let events = CollectingEventPublisher::new();
@@ -40,6 +41,7 @@ async fn intensity1_invalid_json_returns_structured_error() {
 }
 
 #[tokio::test]
+#[ignore = "intégration: événements usage LLM"]
 async fn intensity1_llm_usage_emitted_on_success() {
     let bundle = MockBundle::new();
     let events = CollectingEventPublisher::new();
@@ -64,6 +66,7 @@ async fn intensity1_llm_usage_emitted_on_success() {
 }
 
 #[tokio::test]
+#[ignore = "intégration: échec vector store remonté"]
 async fn intensity2_vector_store_failure_surfaces_as_cortex_error() {
     let bundle = MockBundle::new();
     let failing_store = FailNthVectorStore::new(bundle.vector_store.clone(), 1);

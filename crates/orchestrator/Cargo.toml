@@ -8,6 +8,7 @@ description = "Cœur applicatif de l'Orchestrateur (facade, bridge, use cases, s
 
 [features]
 default = []
+heavy-tests = []
 cli = []
 tui = ["dep:ratatui", "dep:crossterm"]
 http = ["dep:axum", "dep:tower-http"]

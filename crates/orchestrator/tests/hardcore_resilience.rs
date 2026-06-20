@@ -31,6 +31,7 @@ fn chained_facade(xai: Arc<dyn orchestrator::LlmProvider>) -> OrchestratorFacade
 }
 
 #[tokio::test]
+#[ignore = "intégration: fallback xAI 429 → Ollama"]
 async fn intensity1_fallback_xai_429_then_ollama_success() {
     let draft = MemoryDraft {
         title: "Ne sera pas utilisé".into(),
@@ -55,6 +56,7 @@ async fn intensity1_fallback_xai_429_then_ollama_success() {
 }
 
 #[tokio::test]
+#[ignore = "intégration: erreur auth xAI sans fallback"]
 async fn intensity1_xai_auth_error_does_not_fallback() {
     let xai = ScriptedLlmProvider::new(
         "xai",

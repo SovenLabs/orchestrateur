@@ -9,6 +9,15 @@ description = "Cortex — squelette hexagonal de l'Orchestrateur (mémoires, gra
 keywords = ["orchestrateur", "cortex", "knowledge-graph", "hexagonal"]
 categories = ["data-structures", "parsing"]
 
+[features]
+default = []
+heavy-tests = []
+
+[[test]]
+name = "heavy_adversarial"
+path = "tests/heavy_adversarial.rs"
+required-features = ["heavy-tests"]
+
 [dependencies]
 async-trait.workspace = true
 chrono.workspace = true

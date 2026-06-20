@@ -55,6 +55,7 @@ mod tests {
     use crate::testing::MockBundle;
 
     #[tokio::test]
+    #[ignore = "sécurité: semis canaris honeypot"]
     async fn seeds_canaries_once() {
         let bundle = MockBundle::new();
         let repo = bundle.memory_repo.clone();

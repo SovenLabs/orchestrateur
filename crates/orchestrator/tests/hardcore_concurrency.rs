@@ -13,6 +13,7 @@ fn shared_facade() -> Arc<OrchestratorFacade> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "charge: 10 assimilations parallèles"]
 async fn intensity1_ten_parallel_assimilations() {
     let facade = shared_facade();
     let deps = facade.deps().clone();
@@ -49,6 +50,7 @@ async fn intensity1_ten_parallel_assimilations() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+#[ignore = "charge: 50 assimilations + 200 recherches mixtes"]
 async fn intensity2_mixed_assimilations_and_searches() {
     let facade = shared_facade();
     let deps = facade.deps().clone();

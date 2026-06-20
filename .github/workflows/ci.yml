@@ -1,0 +1,40 @@
+# Tests rapides par défaut + suite sécurité/charge sur main.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: Tests rapides
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo check
+        run: cargo check --workspace
+      - name: cargo test (défaut)
+        run: cargo test --workspace
+      - name: clippy cortex
+        run: cargo clippy -p cortex -- -D warnings
+      - name: clippy orchestrator
+        run: cargo clippy -p orchestrator -- -D warnings
+
+  test-heavy:
+    name: Tests sécurité et charge
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo test --ignored
+        run: cargo test --workspace -- --ignored
+      - name: cargo test heavy-tests (cortex)
+        run: cargo test -p cortex --features heavy-tests

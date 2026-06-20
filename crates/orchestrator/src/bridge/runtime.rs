@@ -384,6 +384,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "charge: dispatch list sur 5000 mémoires"]
     async fn dispatch_list_handles_5k_memories() {
         use std::time::Instant;
 

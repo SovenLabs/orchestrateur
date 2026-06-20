@@ -19,6 +19,7 @@ fn wait_for_response(handle: &impl OrchestratorHandle, timeout: Duration) -> Opt
 }
 
 #[test]
+#[ignore = "intégration: bridge health check (thread spawn)"]
 fn bridge_health_check_roundtrip() {
     let deps = MockBundle::new().into_deps();
     let (handle, thread) = spawn_orchestrator_bridge(deps).unwrap();
@@ -46,6 +47,7 @@ fn bridge_health_check_roundtrip() {
 }
 
 #[test]
+#[ignore = "intégration: bridge list + get memory"]
 fn bridge_list_and_get_memory_roundtrip() {
     let bundle = MockBundle::new();
     let deps = bundle.into_deps();
@@ -95,6 +97,7 @@ fn bridge_list_and_get_memory_roundtrip() {
 }
 
 #[test]
+#[ignore = "intégration: bridge assimilation + événements domaine"]
 fn bridge_publishes_domain_events_on_assimilate() {
     let deps = MockBundle::new().into_deps();
     let (handle, thread) = spawn_orchestrator_bridge(deps).unwrap();
@@ -148,6 +151,7 @@ fn bridge_command_response_are_serializable() {
 }
 
 #[test]
+#[ignore = "intégration: bridge skills list + execute"]
 fn bridge_list_skills_and_execute_noop() {
     let deps = MockBundle::new().into_deps();
     let (handle, thread) = spawn_orchestrator_bridge(deps).unwrap();
@@ -179,6 +183,7 @@ fn bridge_list_skills_and_execute_noop() {
 }
 
 #[test]
+#[ignore = "intégration: bridge chat roundtrip"]
 fn bridge_chat_roundtrip() {
     let deps = MockBundle::new().into_deps();
     let (handle, thread) = spawn_orchestrator_bridge(deps).unwrap();

@@ -9,6 +9,7 @@ use orchestrator::OrchestratorConfig;
 use reqwest::Client;
 
 #[tokio::test]
+#[ignore = "lourd: factory infrastructure sans clé xAI"]
 async fn intensity1_missing_xai_key_degrades_to_unavailable_without_panic() {
     let mut cfg = OrchestratorConfig::default();
     cfg.providers.primary_llm = "xai".into();
@@ -27,6 +28,7 @@ async fn intensity1_missing_xai_key_degrades_to_unavailable_without_panic() {
 }
 
 #[tokio::test]
+#[ignore = "lourd: factory embedding Ollama (infrastructure)"]
 async fn intensity1_ollama_embedding_factory_builds_without_api_key() {
     let mut cfg = OrchestratorConfig::default();
     cfg.providers.primary_embedding = "ollama".into();
@@ -36,6 +38,7 @@ async fn intensity1_ollama_embedding_factory_builds_without_api_key() {
 }
 
 #[test]
+#[ignore = "intégration: chargement TOML incomplet"]
 fn intensity1_incomplete_toml_uses_defaults() {
     let dir = tempfile::tempdir().expect("tempdir");
     std::fs::write(
@@ -49,6 +52,7 @@ fn intensity1_incomplete_toml_uses_defaults() {
 }
 
 #[test]
+#[ignore = "lourd: routage provider via factory infrastructure"]
 fn intensity2_provider_routing_uses_factory_not_use_cases() {
     let mut cfg = OrchestratorConfig::default();
     cfg.providers.primary_llm = "ollama".into();

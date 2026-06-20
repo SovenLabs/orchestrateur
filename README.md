@@ -206,12 +206,40 @@ $env:XAI_API_KEY = "sk-..."
 
 ## 7. Tests
 
+### Boucle développeur (rapide, < 15 s)
+
 ```powershell
 cargo test -p cortex
 cargo test -p orchestrator
+```
+
+Les tests **sécurité**, **charge** et **intégration lourde** sont marqués `#[ignore]` — ils ne tournent pas par défaut.
+
+### Suite complète (sécurité + scalabilité)
+
+```powershell
+cargo test -p cortex -- --ignored
+cargo test -p orchestrator -- --ignored
+cargo test --workspace -- --ignored
+```
+
+### Tests très coûteux (feature `heavy-tests`)
+
+```powershell
+cargo test -p cortex --features heavy-tests
+cargo test -p orchestrator --features heavy-tests
+```
+
+### Cibles ciblées
+
+```powershell
+cargo test -p cortex --test adversarial_validation -- --ignored
+cargo test -p cortex --test scalability -- --ignored
 cargo test -p orchestrator --features tui
 cargo test -p infrastructure
 ```
+
+La CI (`.github/workflows/ci.yml`) exécute les tests rapides sur chaque PR, et la suite `--ignored` sur `main`.
 
 ---
 

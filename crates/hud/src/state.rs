@@ -1,19 +1,8 @@
 //! État UI pur — testable sans egui, sans logique métier.
 
-use orchestrator::{BridgeSearchHit, DomainEvent, MemorySummary, Response};
-
-/// Vue détail d'une mémoire (DTO UI, pas d'import Cortex).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MemoryDetailView {
-    /// Identifiant UUID string.
-    pub id: String,
-    /// Titre affiché.
-    pub title: String,
-    /// Corps markdown.
-    pub content: String,
-    /// Tags normalisés.
-    pub tags: Vec<String>,
-}
+use orchestrator::{
+    format_health_status, BridgeSearchHit, DomainEvent, MemoryDetailView, MemorySummary, Response,
+};
 
 /// Hit de recherche affiché dans le panneau gauche.
 #[derive(Debug, Clone, PartialEq)]
@@ -170,18 +159,8 @@ impl HudState {
                 self.version = Some(version);
                 self.llm_available = llm_available;
                 self.embedding_available = embedding_available;
-                self.status = if status == "ok" {
-                    format!("Santé: {status}")
-                } else {
-                    let mut parts = vec!["Santé: dégradée".to_string()];
-                    if !llm_available {
-                        parts.push("LLM indisponible".into());
-                    }
-                    if !embedding_available {
-                        parts.push("recherche indisponible".into());
-                    }
-                    parts.join(" — ")
-                };
+                self.status =
+                    format_health_status(&status, llm_available, embedding_available);
                 self.clear_busy();
                 HudAction::None
             }
@@ -195,12 +174,7 @@ impl HudState {
             }
             Response::MemoryDetail { memory } => {
                 self.selected_id = Some(memory.id.to_string());
-                self.detail = Some(MemoryDetailView {
-                    id: memory.id.to_string(),
-                    title: memory.title,
-                    content: memory.content,
-                    tags: memory.tags.iter().map(|t| t.as_str().to_string()).collect(),
-                });
+                self.detail = Some(MemoryDetailView::from_memory(&memory));
                 self.status = "Détail chargé".to_string();
                 self.clear_busy();
                 HudAction::None

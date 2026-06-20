@@ -41,9 +41,9 @@ pub mod use_cases;
 pub mod testing;
 
 pub use bridge::{
-    format_assimilate_user_prompt, spawn_orchestrator_bridge, AppError, BridgeError,
-    BridgeSearchHit, ChannelHandle, Command, FanoutEventPublisher, MemorySummary,
-    OrchestratorHandle, OrchestratorThread, Response,
+    execute_command, format_assimilate_user_prompt, format_health_status, spawn_orchestrator_bridge,
+    AppError, BridgeError, BridgeSearchHit, ChannelHandle, Command, FanoutEventPublisher,
+    MemoryDetailView, MemorySummary, OrchestratorHandle, OrchestratorThread, Response,
 };
 pub use config::{
     AuditConfig, BehavioralConfig, ConfigError, IntegrityConfig, OllamaConfig, OrchestratorConfig,
@@ -68,6 +68,3 @@ pub use use_cases::DEFAULT_ASSIMILATION_SYSTEM_PROMPT;
 
 /// Version du crate alignée sur le workspace.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/// Alias historique — préférer [`OrchestratorFacade`].
-pub type OrchestratorApp = OrchestratorFacade;

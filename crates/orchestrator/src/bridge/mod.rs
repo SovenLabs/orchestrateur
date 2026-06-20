@@ -31,11 +31,15 @@ mod handle;
 mod response;
 mod runtime;
 mod types;
+pub mod ui_common;
 
 pub use command::Command;
 pub use error::BridgeError;
 pub use events::FanoutEventPublisher;
 pub use handle::{ChannelHandle, OrchestratorHandle};
 pub use response::Response;
-pub use runtime::{format_assimilate_user_prompt, spawn_orchestrator_bridge, OrchestratorThread};
+pub use runtime::{
+    execute_command, format_assimilate_user_prompt, spawn_orchestrator_bridge, OrchestratorThread,
+};
+pub use ui_common::{format_health_status, MemoryDetailView};
 pub use types::{AppError, BridgeSearchHit, MemorySummary};

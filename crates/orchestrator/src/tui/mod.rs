@@ -8,4 +8,5 @@ mod state;
 mod ui;
 
 pub use app::TuiApp;
-pub use state::{AppState, MemoryDetailView, View};
+pub use crate::MemoryDetailView;
+pub use state::{AppState, View};

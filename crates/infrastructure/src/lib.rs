@@ -8,6 +8,7 @@
 #![warn(missing_docs, rust_2018_idioms)]
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 
+mod bootstrap;
 mod embedding;
 mod http_retry;
 mod http_status;
@@ -17,6 +18,7 @@ mod providers;
 mod vector_store;
 mod wiring;
 
+pub use bootstrap::{bootstrap_workspace, BootstrapError, MEMORY_MODE_HINT};
 pub use embedding::{
     build_embedding_provider, ChainedEmbeddingProvider, EmbeddingFactoryError,
     OllamaEmbeddingProvider,

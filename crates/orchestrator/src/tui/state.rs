@@ -1,6 +1,6 @@
 //! État du TUI — testable, sans logique domaine.
 
-use crate::{MemorySummary, Response};
+use crate::{format_health_status, MemoryDetailView, MemorySummary, Response};
 
 /// Vue active du TUI.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -13,19 +13,6 @@ pub enum View {
     Assimilate,
     /// Aide modale.
     Help,
-}
-
-/// DTO détail mémoire (issu de [`Response::MemoryDetail`]).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MemoryDetailView {
-    /// Identifiant UUID.
-    pub id: String,
-    /// Titre.
-    pub title: String,
-    /// Corps markdown.
-    pub content: String,
-    /// Tags normalisés.
-    pub tags: Vec<String>,
 }
 
 /// État mutable de l'application TUI.
@@ -99,18 +86,8 @@ impl AppState {
                 self.version = Some(version);
                 self.llm_available = llm_available;
                 self.embedding_available = embedding_available;
-                self.status_message = if status == "ok" {
-                    format!("Santé: {status}")
-                } else {
-                    let mut parts = vec!["Santé: dégradée".to_string()];
-                    if !llm_available {
-                        parts.push("LLM off".into());
-                    }
-                    if !embedding_available {
-                        parts.push("recherche off".into());
-                    }
-                    parts.join(" — ")
-                };
+                self.status_message =
+                    format_health_status(&status, llm_available, embedding_available);
             }
             Response::MemoryList { items, total } => {
                 self.catalog = items;
@@ -120,12 +97,7 @@ impl AppState {
                 self.status_message = format!("{total} mémoire(s)");
             }
             Response::MemoryDetail { memory } => {
-                self.detail = Some(MemoryDetailView {
-                    id: memory.id.to_string(),
-                    title: memory.title,
-                    content: memory.content,
-                    tags: memory.tags.iter().map(|t| t.as_str().to_string()).collect(),
-                });
+                self.detail = Some(MemoryDetailView::from_memory(&memory));
                 self.current_view = View::Detail;
                 self.status_message = "Détail chargé".to_string();
             }

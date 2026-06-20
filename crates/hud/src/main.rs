@@ -11,11 +11,10 @@ mod theme;
 
 use std::path::PathBuf;
 
-use anyhow::Context;
 use clap::Parser;
 use eframe::egui;
-use infrastructure::{build_app_dependencies, WiringError};
-use orchestrator::{spawn_orchestrator_bridge, OrchestratorConfig};
+use infrastructure::bootstrap_workspace;
+use orchestrator::spawn_orchestrator_bridge;
 use tracing_subscriber::EnvFilter;
 
 use app::HudApp;
@@ -41,18 +40,9 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cli = Cli::parse();
-    let config = OrchestratorConfig::load_workspace(&cli.workspace)
-        .with_context(|| format!("chargement config depuis {}", cli.workspace.display()))?;
-
-    let deps = match build_app_dependencies(config).await {
-        Ok(deps) => deps,
-        Err(WiringError::MemoryMode) => {
-            anyhow::bail!(
-                "vector_store type=memory : configurez type=lancedb dans orchestrator.toml pour le HUD"
-            );
-        }
-        Err(err) => return Err(err.into()),
-    };
+    let deps = bootstrap_workspace(&cli.workspace)
+        .await
+        .map_err(|err| anyhow::anyhow!(err.with_context("HUD")))?;
 
     let (handle, thread) = spawn_orchestrator_bridge(deps)
         .map_err(|err| anyhow::anyhow!("démarrage bridge orchestrateur: {err}"))?;

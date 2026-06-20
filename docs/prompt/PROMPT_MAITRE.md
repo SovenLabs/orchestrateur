@@ -191,10 +191,9 @@ Tu suis toujours ce plan de phases (sauf validation explicite de changement) :
 - **Phase 1** ✅ CLOSED — Crate `cortex` complet (modèles, ports, services purs, tests unitaires exhaustifs, compilation isolée).
 - **Phase 2** ✅ CLOSED — Crate `orchestrator` (facade, use cases, Skill Registry skeleton, mocks in-memory, sans appel Grok réel). Voir [`ARCHIVE_PHASE2_v0.1.0.md`](../ARCHIVE_PHASE2_v0.1.0.md).
 - **Phase 3** : Crate `infrastructure` (FileMemoryRepository, WorkspaceManager, LancedbVectorStore, OllamaEmbeddingProvider).
-- **Phase 4** : Intégration Grok (xAI client) + premier use case d’assimilation réel + fallback Ollama.
-- **Phase 5** : Binaire `cli` fully functional (commandes assimilate, search, chat, graph).
-- **Phase 6** : Peau `presentation-egui` (HUD minimal : liste mémoires, recherche sémantique, détail, notifications assimilation).
-- **Phase 7+** : Skills, raffinements, tests d’intégration, packaging.
+- **Phase 4** : HUD egui (`hud/`), bridge découplé, sécurité profondeur — tag `phase4-v0.3.0`.
+- **Phase 5** : TUI ratatui (feature `tui`), mode dégradé sans IA, `bootstrap_workspace`, CLI unifié via `execute_command` — tag `phase5-v0.3.0`.
+- **Phase 6+** : Skills, packaging Windows, raffinements Peau, commandes bridge `graph`/`chat`.
 
 ### 4.3 Qualité de code exigée
 - Chaque entité du Cortex a des **tests unitaires** (coverage visée > 85 % sur le domaine).

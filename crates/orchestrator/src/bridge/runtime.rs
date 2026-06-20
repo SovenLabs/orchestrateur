@@ -98,14 +98,15 @@ async fn orchestrator_loop(
     resp_tx: Sender<Response>,
 ) {
     while let Ok(cmd) = cmd_rx.recv_async().await {
-        let response = dispatch_command(&facade, cmd).await;
+        let response = execute_command(&facade, cmd).await;
         if resp_tx.send_async(response).await.is_err() {
             break;
         }
     }
 }
 
-async fn dispatch_command(facade: &OrchestratorFacade, cmd: Command) -> Response {
+/// Exécute une [`Command`] bridge de façon synchrone (CLI headless, tests, thread bridge).
+pub async fn execute_command(facade: &OrchestratorFacade, cmd: Command) -> Response {
     match cmd {
         Command::HealthCheck => {
             let probe = probe_services(facade.deps()).await;
@@ -198,7 +199,7 @@ mod tests {
     #[tokio::test]
     async fn dispatch_health_check_returns_version() {
         let facade = OrchestratorFacade::new(MockBundle::new().into_deps());
-        let response = dispatch_command(&facade, Command::HealthCheck).await;
+        let response = execute_command(&facade, Command::HealthCheck).await;
         match response {
             Response::Health {
                 status,
@@ -221,7 +222,7 @@ mod tests {
         let memory = cortex::Memory::new("Titre HUD", "Corps").unwrap();
         facade.save_memory(&memory).await.unwrap();
 
-        let response = dispatch_command(
+        let response = execute_command(
             &facade,
             Command::List {
                 filter: None,
@@ -253,7 +254,7 @@ mod tests {
         }
 
         let start = Instant::now();
-        let response = dispatch_command(
+        let response = execute_command(
             &facade,
             Command::List {
                 filter: None,

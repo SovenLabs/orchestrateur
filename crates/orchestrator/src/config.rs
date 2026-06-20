@@ -42,7 +42,7 @@ pub struct VectorStoreConfig {
 impl Default for VectorStoreConfig {
     fn default() -> Self {
         Self {
-            store_type: "memory".into(),
+            store_type: "lancedb".into(),
             path: PathBuf::from(".orchestrateur/lancedb"),
             embedding_dimension: 768,
         }
@@ -360,6 +360,9 @@ impl OrchestratorConfig {
             }
         }
         if let Some(ld) = settings.lancedb {
+            tracing::warn!(
+                "[lancedb] est déprécié — utilisez [vector_store] type = \"lancedb\""
+            );
             self.vector_store.store_type = "lancedb".into();
             if let Some(p) = ld.path {
                 self.vector_store.path = PathBuf::from(p);
@@ -758,6 +761,6 @@ detect_injection_patterns = false
         let dir = tempfile::tempdir().unwrap();
         let cfg = OrchestratorConfig::load_workspace(dir.path()).unwrap();
         assert_eq!(cfg.similarity_thresholds.max_links, 10);
-        assert_eq!(cfg.vector_store.store_type, "memory");
+        assert_eq!(cfg.vector_store.store_type, "lancedb");
     }
 }

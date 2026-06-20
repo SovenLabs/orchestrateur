@@ -6,16 +6,16 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use cortex::{KnowledgeGraph, SearchFilter};
-use infrastructure::{build_app_dependencies, WiringError};
+use cortex::KnowledgeGraph;
+use infrastructure::bootstrap_workspace;
 #[cfg(feature = "tui")]
 use orchestrator::spawn_orchestrator_bridge;
 #[cfg(feature = "tui")]
 use orchestrator::TuiApp;
 use orchestrator::{
-    format_assimilate_user_prompt, ChatMessage, OrchestratorConfig, OrchestratorError,
-    OrchestratorFacade, DEFAULT_ASSIMILATION_SYSTEM_PROMPT, VERSION,
+    execute_command, ChatMessage, Command, OrchestratorError, OrchestratorFacade, Response,
 };
+
 use tracing_subscriber::EnvFilter;
 
 /// Orchestrateur — second cerveau local souverain.
@@ -106,31 +106,50 @@ async fn main() -> Result<()> {
         "aucune commande — lancez sans argument dans un terminal interactif (TUI) ou utilisez --help",
     )?;
 
-    let config =
-        OrchestratorConfig::load_workspace(&cli.workspace).context("chargement configuration")?;
-
-    let facade = match build_facade(config).await {
-        Ok(f) => f,
-        Err(WiringError::MemoryMode) => {
-            anyhow::bail!(
-                "vector_store type=memory : configurez type=lancedb dans orchestrator.toml pour le CLI"
-            );
-        }
-        Err(e) => return Err(e.into()),
-    };
+    let deps = bootstrap_workspace(&cli.workspace)
+        .await
+        .map_err(|err| anyhow::anyhow!(err.with_context("CLI")))?;
+    let facade = OrchestratorFacade::new(deps);
 
     match command {
         #[cfg(feature = "tui")]
         Commands::Tui => unreachable!("sous-commande `tui` interceptée par should_launch_tui"),
-        Commands::Health => cmd_health()?,
+        Commands::Health => run_bridge_command(&facade, Command::HealthCheck).await?,
         Commands::List {
             filter,
             offset,
             limit,
-        } => cmd_list(&facade, filter.as_deref(), offset, limit).await?,
-        Commands::Get { id } => cmd_get(&facade, &id).await?,
-        Commands::Search { query, limit } => cmd_search(&facade, &query, limit).await?,
-        Commands::Assimilate { text, tags } => cmd_assimilate(&facade, &text, &tags).await?,
+        } => {
+            run_bridge_command(
+                &facade,
+                Command::List {
+                    filter,
+                    offset,
+                    limit,
+                },
+            )
+            .await?;
+        }
+        Commands::Get { id } => {
+            run_bridge_command(&facade, Command::GetMemory { id }).await?;
+        }
+        Commands::Search { query, limit } => {
+            run_bridge_command(&facade, Command::Search { query, limit }).await?;
+        }
+        Commands::Assimilate { text, tags } => {
+            let response =
+                execute_command(&facade, Command::Assimilate { text, tags }).await;
+            match response {
+                Response::MemoryDetail { memory } => {
+                    println!("Assimilé : {} ({})", memory.title, memory.id);
+                    println!("Backlinks : {}", memory.backlink_count());
+                }
+                Response::Error(err) => {
+                    anyhow::bail!("[{}] {}", err.kind, err.message);
+                }
+                other => print_response(other)?,
+            }
+        }
         Commands::Graph => cmd_graph(&facade).await?,
         Commands::Chat { message } => cmd_chat(&facade, &message).await?,
     }
@@ -164,24 +183,13 @@ async fn run_tui(workspace: PathBuf) -> Result<()> {
         anyhow::bail!("TUI requiert un terminal interactif (stdin n'est pas un TTY)");
     }
 
-    let config = OrchestratorConfig::load_workspace(&workspace)
-        .with_context(|| format!("chargement config depuis {}", workspace.display()))?;
-
-    let deps = match build_app_dependencies(config).await {
-        Ok(deps) => deps,
-        Err(WiringError::MemoryMode) => {
-            anyhow::bail!(
-                "vector_store type=memory : configurez type=lancedb dans orchestrator.toml pour le TUI"
-            );
-        }
-        Err(err) => return Err(err.into()),
-    };
+    let deps = bootstrap_workspace(&workspace)
+        .await
+        .map_err(|err| anyhow::anyhow!(err.with_context("TUI")))?;
 
     let (handle, thread) = spawn_orchestrator_bridge(deps)
         .map_err(|err| anyhow::anyhow!("démarrage bridge orchestrateur: {err}"))?;
 
-    // NOTE(architecte): la boucle ratatui est synchrone — on l'isole dans spawn_blocking
-    // pour ne pas bloquer le runtime Tokio du thread principal.
     let mut app = TuiApp::new(handle, thread);
     let run_result = tokio::task::spawn_blocking(move || app.run()).await;
 
@@ -192,94 +200,68 @@ async fn run_tui(workspace: PathBuf) -> Result<()> {
     }
 }
 
-fn cmd_health() -> Result<()> {
-    println!("status=ok version={VERSION}");
-    Ok(())
+async fn run_bridge_command(facade: &OrchestratorFacade, command: Command) -> Result<()> {
+    let response = execute_command(facade, command).await;
+    print_response(response)
 }
 
-async fn build_facade(config: OrchestratorConfig) -> Result<OrchestratorFacade, WiringError> {
-    let deps = build_app_dependencies(config).await?;
-    Ok(OrchestratorFacade::new(deps))
-}
-
-async fn cmd_list(
-    facade: &OrchestratorFacade,
-    filter: Option<&str>,
-    offset: usize,
-    limit: usize,
-) -> Result<()> {
-    let mut memories = facade.list_memories().await?;
-    if let Some(needle) = filter {
-        if !needle.is_empty() {
-            let needle = needle.to_lowercase();
-            memories.retain(|mem| {
-                mem.title.to_lowercase().contains(&needle)
-                    || mem
-                        .tags
-                        .iter()
-                        .any(|tag| tag.as_str().to_lowercase().contains(&needle))
-            });
+fn print_response(response: Response) -> Result<()> {
+    match response {
+        Response::Health {
+            status,
+            version,
+            llm_available,
+            embedding_available,
+        } => {
+            println!(
+                "status={status} version={version} llm={llm_available} embedding={embedding_available}"
+            );
         }
+        Response::MemoryList { items, total } => {
+            if items.is_empty() {
+                println!("Aucune mémoire (total={total}).");
+                return Ok(());
+            }
+            println!("# total={total}");
+            for item in items {
+                let tags = item.tags.join(", ");
+                println!("{} | {} | tags=[{tags}]", item.id, item.title);
+            }
+        }
+        Response::MemoryDetail { memory } => {
+            println!("# {}", memory.title);
+            println!("id: {}", memory.id);
+            if !memory.tags.is_empty() {
+                let tags: Vec<_> = memory.tags.iter().map(|t| t.as_str()).collect();
+                println!("tags: {}", tags.join(", "));
+            }
+            println!("---");
+            println!("{}", memory.content);
+        }
+        Response::SearchResults { items } => {
+            if items.is_empty() {
+                println!("Aucun résultat.");
+                return Ok(());
+            }
+            for hit in items {
+                let preview: String = hit
+                    .snippet
+                    .as_deref()
+                    .unwrap_or("")
+                    .chars()
+                    .take(120)
+                    .collect();
+                println!("{:.3} | {} | {}", hit.score, hit.memory_id, preview);
+            }
+        }
+        Response::Error(err) => {
+            anyhow::bail!("[{}] {}", err.kind, err.message);
+        }
+        Response::Success { message } => {
+            println!("{message}");
+        }
+        Response::Event(_) => {}
     }
-    let total = memories.len();
-    let page: Vec<_> = memories.into_iter().skip(offset).take(limit).collect();
-    if page.is_empty() {
-        println!("Aucune mémoire (total={total}).");
-        return Ok(());
-    }
-    println!("# total={total} offset={offset} limit={limit}");
-    for mem in page {
-        let tags: Vec<_> = mem.tags.iter().map(|t| t.as_str()).collect();
-        println!("{} | {} | tags=[{}]", mem.id, mem.title, tags.join(", "));
-    }
-    Ok(())
-}
-
-async fn cmd_get(facade: &OrchestratorFacade, id: &str) -> Result<()> {
-    let memory_id = id
-        .parse()
-        .map_err(|e| anyhow::anyhow!("identifiant invalide: {e}"))?;
-    let mem = facade.get_memory(memory_id).await?;
-    println!("# {}", mem.title);
-    println!("id: {}", mem.id);
-    if !mem.tags.is_empty() {
-        let tags: Vec<_> = mem.tags.iter().map(|t| t.as_str()).collect();
-        println!("tags: {}", tags.join(", "));
-    }
-    println!("---");
-    println!("{}", mem.content);
-    Ok(())
-}
-
-async fn cmd_search(facade: &OrchestratorFacade, query: &str, limit: usize) -> Result<()> {
-    let filter = SearchFilter {
-        limit: Some(limit),
-        ..Default::default()
-    };
-    let hits = facade.search_memories(query, &filter).await?;
-    if hits.is_empty() {
-        println!("Aucun résultat.");
-        return Ok(());
-    }
-    for hit in hits {
-        let mem = facade.get_memory(hit.memory_id).await?;
-        let snippet = hit.snippet.as_deref().unwrap_or(mem.content.as_str());
-        let preview: String = snippet.chars().take(120).collect();
-        println!("{:.3} | {} | {}", hit.score, mem.id, mem.title);
-        println!("    {preview}");
-    }
-    Ok(())
-}
-
-async fn cmd_assimilate(facade: &OrchestratorFacade, text: &str, tags: &[String]) -> Result<()> {
-    let prompt = format_assimilate_user_prompt(text, tags);
-    let (memory, events) = facade
-        .assimilate(&prompt, Some(DEFAULT_ASSIMILATION_SYSTEM_PROMPT))
-        .await
-        .map_err(map_orch_err)?;
-    println!("Assimilé : {} ({})", memory.title, memory.id);
-    println!("Backlinks : {}", memory.backlink_count());
-    println!("Événements : {}", events.len());
     Ok(())
 }
 
@@ -308,8 +290,4 @@ async fn cmd_chat(facade: &OrchestratorFacade, message: &str) -> Result<()> {
         .map_err(OrchestratorError::Llm)?;
     println!("{reply}");
     Ok(())
-}
-
-fn map_orch_err(err: OrchestratorError) -> anyhow::Error {
-    err.into()
 }

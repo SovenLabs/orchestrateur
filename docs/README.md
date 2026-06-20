@@ -16,7 +16,7 @@ Index des documents du projet **Orchestrateur** (workspace Cargo **0.3.0**).
 | 1 | [`ARCHIVE_PHASE1.md`](ARCHIVE_PHASE1.md) | `phase1-closed` |
 | 2 | [`ARCHIVE_PHASE2_v0.1.0.md`](ARCHIVE_PHASE2_v0.1.0.md) | `phase2-closed` |
 | 3 | [`ARCHIVE_PHASE3_v0.1.0.md`](ARCHIVE_PHASE3_v0.1.0.md) | `phase3-v0.1.0` |
-| 4 | — | `phase4-v0.3.0` |
-| 5 | — | *(en cours de clôture)* |
+| 4 | [`ARCHIVE_PHASE4_v0.3.0.md`](ARCHIVE_PHASE4_v0.3.0.md) | `phase4-v0.3.0` |
+| 5 | [`ARCHIVE_PHASE5_v0.3.0.md`](ARCHIVE_PHASE5_v0.3.0.md) | `phase5-v0.3.0` |
 
 Point d’entrée utilisateur : [`../README.md`](../README.md).

@@ -1,8 +1,0 @@
-test: fast default suite + security/load in CI
-
-- Move cortex adversarial tests to tests/adversarial_validation.rs (#[ignore])
-- Move perf 5k test to tests/scalability.rs
-- Add heavy-tests feature (cortex + orchestrator)
-- Mark orchestrator security, hardcore, bridge integration tests #[ignore]
-- Add .github/workflows/ci.yml (test + test-heavy jobs)
-- Document test tiers in README section 7

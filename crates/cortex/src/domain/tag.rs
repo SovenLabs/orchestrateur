@@ -31,6 +31,7 @@ impl Tag {
         Ok(Self(normalized))
     }
 
+    /// Retourne la représentation normalisée du tag.
     pub fn as_str(&self) -> &str {
         &self.0
     }

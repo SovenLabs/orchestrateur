@@ -6,12 +6,19 @@ use super::{Backlink, CortexError, MemoryId, Tag};
 /// Entité centrale : un souvenir persistant en Markdown.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Memory {
+    /// Identifiant unique (UUID v7).
     pub id: MemoryId,
+    /// Titre lisible du souvenir.
     pub title: String,
+    /// Corps Markdown brut (hors frontmatter).
     pub content: String,
+    /// Tags normalisés associés au souvenir.
     pub tags: Vec<Tag>,
+    /// Date de création UTC.
     pub created_at: DateTime<Utc>,
+    /// Date de dernière modification UTC.
     pub updated_at: DateTime<Utc>,
+    /// Liens sortants vers d'autres mémoires.
     pub backlinks: Vec<Backlink>,
 }
 

@@ -14,8 +14,11 @@
 #![warn(missing_docs, rust_2018_idioms)]
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 
+/// Entités, value objects et événements du domaine Cortex.
 pub mod domain;
+/// Contrats hexagonaux (traits async des ports).
 pub mod ports;
+/// Services de domaine purs (parsing Markdown, backlinks).
 pub mod services;
 
 pub use domain::{

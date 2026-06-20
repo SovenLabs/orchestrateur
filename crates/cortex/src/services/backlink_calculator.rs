@@ -21,8 +21,11 @@ impl Default for SimilarityThresholds {
 /// Candidat à la création d'un backlink.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BacklinkCandidate {
+    /// Mémoire source du lien candidat.
     pub source: MemoryId,
+    /// Mémoire cible du lien candidat.
     pub target: MemoryId,
+    /// Score de similarité calculé.
     pub score: f32,
 }
 

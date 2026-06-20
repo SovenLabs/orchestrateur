@@ -6,15 +6,20 @@ use super::{CortexError, MemoryId};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BacklinkKind {
+    /// Lien calculé par similarité sémantique (embedding).
     Semantic,
+    /// Lien explicite `[[uuid]]` dans le contenu Markdown.
     ExplicitWikilink,
 }
 
 /// Lien dirigé vers une autre mémoire, avec score de pertinence.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Backlink {
+    /// Mémoire cible du lien.
     pub target: MemoryId,
+    /// Score de pertinence ∈ [0.0, 1.0].
     pub score: f32,
+    /// Origine du lien (sémantique ou wikilink).
     pub kind: BacklinkKind,
 }
 

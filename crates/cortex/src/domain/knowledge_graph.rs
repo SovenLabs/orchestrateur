@@ -11,6 +11,7 @@ pub struct KnowledgeGraph {
 }
 
 impl KnowledgeGraph {
+    /// Crée un graphe vide.
     pub fn new() -> Self {
         Self::default()
     }

@@ -1,16 +1,57 @@
-//! Couche 1 — validation et sanitization stricte des sorties LLM avant assimilation.
+//! Validation adversariale des [`MemoryDraft`] — **dernière barrière domaine** avant persistance.
+//!
+//! Placé dans `cortex` (et non `orchestrator`) pour que toute voie d'écriture
+//! vers la mémoire durable doive respecter les mêmes règles invariantes,
+//! indépendamment de la couche applicative.
 
+use std::collections::HashSet;
 use std::str::FromStr;
 
-use cortex::{MemoryId, Tag};
 use thiserror::Error;
 
-use crate::config::SecurityConfig;
-use crate::memory_draft::MemoryDraft;
+use crate::domain::{MemoryDraft, MemoryId, Tag};
+
+/// Configuration pure du validateur (sans dépendance TOML / orchestrator).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MemoryDraftValidatorConfig {
+    /// Longueur minimale du contenu (caractères).
+    pub min_content_length: usize,
+    /// Longueur maximale du contenu.
+    pub max_content_length: usize,
+    /// Longueur maximale du titre.
+    pub max_title_length: usize,
+    /// Nombre maximal de tags.
+    pub max_tags: usize,
+    /// Nombre maximal de backlinks candidats.
+    pub max_backlinks: usize,
+    /// Détecte les patterns d'injection connus.
+    pub detect_injection_patterns: bool,
+}
+
+impl Default for MemoryDraftValidatorConfig {
+    fn default() -> Self {
+        Self {
+            min_content_length: 1,
+            max_content_length: 64_000,
+            max_title_length: 512,
+            max_tags: 32,
+            max_backlinks: 20,
+            detect_injection_patterns: true,
+        }
+    }
+}
 
 /// Erreur de validation adversariale sur un [`MemoryDraft`].
 #[derive(Debug, Error, PartialEq)]
 pub enum ValidationError {
+    /// Contenu trop court.
+    #[error("contenu trop court ({actual} < {min} caractères)")]
+    ContentTooShort {
+        /// Minimum requis.
+        min: usize,
+        /// Longueur observée.
+        actual: usize,
+    },
     /// Contenu trop long.
     #[error("contenu trop long ({actual} > {max} caractères)")]
     ContentTooLong {
@@ -55,6 +96,9 @@ pub enum ValidationError {
         /// Valeur observée.
         score: f32,
     },
+    /// Backlink vers mémoire inexistante.
+    #[error("backlink vers mémoire inexistante: {0}")]
+    BacklinkTargetNotFound(String),
     /// Pattern d'injection ou de poisoning détecté.
     #[error("contenu suspect: {0}")]
     SuspiciousContent(String),
@@ -66,32 +110,22 @@ pub enum ValidationError {
     ExcessiveRepetition,
 }
 
-/// Validateur conservateur des brouillons issus des providers IA.
-///
-/// Première ligne de défense avant [`MemoryDraft::into_memory`].
+/// Validateur conservateur des brouillons — cœur de la défense adversariale du Cortex.
 #[derive(Debug, Clone)]
 pub struct MemoryDraftValidator {
-    max_content_length: usize,
-    max_title_length: usize,
-    max_tags: usize,
-    max_backlinks: usize,
-    detect_injection_patterns: bool,
+    config: MemoryDraftValidatorConfig,
 }
 
 impl MemoryDraftValidator {
-    /// Construit un validateur à partir de la configuration applicative.
+    /// Construit un validateur à partir d'une configuration domaine pure.
     #[must_use]
-    pub fn from_config(config: &SecurityConfig) -> Self {
+    pub fn from_config(config: &MemoryDraftValidatorConfig) -> Self {
         Self {
-            max_content_length: config.max_content_length,
-            max_title_length: config.max_title_length,
-            max_tags: config.max_tags,
-            max_backlinks: config.max_backlinks,
-            detect_injection_patterns: config.detect_injection_patterns,
+            config: config.clone(),
         }
     }
 
-    /// Valide un brouillon LLM avant conversion domaine.
+    /// Valide un brouillon avant conversion [`MemoryDraft::into_memory`].
     ///
     /// # Errors
     ///
@@ -104,35 +138,64 @@ impl MemoryDraftValidator {
         Self::check_control_characters(&draft.content)?;
         Self::check_repetition(&draft.title)?;
         Self::check_repetition(&draft.content)?;
-        if self.detect_injection_patterns {
+        if self.config.detect_injection_patterns {
             Self::check_forbidden_patterns(&draft.title)?;
             Self::check_forbidden_patterns(&draft.content)?;
         }
         Ok(())
     }
 
+    /// Valide le brouillon et vérifie que les cibles de backlink existent dans `known_ids`.
+    ///
+    /// # Errors
+    ///
+    /// Retourne [`ValidationError`] si une règle ou une cible de backlink est invalide.
+    pub fn validate_with_known_ids(
+        &self,
+        draft: &MemoryDraft,
+        known_ids: &HashSet<MemoryId>,
+    ) -> Result<(), ValidationError> {
+        self.validate(draft)?;
+        for bl in &draft.backlinks {
+            let id = MemoryId::from_str(&bl.target).map_err(|_| {
+                ValidationError::InvalidBacklinkTarget(bl.target.clone())
+            })?;
+            if !known_ids.contains(&id) {
+                return Err(ValidationError::BacklinkTargetNotFound(bl.target.clone()));
+            }
+        }
+        Ok(())
+    }
+
     fn check_lengths(&self, draft: &MemoryDraft) -> Result<(), ValidationError> {
-        if draft.content.len() > self.max_content_length {
+        let trimmed = draft.content.trim();
+        if trimmed.len() < self.config.min_content_length {
+            return Err(ValidationError::ContentTooShort {
+                min: self.config.min_content_length,
+                actual: trimmed.len(),
+            });
+        }
+        if draft.content.len() > self.config.max_content_length {
             return Err(ValidationError::ContentTooLong {
-                max: self.max_content_length,
+                max: self.config.max_content_length,
                 actual: draft.content.len(),
             });
         }
-        if draft.title.len() > self.max_title_length {
+        if draft.title.len() > self.config.max_title_length {
             return Err(ValidationError::TitleTooLong {
-                max: self.max_title_length,
+                max: self.config.max_title_length,
                 actual: draft.title.len(),
             });
         }
-        if draft.tags.len() > self.max_tags {
+        if draft.tags.len() > self.config.max_tags {
             return Err(ValidationError::TooManyTags {
-                max: self.max_tags,
+                max: self.config.max_tags,
                 actual: draft.tags.len(),
             });
         }
-        if draft.backlinks.len() > self.max_backlinks {
+        if draft.backlinks.len() > self.config.max_backlinks {
             return Err(ValidationError::TooManyBacklinks {
-                max: self.max_backlinks,
+                max: self.config.max_backlinks,
                 actual: draft.backlinks.len(),
             });
         }
@@ -214,14 +277,8 @@ fn normalize_for_scan(text: &str) -> String {
 }
 
 const INJECTION_PHRASES: &[(&str, &str)] = &[
-    (
-        "ignore all previous instructions",
-        "ignore all previous instructions",
-    ),
-    (
-        "ignore previous instructions",
-        "ignore previous instructions",
-    ),
+    ("ignore all previous instructions", "ignore all previous instructions"),
+    ("ignore previous instructions", "ignore previous instructions"),
     ("disregard all prior", "disregard all prior"),
     ("disregard prior", "disregard prior"),
     ("system prompt", "system prompt"),
@@ -268,11 +325,10 @@ fn find_injection_pattern(text: &str) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::memory_draft::{BacklinkDraft, BacklinkDraftKind, MemoryDraft};
-    use cortex::MemoryId;
+    use crate::domain::{BacklinkDraft, BacklinkDraftKind, MemoryDraft};
 
     fn validator() -> MemoryDraftValidator {
-        MemoryDraftValidator::from_config(&SecurityConfig::default())
+        MemoryDraftValidator::from_config(&MemoryDraftValidatorConfig::default())
     }
 
     fn valid_draft() -> MemoryDraft {
@@ -356,10 +412,26 @@ mod tests {
     }
 
     #[test]
+    fn rejects_unknown_backlink_with_known_ids() {
+        let mut draft = valid_draft();
+        let ghost = MemoryId::new();
+        draft.backlinks = vec![BacklinkDraft {
+            target: ghost.to_string(),
+            score: 0.5,
+            kind: BacklinkDraftKind::Semantic,
+        }];
+        let known = HashSet::new();
+        let err = validator()
+            .validate_with_known_ids(&draft, &known)
+            .unwrap_err();
+        assert!(matches!(err, ValidationError::BacklinkTargetNotFound(_)));
+    }
+
+    #[test]
     fn injection_detection_can_be_disabled() {
-        let config = SecurityConfig {
+        let config = MemoryDraftValidatorConfig {
             detect_injection_patterns: false,
-            ..SecurityConfig::default()
+            ..MemoryDraftValidatorConfig::default()
         };
         let v = MemoryDraftValidator::from_config(&config);
         let mut draft = valid_draft();

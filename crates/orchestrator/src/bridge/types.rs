@@ -54,6 +54,17 @@ impl MemorySummary {
 /// Résultat de recherche exposé au bridge (réutilise le type Cortex).
 pub type BridgeSearchHit = SearchHit;
 
+/// Hub du graphe de connaissances (backlinks entrants).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HubSummary {
+    /// Identifiant de la mémoire hub.
+    pub memory_id: MemoryId,
+    /// Titre affiché.
+    pub title: String,
+    /// Nombre de backlinks entrants.
+    pub inbound_links: usize,
+}
+
 /// Erreur applicative sérialisable pour les réponses bridge.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppError {

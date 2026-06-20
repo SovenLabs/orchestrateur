@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use cortex::SimilarityThresholds;
+use cortex::{MemoryDraftValidatorConfig, SimilarityThresholds};
 use serde::Deserialize;
 use thiserror::Error;
 
@@ -217,6 +217,21 @@ impl Default for SecurityConfig {
             integrity: IntegrityConfig::default(),
             audit: AuditConfig::default(),
             profile: None,
+        }
+    }
+}
+
+impl SecurityConfig {
+    /// Projette la configuration sécurité applicative vers le validateur domaine [`cortex`].
+    #[must_use]
+    pub fn validator_config(&self) -> MemoryDraftValidatorConfig {
+        MemoryDraftValidatorConfig {
+            min_content_length: 1,
+            max_content_length: self.max_content_length,
+            max_title_length: self.max_title_length,
+            max_tags: self.max_tags,
+            max_backlinks: self.max_backlinks,
+            detect_injection_patterns: self.detect_injection_patterns,
         }
     }
 }

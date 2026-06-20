@@ -1,10 +1,13 @@
-use cortex::{DomainEvent, Memory};
+use cortex::{DomainEvent, Memory, MemoryId};
 use serde::{Deserialize, Serialize};
 
-use super::types::{AppError, BridgeSearchHit, MemorySummary};
+use crate::security::AuditEvent;
+
+use super::types::{AppError, BridgeSearchHit, HubSummary, MemorySummary};
 
 /// Réponse produite par le thread orchestrateur vers la couche présentation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "response", content = "payload")]
 pub enum Response {
     /// Page de mémoires (liste virtualisée).
     MemoryList {
@@ -42,5 +45,28 @@ pub enum Response {
     Success {
         /// Message informatif.
         message: String,
+    },
+    /// Assimilation réussie (détail complet optionnel via événement domaine).
+    Assimilated {
+        /// Identifiant de la mémoire créée.
+        memory_id: MemoryId,
+        /// Titre de la mémoire assimilée.
+        title: String,
+    },
+    /// Résumé du graphe de connaissances.
+    GraphSummary {
+        /// Nombre de nœuds.
+        node_count: usize,
+        /// Nombre d'arêtes.
+        edge_count: usize,
+        /// Hubs triés par backlinks entrants.
+        hubs: Vec<HubSummary>,
+    },
+    /// Entrées récentes du journal d'audit.
+    AuditLog {
+        /// Entrées lues (ordre chronologique).
+        entries: Vec<AuditEvent>,
+        /// Chaîne BLAKE3 intacte sur le fichier complet.
+        chain_intact: bool,
     },
 }

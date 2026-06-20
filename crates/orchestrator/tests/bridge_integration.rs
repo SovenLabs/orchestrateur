@@ -132,5 +132,10 @@ fn bridge_command_response_are_serializable() {
         message: "ok".into(),
     };
     let json = serde_json::to_string(&resp).unwrap();
-    assert!(json.contains("ok"));
+    let decoded: Response = serde_json::from_str(&json).unwrap();
+    assert_eq!(resp, decoded);
+
+    let graph_cmd = Command::Graph;
+    let graph_json = serde_json::to_string(&graph_cmd).unwrap();
+    assert!(graph_json.contains("\"command\":\"Graph\""));
 }

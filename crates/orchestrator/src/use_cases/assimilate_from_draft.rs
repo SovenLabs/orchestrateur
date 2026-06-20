@@ -1,9 +1,10 @@
-use cortex::{BacklinkCalculator, DomainEvent, KnowledgeGraph, Memory, MemoryId};
+use cortex::{
+    BacklinkCalculator, DomainEvent, KnowledgeGraph, Memory, MemoryDraft, MemoryDraftValidator,
+    MemoryId,
+};
 
 use crate::deps::AppDependencies;
 use crate::error::OrchestratorError;
-use crate::memory_draft::MemoryDraft;
-use crate::security::MemoryDraftValidator;
 
 /// Résultat d'une assimilation dry-run : mémoire persistée + événements émis.
 pub type AssimilationResult = (Memory, Vec<DomainEvent>);
@@ -32,9 +33,9 @@ impl AssimilateFromDraft {
         self.deps.security.gate_assimilation()?;
 
         if self.deps.config.security.enabled {
-            if let Err(err) =
-                MemoryDraftValidator::from_config(&self.deps.config.security).validate(&draft)
-            {
+            let validator =
+                MemoryDraftValidator::from_config(&self.deps.config.security.validator_config());
+            if let Err(err) = validator.validate(&draft) {
                 self.deps
                     .security
                     .record_validation_reject(&err.to_string());
@@ -132,7 +133,7 @@ impl AssimilateFromDraft {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::memory_draft::{BacklinkDraft, BacklinkDraftKind, MemoryDraft};
+    use cortex::{BacklinkDraft, BacklinkDraftKind, MemoryDraft};
     use crate::testing::MockBundle;
     use crate::use_cases::save_memory::SaveMemory;
     use cortex::{DomainEvent, Memory};
@@ -234,7 +235,7 @@ mod tests {
             .unwrap_err();
         assert!(matches!(
             err,
-            OrchestratorError::Validation(crate::security::ValidationError::SuspiciousContent(_))
+            OrchestratorError::Validation(cortex::ValidationError::SuspiciousContent(_))
         ));
     }
 

@@ -1,7 +1,8 @@
 //! État UI pur — testable sans egui, sans logique métier.
 
 use orchestrator::{
-    format_health_status, BridgeSearchHit, DomainEvent, MemoryDetailView, MemorySummary, Response,
+    format_health_status, AuditEvent, BridgeSearchHit, DomainEvent, HubSummary, MemoryDetailView,
+    MemorySummary, Response,
 };
 
 /// Hit de recherche affiché dans le panneau gauche.
@@ -25,6 +26,18 @@ impl SearchHitView {
             snippet: hit.snippet.clone(),
         }
     }
+}
+
+/// Vue principale du HUD (onglets).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum HudMainView {
+    /// Explorateur mémoires + détail.
+    #[default]
+    Explorer,
+    /// Graphe de connaissances.
+    Graph,
+    /// Journal d'audit.
+    Audit,
 }
 
 /// Panneau gauche actif.
@@ -115,6 +128,18 @@ pub struct HudState {
     pub llm_available: bool,
     /// Provider embeddings joignable (recherche sémantique).
     pub embedding_available: bool,
+    /// Onglet principal actif.
+    pub main_view: HudMainView,
+    /// Nombre de nœuds du graphe (vue Graph).
+    pub graph_node_count: usize,
+    /// Nombre d'arêtes du graphe (vue Graph).
+    pub graph_edge_count: usize,
+    /// Hubs du graphe (vue Graph).
+    pub graph_hubs: Vec<HubSummary>,
+    /// Entrées d'audit (vue Audit).
+    pub audit_entries: Vec<AuditEvent>,
+    /// Chaîne d'audit intacte.
+    pub audit_chain_intact: bool,
 }
 
 impl Default for HudState {
@@ -141,6 +166,12 @@ impl Default for HudState {
             show_frame_metrics: true,
             llm_available: true,
             embedding_available: true,
+            main_view: HudMainView::Explorer,
+            graph_node_count: 0,
+            graph_edge_count: 0,
+            graph_hubs: Vec::new(),
+            audit_entries: Vec::new(),
+            audit_chain_intact: true,
         }
     }
 }
@@ -202,6 +233,42 @@ impl HudState {
             Response::Success { message } => {
                 self.status = message;
                 self.clear_busy();
+                HudAction::None
+            }
+            Response::Assimilated { memory_id, title } => {
+                self.selected_id = Some(memory_id.to_string());
+                self.status = format!("Assimilé : {title}");
+                self.clear_busy();
+                self.push_success(format!("Assimilation réussie — {title}"));
+                HudAction::RefreshList
+            }
+            Response::GraphSummary {
+                node_count,
+                edge_count,
+                hubs,
+            } => {
+                self.graph_node_count = node_count;
+                self.graph_edge_count = edge_count;
+                self.graph_hubs = hubs;
+                self.status = format!("Graphe : {node_count} nœuds, {edge_count} arêtes");
+                self.clear_busy();
+                HudAction::None
+            }
+            Response::AuditLog {
+                entries,
+                chain_intact,
+            } => {
+                self.audit_entries = entries;
+                self.audit_chain_intact = chain_intact;
+                let chain = if chain_intact { "intacte" } else { "ROMPUE" };
+                self.status = format!(
+                    "Audit : {} entrée(s), chaîne {chain}",
+                    self.audit_entries.len()
+                );
+                self.clear_busy();
+                if !chain_intact {
+                    self.push_error("Chaîne d'audit compromise — vérification requise");
+                }
                 HudAction::None
             }
         }
@@ -292,11 +359,11 @@ mod tests {
         let mut state = HudState::default();
         let _ = state.apply_response(Response::Health {
             status: "ok".into(),
-            version: "0.3.0".into(),
+            version: "0.4.0".into(),
             llm_available: true,
             embedding_available: true,
         });
-        assert_eq!(state.version.as_deref(), Some("0.3.0"));
+        assert_eq!(state.version.as_deref(), Some("0.4.0"));
         assert!(state.llm_available);
         assert!(!state.busy);
     }

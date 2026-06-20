@@ -4,9 +4,11 @@ use crate::deps::AppDependencies;
 use crate::error::{OrchestratorError, SkillError};
 use crate::memory_draft::MemoryDraft;
 use crate::skills::{SkillContext, SkillOutput, SkillRegistry};
+use std::path::Path;
+
 use crate::use_cases::{
-    AssimilateFromDraft, AssimilateFromText, AssimilationResult, GetMemory, ListMemories,
-    SaveMemory, SearchMemories,
+    AssimilateFromDraft, AssimilateFromText, AssimilationResult, GetMemory, ImportMemories,
+    ImportResult, ListMemories, SaveMemory, SearchMemories,
 };
 
 /// Point d'entrée public stable de l'orchestrateur (CLI, GUI, tests d'intégration).
@@ -120,6 +122,20 @@ impl OrchestratorFacade {
     #[must_use]
     pub fn list_skills(&self) -> Vec<(&'static str, &'static str)> {
         self.skills.list()
+    }
+
+    /// Importe des mémoires Markdown depuis un répertoire (`*.md`).
+    ///
+    /// # Errors
+    ///
+    /// Propage une [`OrchestratorError`] si la lecture du répertoire échoue.
+    pub async fn import_from_directory(
+        &self,
+        source_dir: &Path,
+    ) -> Result<ImportResult, OrchestratorError> {
+        ImportMemories::new(self.deps.clone())
+            .execute(source_dir)
+            .await
     }
 
     /// Exécute une skill par son nom.

@@ -22,8 +22,9 @@ pub mod ports;
 pub mod services;
 
 pub use domain::{
-    Backlink, BacklinkKind, CortexError, DomainEvent, KnowledgeGraph, KnowledgeGraphValidated,
-    Memory, MemoryAssimilated, MemoryId, Tag,
+    Backlink, BacklinkDraft, BacklinkDraftKind, BacklinkKind, CortexError, DomainEvent,
+    KnowledgeGraph, KnowledgeGraphValidated, Memory, MemoryAssimilated, MemoryDraft, MemoryId,
+    Tag,
 };
 pub use ports::{
     Embedding, EmbeddingCapabilities, EmbeddingError, EmbeddingProvider, MemoryRepository,
@@ -31,5 +32,6 @@ pub use ports::{
 };
 pub use services::{
     cosine_similarity, parse_memory_markdown, serialize_memory, BacklinkCalculator,
-    BacklinkCandidate, MarkdownParser, MemoryDocument, SimilarityThresholds,
+    BacklinkCandidate, MarkdownParser, MemoryDocument, MemoryDraftValidator,
+    MemoryDraftValidatorConfig, SimilarityThresholds, ValidationError,
 };

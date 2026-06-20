@@ -2,11 +2,12 @@
 
 #[cfg(feature = "tui")]
 use std::io::IsTerminal;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+#[cfg(feature = "http")]
+use std::sync::Arc;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
-use cortex::KnowledgeGraph;
 use infrastructure::bootstrap_workspace;
 #[cfg(feature = "tui")]
 use orchestrator::spawn_orchestrator_bridge;
@@ -23,7 +24,7 @@ use tracing_subscriber::EnvFilter;
 #[command(
     name = "orchestrateur",
     version,
-    about = "Orchestrateur v0.3.0 — Cortex + Esprit + CLI/TUI"
+    about = "Orchestrateur v0.4.0 — Cortex + Esprit + CLI/TUI/HTTP"
 )]
 struct Cli {
     /// Racine du workspace (défaut: ./workspace).
@@ -85,6 +86,22 @@ enum Commands {
         /// Message utilisateur.
         message: String,
     },
+    /// Importe des mémoires Markdown depuis un répertoire.
+    Import {
+        /// Répertoire source (`*.md` récursif).
+        #[arg(long)]
+        source: PathBuf,
+    },
+    /// Démarre le daemon HTTP (feature `http`).
+    #[cfg(feature = "http")]
+    Serve {
+        /// Port d'écoute.
+        #[arg(long, default_value = "17489")]
+        port: u16,
+        /// Adresse de liaison.
+        #[arg(long, default_value = "127.0.0.1")]
+        bind: String,
+    },
 }
 
 #[tokio::main]
@@ -140,6 +157,9 @@ async fn main() -> Result<()> {
             let response =
                 execute_command(&facade, Command::Assimilate { text, tags }).await;
             match response {
+                Response::Assimilated { memory_id, title } => {
+                    println!("Assimilé : {title} ({memory_id})");
+                }
                 Response::MemoryDetail { memory } => {
                     println!("Assimilé : {} ({})", memory.title, memory.id);
                     println!("Backlinks : {}", memory.backlink_count());
@@ -150,8 +170,11 @@ async fn main() -> Result<()> {
                 other => print_response(other)?,
             }
         }
-        Commands::Graph => cmd_graph(&facade).await?,
+        Commands::Graph => run_bridge_command(&facade, Command::Graph).await?,
         Commands::Chat { message } => cmd_chat(&facade, &message).await?,
+        Commands::Import { source } => cmd_import(&facade, &source).await?,
+        #[cfg(feature = "http")]
+        Commands::Serve { port, bind } => run_http_server(facade, &bind, port).await?,
     }
     Ok(())
 }
@@ -254,6 +277,36 @@ fn print_response(response: Response) -> Result<()> {
                 println!("{:.3} | {} | {}", hit.score, hit.memory_id, preview);
             }
         }
+        Response::Assimilated { memory_id, title } => {
+            println!("Assimilé : {title} ({memory_id})");
+        }
+        Response::GraphSummary {
+            node_count,
+            edge_count,
+            hubs,
+        } => {
+            println!("Nœuds : {node_count}");
+            println!("Arêtes : {edge_count}");
+            for hub in hubs {
+                println!(
+                    "  hub ({}) : {} [{}]",
+                    hub.inbound_links, hub.title, hub.memory_id
+                );
+            }
+        }
+        Response::AuditLog {
+            entries,
+            chain_intact,
+        } => {
+            let status = if chain_intact { "intacte" } else { "ROMPUE" };
+            println!("Chaîne d'audit : {status}");
+            for entry in entries {
+                println!(
+                    "{} | {} | {} | {}",
+                    entry.timestamp, entry.event_type, entry.details, entry.hash
+                );
+            }
+        }
         Response::Error(err) => {
             anyhow::bail!("[{}] {}", err.kind, err.message);
         }
@@ -265,15 +318,16 @@ fn print_response(response: Response) -> Result<()> {
     Ok(())
 }
 
-async fn cmd_graph(facade: &OrchestratorFacade) -> Result<()> {
-    let memories = facade.list_memories().await?;
-    let graph = KnowledgeGraph::from_memories(&memories);
-    println!("Nœuds : {}", graph.node_count());
-    println!("Arêtes : {}", graph.edge_count());
-    for (id, inbound) in graph.hub_ranking().into_iter().take(5) {
-        if let Ok(mem) = facade.get_memory(id).await {
-            println!("  hub ({inbound} liens) : {}", mem.title);
-        }
+async fn cmd_import(facade: &OrchestratorFacade, source: &Path) -> Result<()> {
+    let result = facade.import_from_directory(source).await?;
+    println!(
+        "Import terminé : {} importée(s), {} ignorée(s), {} erreur(s)",
+        result.imported,
+        result.skipped,
+        result.errors.len()
+    );
+    for err in &result.errors {
+        eprintln!("  erreur: {err}");
     }
     Ok(())
 }
@@ -290,4 +344,80 @@ async fn cmd_chat(facade: &OrchestratorFacade, message: &str) -> Result<()> {
         .map_err(OrchestratorError::Llm)?;
     println!("{reply}");
     Ok(())
+}
+
+#[cfg(feature = "http")]
+async fn run_http_server(facade: OrchestratorFacade, bind: &str, port: u16) -> Result<()> {
+    use axum::{
+        extract::State,
+        http::{header::AUTHORIZATION, StatusCode},
+        response::IntoResponse,
+        routing::post,
+        Json, Router,
+    };
+    use tower_http::trace::TraceLayer;
+
+    struct HttpState {
+        facade: OrchestratorFacade,
+        token: String,
+    }
+
+    let token = std::env::var("ORCHESTRATEUR_DAEMON_TOKEN")
+        .context("variable ORCHESTRATEUR_DAEMON_TOKEN requise pour le daemon HTTP")?;
+
+    let state = Arc::new(HttpState { facade, token });
+
+    async fn execute_handler(
+        State(state): State<Arc<HttpState>>,
+        headers: axum::http::HeaderMap,
+        Json(cmd): Json<Command>,
+    ) -> impl IntoResponse {
+        let authorized = headers
+            .get(AUTHORIZATION)
+            .and_then(|value| value.to_str().ok())
+            .and_then(|value| value.strip_prefix("Bearer "))
+            .is_some_and(|provided| {
+                constant_time_eq(provided.as_bytes(), state.token.as_bytes())
+            });
+
+        if !authorized {
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(Response::Error(orchestrator::AppError {
+                    kind: "auth".into(),
+                    message: "Bearer token invalide ou absent".into(),
+                })),
+            );
+        }
+
+        let response = execute_command(&state.facade, cmd).await;
+        (StatusCode::OK, Json(response))
+    }
+
+    let app = Router::new()
+        .route("/v1/execute", post(execute_handler))
+        .layer(TraceLayer::new_for_http())
+        .with_state(state);
+
+    let addr = format!("{bind}:{port}");
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .with_context(|| format!("écoute sur {addr}"))?;
+    tracing::info!(%addr, "daemon HTTP démarré");
+    axum::serve(listener, app)
+        .await
+        .context("serveur HTTP interrompu")?;
+    Ok(())
+}
+
+#[cfg(feature = "http")]
+fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (a, b) in left.iter().zip(right.iter()) {
+        diff |= a ^ b;
+    }
+    diff == 0
 }

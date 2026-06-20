@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 
-use cortex::{MemoryId, SearchFilter};
+use cortex::{KnowledgeGraph, MemoryId, SearchFilter};
 use flume::{Receiver, Sender};
 use tracing::error;
 
@@ -16,7 +16,7 @@ use super::error::BridgeError;
 use super::events::FanoutEventPublisher;
 use super::handle::ChannelHandle;
 use super::response::Response;
-use super::types::{AppError, MemorySummary};
+use super::types::{AppError, HubSummary, MemorySummary};
 
 /// Capacité des canaux commandes/réponses (back-pressure léger).
 const CMD_CHANNEL_CAPACITY: usize = 64;
@@ -154,23 +154,88 @@ pub async fn execute_command(facade: &OrchestratorFacade, cmd: Command) -> Respo
                 message: err.to_string(),
             }),
         },
-        Command::Search { query, limit } => {
-            let filter = SearchFilter {
-                limit: Some(limit),
-                ..SearchFilter::default()
-            };
-            match facade.search_memories(&query, &filter).await {
-                Ok(items) => Response::SearchResults { items },
-                Err(err) => Response::Error(AppError::from_orchestrator(&err)),
+        Command::Search { query, limit } => execute_search(facade, &query, limit).await,
+        Command::Assimilate { text, tags } => execute_assimilate(facade, &text, &tags).await,
+        Command::Graph => execute_graph(facade).await,
+        Command::Audit { limit } => execute_audit(facade, limit),
+    }
+}
+
+async fn execute_search(facade: &OrchestratorFacade, query: &str, limit: usize) -> Response {
+    let probe = probe_services(facade.deps()).await;
+    if !probe.embedding_available {
+        return Response::Error(AppError {
+            kind: "degraded".to_string(),
+            message: "recherche indisponible — provider embeddings hors ligne".to_string(),
+        });
+    }
+    let filter = SearchFilter {
+        limit: Some(limit),
+        ..SearchFilter::default()
+    };
+    match facade.search_memories(query, &filter).await {
+        Ok(items) => Response::SearchResults { items },
+        Err(err) => Response::Error(AppError::from_orchestrator(&err)),
+    }
+}
+
+async fn execute_assimilate(
+    facade: &OrchestratorFacade,
+    text: &str,
+    tags: &[String],
+) -> Response {
+    let prompt = format_assimilate_user_prompt(text, tags);
+    match facade.assimilate(&prompt, None).await {
+        Ok((memory, _events)) => Response::Assimilated {
+            memory_id: memory.id,
+            title: memory.title,
+        },
+        Err(err) => Response::Error(AppError::from_orchestrator(&err)),
+    }
+}
+
+async fn execute_graph(facade: &OrchestratorFacade) -> Response {
+    match facade.list_memories().await {
+        Ok(memories) => {
+            let graph = KnowledgeGraph::from_memories(&memories);
+            let title_by_id: std::collections::HashMap<_, _> =
+                memories.iter().map(|m| (m.id, m.title.as_str())).collect();
+            let hubs = graph
+                .hub_ranking()
+                .into_iter()
+                .take(10)
+                .map(|(memory_id, inbound_links)| HubSummary {
+                    memory_id,
+                    title: title_by_id
+                        .get(&memory_id)
+                        .map_or_else(|| memory_id.to_string(), |t| (*t).to_string()),
+                    inbound_links,
+                })
+                .collect();
+            Response::GraphSummary {
+                node_count: graph.node_count(),
+                edge_count: graph.edge_count(),
+                hubs,
             }
         }
-        Command::Assimilate { text, tags } => {
-            let prompt = format_assimilate_user_prompt(&text, &tags);
-            match facade.assimilate(&prompt, None).await {
-                Ok((memory, _events)) => Response::MemoryDetail { memory },
-                Err(err) => Response::Error(AppError::from_orchestrator(&err)),
+        Err(err) => Response::Error(AppError::from_orchestrator(&err)),
+    }
+}
+
+fn execute_audit(facade: &OrchestratorFacade, limit: usize) -> Response {
+    let security = facade.deps().security.as_ref();
+    match security.read_audit_recent(limit) {
+        Ok(entries) => {
+            let chain_intact = security.verify_audit_chain();
+            Response::AuditLog {
+                entries,
+                chain_intact,
             }
         }
+        Err(err) => Response::Error(AppError {
+            kind: "security".to_string(),
+            message: err.to_string(),
+        }),
     }
 }
 

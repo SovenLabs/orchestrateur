@@ -8,6 +8,7 @@ mod prefs;
 mod search_list;
 mod state;
 mod theme;
+mod views;
 
 use std::path::PathBuf;
 

@@ -143,6 +143,32 @@ impl AuditLog {
     pub fn last_hash(&self) -> String {
         lock_or_recover(&self.state).last_hash.clone()
     }
+
+    /// Lit les entrées les plus récentes du journal (ordre chronologique).
+    ///
+    /// # Errors
+    ///
+    /// Retourne [`AuditError`] si le fichier est illisible ou mal formé.
+    pub fn read_recent(&self, limit: usize) -> Result<Vec<AuditEvent>, AuditError> {
+        if !self.enabled {
+            return Ok(Vec::new());
+        }
+        let events = read_all_events(&self.path)?;
+        let start = events.len().saturating_sub(limit);
+        Ok(events[start..].to_vec())
+    }
+
+    /// Vérifie l'intégrité de la chaîne BLAKE3 sur le fichier complet.
+    #[must_use]
+    pub fn verify_chain(&self) -> bool {
+        if !self.enabled {
+            return true;
+        }
+        let Ok(events) = read_all_events(&self.path) else {
+            return false;
+        };
+        verify_event_chain(&events)
+    }
 }
 
 fn lock_or_recover<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -153,6 +179,42 @@ fn hash_payload(bytes: &[u8]) -> String {
     let mut hasher = Hasher::new();
     hasher.update(bytes);
     hasher.finalize().to_hex().to_string()
+}
+
+fn read_all_events(path: &Path) -> Result<Vec<AuditEvent>, AuditError> {
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let raw = fs::read_to_string(path).map_err(|e| AuditError::Io {
+        path: path.to_path_buf(),
+        message: e.to_string(),
+    })?;
+    let mut events = Vec::new();
+    for line in raw.lines().filter(|l| !l.trim().is_empty()) {
+        let event: AuditEvent =
+            serde_json::from_str(line).map_err(|e| AuditError::Serialize(e.to_string()))?;
+        events.push(event);
+    }
+    Ok(events)
+}
+
+fn verify_event_chain(events: &[AuditEvent]) -> bool {
+    let mut previous_hash = AUDIT_GENESIS.to_string();
+    for event in events {
+        if event.previous_hash != previous_hash {
+            return false;
+        }
+        let payload = format!(
+            "{}|{}|{}|{}",
+            event.timestamp, event.event_type, event.details, event.previous_hash
+        );
+        let expected = hash_payload(payload.as_bytes());
+        if event.hash != expected {
+            return false;
+        }
+        previous_hash.clone_from(&event.hash);
+    }
+    true
 }
 
 fn load_last_hash(path: &Path) -> Result<String, AuditError> {
@@ -174,6 +236,40 @@ fn load_last_hash(path: &Path) -> Result<String, AuditError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn read_recent_returns_tail() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let cfg = AuditConfig {
+            enabled: true,
+            path: PathBuf::from("logs/audit.jsonl"),
+        };
+        let log = AuditLog::open(&cfg, dir.path()).expect("open");
+        log.record("a", "1").expect("r1");
+        log.record("b", "2").expect("r2");
+        log.record("c", "3").expect("r3");
+        let recent = log.read_recent(2).expect("read");
+        assert_eq!(recent.len(), 2);
+        assert_eq!(recent[0].event_type, "b");
+        assert_eq!(recent[1].event_type, "c");
+    }
+
+    #[test]
+    fn verify_chain_detects_tampering() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let cfg = AuditConfig {
+            enabled: true,
+            path: PathBuf::from("logs/audit.jsonl"),
+        };
+        let log = AuditLog::open(&cfg, dir.path()).expect("open");
+        log.record("test", "ok").expect("record");
+        assert!(log.verify_chain());
+        let path = dir.path().join("logs/audit.jsonl");
+        let mut content = fs::read_to_string(&path).expect("read");
+        content = content.replace("ok", "tampered");
+        fs::write(&path, content).expect("write");
+        assert!(!log.verify_chain());
+    }
 
     #[test]
     fn chains_audit_entries() {

@@ -11,8 +11,9 @@ use crate::list::show_virtual_memory_list;
 use crate::metrics::FrameMetrics;
 use crate::prefs::UiPreferences;
 use crate::search_list::show_virtual_search_list;
-use crate::state::{HudAction, HudState, LeftPanelMode, ToastKind};
+use crate::state::{HudAction, HudMainView, HudState, LeftPanelMode, ToastKind};
 use crate::theme::apply_theme;
+use crate::views::{show_audit_view, show_degraded_banner, show_graph_view};
 
 /// Application HUD branchée sur le bridge orchestrateur.
 pub struct HudApp {
@@ -146,19 +147,64 @@ impl HudApp {
         self.send_command(Command::GetMemory { id }, "Chargement détail…");
     }
 
+    fn switch_main_view(&mut self, view: HudMainView) {
+        if self.state.main_view == view {
+            return;
+        }
+        self.state.main_view = view;
+        match view {
+            HudMainView::Explorer => self.request_list(),
+            HudMainView::Graph => self.send_command(Command::Graph, "Chargement graphe…"),
+            HudMainView::Audit => {
+                self.send_command(Command::Audit { limit: 100 }, "Chargement audit…");
+            }
+        }
+    }
+
     fn send_startup_commands(&mut self) {
         if self.startup_sent {
             return;
         }
         self.startup_sent = true;
         self.send_command(Command::HealthCheck, "Santé…");
-        if self.state.left_panel == LeftPanelMode::SearchResults
-            && !self.state.search_query.trim().is_empty()
-        {
-            self.request_search();
-        } else {
-            self.request_list();
+        match self.state.main_view {
+            HudMainView::Explorer => {
+                if self.state.left_panel == LeftPanelMode::SearchResults
+                    && !self.state.search_query.trim().is_empty()
+                {
+                    self.request_search();
+                } else {
+                    self.request_list();
+                }
+            }
+            HudMainView::Graph => self.send_command(Command::Graph, "Chargement graphe…"),
+            HudMainView::Audit => {
+                self.send_command(Command::Audit { limit: 100 }, "Chargement audit…");
+            }
         }
+    }
+
+    fn draw_view_tabs(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            if ui
+                .selectable_label(self.state.main_view == HudMainView::Explorer, "Explorateur")
+                .clicked()
+            {
+                self.switch_main_view(HudMainView::Explorer);
+            }
+            if ui
+                .selectable_label(self.state.main_view == HudMainView::Graph, "Graphe")
+                .clicked()
+            {
+                self.switch_main_view(HudMainView::Graph);
+            }
+            if ui
+                .selectable_label(self.state.main_view == HudMainView::Audit, "Audit")
+                .clicked()
+            {
+                self.switch_main_view(HudMainView::Audit);
+            }
+        });
     }
 
     fn draw_top_bar(&mut self, ctx: &Context) {
@@ -225,22 +271,28 @@ impl HudApp {
                 });
             });
 
-            ui.horizontal(|ui| {
-                ui.label("Filtre:");
-                let filter_response = ui.text_edit_singleline(&mut self.state.list_filter);
-                if filter_response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                    self.request_list();
-                }
-                if ui.button("Appliquer filtre").clicked() {
-                    self.request_list();
-                }
-                if self.state.left_panel == LeftPanelMode::SearchResults
-                    && ui.button("← Liste complète").clicked()
-                {
-                    self.state.left_panel = LeftPanelMode::Memories;
-                    self.request_list();
-                }
-            });
+            self.draw_view_tabs(ui);
+
+            if self.state.main_view == HudMainView::Explorer {
+                ui.horizontal(|ui| {
+                    ui.label("Filtre:");
+                    let filter_response = ui.text_edit_singleline(&mut self.state.list_filter);
+                    if filter_response.lost_focus()
+                        && ui.input(|i| i.key_pressed(egui::Key::Enter))
+                    {
+                        self.request_list();
+                    }
+                    if ui.button("Appliquer filtre").clicked() {
+                        self.request_list();
+                    }
+                    if self.state.left_panel == LeftPanelMode::SearchResults
+                        && ui.button("← Liste complète").clicked()
+                    {
+                        self.state.left_panel = LeftPanelMode::Memories;
+                        self.request_list();
+                    }
+                });
+            }
         });
     }
 
@@ -382,33 +434,57 @@ impl HudApp {
     }
 
     fn draw_central(&mut self, ctx: &Context) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.vertical(|ui| {
-                    ui.set_min_width(ui.available_width() * 0.45);
-                    self.draw_left_panel(ui);
-                });
+        egui::CentralPanel::default().show(ctx, |ui| match self.state.main_view {
+            HudMainView::Explorer => {
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
+                        ui.set_min_width(ui.available_width() * 0.45);
+                        self.draw_left_panel(ui);
+                    });
 
-                ui.separator();
+                    ui.separator();
 
-                ui.vertical(|ui| {
-                    ui.heading("Détail");
-                    if let Some(ref detail) = self.state.detail {
-                        ui.label(format!("Titre: {}", detail.title));
-                        if !detail.tags.is_empty() {
-                            ui.label(format!("Tags: {}", detail.tags.join(", ")));
+                    ui.vertical(|ui| {
+                        ui.heading("Détail");
+                        if let Some(ref detail) = self.state.detail {
+                            ui.label(format!("Titre: {}", detail.title));
+                            if !detail.tags.is_empty() {
+                                ui.label(format!("Tags: {}", detail.tags.join(", ")));
+                            }
+                            ui.separator();
+                            egui::ScrollArea::vertical()
+                                .auto_shrink([false; 2])
+                                .show(ui, |ui| {
+                                    ui.label(&detail.content);
+                                });
+                        } else {
+                            ui.label("Sélectionnez une mémoire ou lancez une recherche.");
                         }
-                        ui.separator();
-                        egui::ScrollArea::vertical()
-                            .auto_shrink([false; 2])
-                            .show(ui, |ui| {
-                                ui.label(&detail.content);
-                            });
-                    } else {
-                        ui.label("Sélectionnez une mémoire ou lancez une recherche.");
-                    }
+                    });
                 });
-            });
+            }
+            HudMainView::Graph => {
+                let mut selected = None;
+                show_graph_view(
+                    ui,
+                    self.state.graph_node_count,
+                    self.state.graph_edge_count,
+                    &self.state.graph_hubs,
+                    &mut |id| selected = Some(id.to_string()),
+                );
+                if let Some(id) = selected {
+                    self.state.main_view = HudMainView::Explorer;
+                    self.state.selected_id = Some(id.clone());
+                    self.request_detail(id);
+                }
+            }
+            HudMainView::Audit => {
+                show_audit_view(
+                    ui,
+                    &self.state.audit_entries,
+                    self.state.audit_chain_intact,
+                );
+            }
         });
     }
 
@@ -453,6 +529,11 @@ impl eframe::App for HudApp {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         apply_theme(ctx, self.state.dark_mode);
         self.handle_shortcuts(ctx);
+        show_degraded_banner(
+            ctx,
+            self.state.embedding_available,
+            self.state.llm_available,
+        );
         self.send_startup_commands();
         self.poll_responses();
         self.poll_events();

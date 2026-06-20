@@ -42,4 +42,4 @@ pub use runtime::{
     execute_command, format_assimilate_user_prompt, spawn_orchestrator_bridge, OrchestratorThread,
 };
 pub use ui_common::{format_health_status, MemoryDetailView};
-pub use types::{AppError, BridgeSearchHit, MemorySummary};
+pub use types::{AppError, BridgeSearchHit, HubSummary, MemorySummary};

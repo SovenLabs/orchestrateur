@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Le HUD n'accède jamais aux ports Cortex : tout transite par ce contrat sérialisable.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "command", content = "payload")]
 pub enum Command {
     /// Assimilation depuis texte brut — le brouillon LLM est produit côté orchestrateur.
     Assimilate {
@@ -37,4 +38,11 @@ pub enum Command {
     SubscribeToEvents,
     /// Ping de santé du bridge et de l'orchestrateur.
     HealthCheck,
+    /// Statistiques du graphe de connaissances (nœuds, arêtes, hubs).
+    Graph,
+    /// Journal d'audit récent (chaîne BLAKE3).
+    Audit {
+        /// Nombre maximal d'entrées retournées (les plus récentes).
+        limit: usize,
+    },
 }

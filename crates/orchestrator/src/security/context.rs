@@ -165,6 +165,21 @@ impl SecurityContext {
         &self.integrity
     }
 
+    /// Lit les entrées récentes du journal d'audit.
+    ///
+    /// # Errors
+    ///
+    /// Propage [`AuditError`] si la lecture échoue.
+    pub fn read_audit_recent(&self, limit: usize) -> Result<Vec<super::audit_log::AuditEvent>, AuditError> {
+        self.audit.read_recent(limit)
+    }
+
+    /// Vérifie l'intégrité de la chaîne d'audit sur le fichier complet.
+    #[must_use]
+    pub fn verify_audit_chain(&self) -> bool {
+        self.audit.verify_chain()
+    }
+
     fn audit_degraded(&self, reason: &str) -> Result<(), AuditError> {
         self.audit.record("integrity_degraded", reason)
     }

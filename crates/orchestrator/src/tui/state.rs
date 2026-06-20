@@ -127,6 +127,25 @@ impl AppState {
             Response::Success { message } => {
                 self.status_message = message;
             }
+            Response::Assimilated { memory_id, title } => {
+                self.status_message = format!("Assimilé : {title} ({memory_id})");
+            }
+            Response::GraphSummary {
+                node_count,
+                edge_count,
+                hubs,
+            } => {
+                self.status_message =
+                    format!("Graphe : {node_count} nœuds, {edge_count} arêtes, {} hubs", hubs.len());
+            }
+            Response::AuditLog {
+                entries,
+                chain_intact,
+            } => {
+                let status = if chain_intact { "intacte" } else { "ROMPUE" };
+                self.status_message =
+                    format!("Audit : {} entrée(s), chaîne {status}", entries.len());
+            }
             Response::Event(_) => {}
         }
     }

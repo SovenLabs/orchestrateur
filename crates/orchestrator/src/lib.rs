@@ -43,7 +43,7 @@ pub mod testing;
 pub use bridge::{
     execute_command, format_assimilate_user_prompt, format_health_status, spawn_orchestrator_bridge,
     AppError, BridgeError, BridgeSearchHit, ChannelHandle, Command, FanoutEventPublisher,
-    MemoryDetailView, MemorySummary, OrchestratorHandle, OrchestratorThread, Response,
+    HubSummary, MemoryDetailView, MemorySummary, OrchestratorHandle, OrchestratorThread, Response,
 };
 pub use config::{
     AuditConfig, BehavioralConfig, ConfigError, IntegrityConfig, OllamaConfig, OrchestratorConfig,
@@ -57,9 +57,9 @@ pub use facade::OrchestratorFacade;
 pub use llm::{ChatMessage, LlmCapabilities, LlmError, LlmProvider, LlmUsageRecorded};
 pub use memory_draft::{BacklinkDraft, BacklinkDraftKind, MemoryDraft};
 pub use security::{
-    build_security_context, build_test_security_context, BehavioralError, IntegrityStatus,
-    MemoryDraftValidator, SecurityBootstrapError, SecurityContext, SecurityGateError,
-    SecurityProfile, ValidationError,
+    build_security_context, build_test_security_context, AuditEvent, BehavioralError,
+    IntegrityStatus, MemoryDraftValidator, SecurityBootstrapError, SecurityContext,
+    SecurityGateError, SecurityProfile, ValidationError,
 };
 pub use skills::{NoopSkill, Skill, SkillContext, SkillOutput, SkillRegistry};
 #[cfg(feature = "tui")]

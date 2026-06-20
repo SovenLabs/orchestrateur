@@ -9,6 +9,7 @@ description = "Orchestrateur — Binaire cœur (CLI + TUI optionnel) — Phase 5
 [features]
 default = ["tui"]
 tui = ["orchestrator/tui"]
+http = ["dep:axum", "dep:tower", "dep:tower-http"]
 
 [[bin]]
 name = "orchestrateur"
@@ -23,3 +24,8 @@ orchestrator.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+axum = { workspace = true, optional = true }
+tower = { workspace = true, optional = true }
+tower-http = { workspace = true, optional = true }

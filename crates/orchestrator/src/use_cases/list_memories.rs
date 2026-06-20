@@ -10,11 +10,16 @@ pub struct ListMemories {
 
 impl ListMemories {
     /// Crée le use case avec les dépendances injectées.
+    #[must_use]
     pub fn new(deps: AppDependencies) -> Self {
         Self { deps }
     }
 
     /// Retourne toutes les mémoires (ordre non garanti).
+    ///
+    /// # Errors
+    ///
+    /// Propage une [`OrchestratorError`] si le port échoue.
     pub async fn execute(&self) -> Result<Vec<Memory>, OrchestratorError> {
         Ok(self.deps.memory_repo.list().await?)
     }

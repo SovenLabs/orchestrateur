@@ -10,12 +10,18 @@ pub struct SaveMemory {
 
 impl SaveMemory {
     /// Crée le use case avec les dépendances injectées.
+    #[must_use]
     pub fn new(deps: AppDependencies) -> Self {
         Self { deps }
     }
 
     /// Sauvegarde la mémoire et met à jour le vector store.
+    ///
+    /// # Errors
+    ///
+    /// Propage une [`OrchestratorError`] si la persistance ou l'indexation échoue.
     pub async fn execute(&self, memory: &Memory) -> Result<Memory, OrchestratorError> {
+        tracing::debug!(memory_id = %memory.id, title = %memory.title, "save_memory");
         let embedding = self
             .deps
             .embedding

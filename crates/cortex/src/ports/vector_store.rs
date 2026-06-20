@@ -44,6 +44,9 @@ pub trait VectorStore: Send + Sync {
         filter: &SearchFilter,
     ) -> Result<Vec<SearchHit>, CortexError>;
 
+    /// Récupère l'embedding indexé d'une mémoire (cache local).
+    async fn get_embedding(&self, memory_id: MemoryId) -> Result<Option<Vec<f32>>, CortexError>;
+
     /// Supprime l'entrée vectorielle d'une mémoire.
     async fn delete(&self, memory_id: MemoryId) -> Result<(), CortexError>;
 }

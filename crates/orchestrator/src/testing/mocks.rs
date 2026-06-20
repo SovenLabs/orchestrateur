@@ -9,6 +9,7 @@ use cortex::{
 
 use crate::config::OrchestratorConfig;
 use crate::deps::AppDependencies;
+use crate::events::NoopEventPublisher;
 
 /// Bundle prêt à l'emploi : les trois mocks + configuration par défaut.
 pub struct MockBundle {
@@ -24,6 +25,7 @@ pub struct MockBundle {
 
 impl MockBundle {
     /// Crée un bundle de mocks thread-safe avec configuration par défaut.
+    #[must_use]
     pub fn new() -> Self {
         let config = OrchestratorConfig::default();
         let embedding = Arc::new(InMemoryEmbeddingProvider::new(config.embedding_dim));
@@ -35,13 +37,15 @@ impl MockBundle {
         }
     }
 
-    /// Convertit le bundle en [`AppDependencies`].
+    /// Convertit le bundle en [`AppDependencies`] (publisher noop pour les tests).
+    #[must_use]
     pub fn into_deps(self) -> AppDependencies {
-        AppDependencies::new(
+        AppDependencies::with_events(
             self.memory_repo,
             self.vector_store,
             self.embedding,
             self.config,
+            Arc::new(NoopEventPublisher),
         )
     }
 }
@@ -59,6 +63,7 @@ pub struct InMemoryMemoryRepository {
 
 impl InMemoryMemoryRepository {
     /// Crée un dépôt vide.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             inner: RwLock::new(HashMap::new()),
@@ -67,7 +72,7 @@ impl InMemoryMemoryRepository {
 
     /// Nombre de mémoires stockées (utilitaire de test).
     pub fn len(&self) -> usize {
-        self.inner.read().map(|m| m.len()).unwrap_or(0)
+        self.inner.read().map_or(0, |m| m.len())
     }
 
     /// Indique si le dépôt est vide (utilitaire de test).
@@ -126,6 +131,7 @@ pub struct InMemoryVectorStore {
 
 impl InMemoryVectorStore {
     /// Crée un index vectoriel vide.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             inner: RwLock::new(HashMap::new()),
@@ -134,7 +140,7 @@ impl InMemoryVectorStore {
 
     /// Nombre de vecteurs indexés (utilitaire de test).
     pub fn len(&self) -> usize {
-        self.inner.read().map(|m| m.len()).unwrap_or(0)
+        self.inner.read().map_or(0, |m| m.len())
     }
 
     /// Indique si l'index est vide (utilitaire de test).
@@ -196,18 +202,22 @@ impl VectorStore for InMemoryVectorStore {
         query_embedding: &[f32],
         filter: &SearchFilter,
     ) -> Result<Vec<SearchHit>, CortexError> {
-        let limit = filter.limit.unwrap_or(10);
-        let mut hits = self.semantic_search(query_embedding, limit).await?;
+        let candidate_limit = filter.limit.unwrap_or(256);
+        let mut hits = self.semantic_search(query_embedding, candidate_limit).await?;
 
         if let Some(min) = filter.min_score {
             hits.retain(|h| h.score >= min);
         }
 
-        if !filter.tags.is_empty() {
-            // Le filtrage par tags est effectué dans le use case via MemoryRepository.
-        }
-
         Ok(hits)
+    }
+
+    async fn get_embedding(&self, memory_id: MemoryId) -> Result<Option<Vec<f32>>, CortexError> {
+        let guard = self
+            .inner
+            .read()
+            .map_err(|e| CortexError::GraphError(e.to_string()))?;
+        Ok(guard.get(&memory_id).cloned())
     }
 
     async fn delete(&self, memory_id: MemoryId) -> Result<(), CortexError> {
@@ -227,6 +237,7 @@ pub struct InMemoryEmbeddingProvider {
 
 impl InMemoryEmbeddingProvider {
     /// Crée un provider avec la dimension indiquée.
+    #[must_use]
     pub fn new(dim: usize) -> Self {
         Self { dim }
     }
@@ -300,6 +311,15 @@ mod tests {
         assert_eq!(a, b);
         let c = provider.embed("world").await.unwrap();
         assert_ne!(a, c);
+    }
+
+    #[tokio::test]
+    async fn get_embedding_returns_cached_vector() {
+        let store = InMemoryVectorStore::new();
+        let id = MemoryId::new();
+        let vec = vec![0.1, 0.9];
+        store.upsert(id, &vec).await.unwrap();
+        assert_eq!(store.get_embedding(id).await.unwrap(), Some(vec));
     }
 
     #[tokio::test]

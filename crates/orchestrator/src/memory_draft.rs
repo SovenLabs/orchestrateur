@@ -49,6 +49,10 @@ pub struct MemoryDraft {
 
 impl MemoryDraft {
     /// Valide et matérialise une entité domaine [`Memory`].
+    ///
+    /// # Errors
+    ///
+    /// Propage une [`CortexError`] si le titre, le contenu, les tags ou les backlinks sont invalides.
     pub fn into_memory(self) -> Result<Memory, CortexError> {
         let tags: Vec<Tag> = self
             .tags
@@ -64,7 +68,7 @@ impl MemoryDraft {
         let backlinks = self
             .backlinks
             .into_iter()
-            .map(|draft| draft.into_backlink())
+            .map(BacklinkDraft::into_backlink)
             .collect::<Result<Vec<_>, _>>()?;
 
         memory.set_backlinks(backlinks);
@@ -73,7 +77,7 @@ impl MemoryDraft {
 }
 
 impl BacklinkDraft {
-    fn into_backlink(self) -> Result<Backlink, CortexError> {
+    pub(crate) fn into_backlink(self) -> Result<Backlink, CortexError> {
         let target: MemoryId = self.target.parse()?;
         let kind = match self.kind {
             BacklinkDraftKind::Semantic => BacklinkKind::Semantic,

@@ -88,6 +88,23 @@ impl KnowledgeGraph {
         Ok(())
     }
 
+    /// Vérifie que chaque cible de backlink correspond à une mémoire existante.
+    ///
+    /// # Errors
+    ///
+    /// Retourne [`CortexError::MemoryNotFound`] si une cible n'a pas de mémoire correspondante.
+    pub fn validate_resolvable(&self, memories: &[Memory]) -> Result<(), CortexError> {
+        let ids: std::collections::HashSet<MemoryId> = memories.iter().map(|m| m.id).collect();
+        for mem in memories {
+            for bl in &mem.backlinks {
+                if !ids.contains(&bl.target) {
+                    return Err(CortexError::MemoryNotFound(bl.target));
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Mémoires triées par nombre de backlinks entrants (hubs).
     #[must_use]
     pub fn hub_ranking(&self) -> Vec<(MemoryId, usize)> {
@@ -166,6 +183,17 @@ mod tests {
         let graph = KnowledgeGraph::from_memories(&[mem]);
         assert_eq!(graph.edge_count(), 1);
         assert!((graph.outgoing(source)[0].score - 0.9).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn validate_resolvable_rejects_missing_target() {
+        let target = MemoryId::new();
+        let mem = sample_memory(
+            "x",
+            vec![Backlink::new(target, 1.0, BacklinkKind::Semantic).unwrap()],
+        );
+        let graph = KnowledgeGraph::from_memories(std::slice::from_ref(&mem));
+        assert!(graph.validate_resolvable(std::slice::from_ref(&mem)).is_err());
     }
 
     #[test]

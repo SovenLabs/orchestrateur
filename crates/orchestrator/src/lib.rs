@@ -15,6 +15,8 @@ pub mod config;
 pub mod deps;
 /// Erreurs de la couche application.
 pub mod error;
+/// Publication des événements de domaine.
+pub mod events;
 /// Facade publique stable (`OrchestratorFacade`).
 pub mod facade;
 /// Brouillon structuré issu des providers IA (`MemoryDraft`).
@@ -27,9 +29,10 @@ pub mod use_cases;
 /// Mocks in-memory des ports pour tests isolés.
 pub mod testing;
 
-pub use config::OrchestratorConfig;
+pub use config::{ConfigError, OrchestratorConfig};
 pub use deps::AppDependencies;
 pub use error::{OrchestratorError, SkillError};
+pub use events::{EventPublisher, NoopEventPublisher, TracingEventPublisher};
 pub use facade::OrchestratorFacade;
 pub use memory_draft::{BacklinkDraft, BacklinkDraftKind, MemoryDraft};
 pub use skills::{NoopSkill, Skill, SkillContext, SkillOutput, SkillRegistry};

@@ -22,7 +22,8 @@ pub mod ports;
 pub mod services;
 
 pub use domain::{
-    Backlink, BacklinkKind, CortexError, DomainEvent, KnowledgeGraph, Memory, MemoryAssimilated,
+    Backlink, BacklinkKind, CortexError, DomainEvent, KnowledgeGraph, KnowledgeGraphValidated,
+    Memory, MemoryAssimilated,
     MemoryId, Tag,
 };
 pub use ports::{EmbeddingProvider, MemoryRepository, SearchFilter, SearchHit, VectorStore};

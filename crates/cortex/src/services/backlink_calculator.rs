@@ -118,6 +118,22 @@ impl BacklinkCalculator {
         Ok(merged)
     }
 
+    /// Fusionne deux ensembles de backlinks (score maximal par cible).
+    #[must_use]
+    pub fn union_backlinks(primary: Vec<Backlink>, secondary: Vec<Backlink>) -> Vec<Backlink> {
+        let mut merged = primary;
+        for bl in secondary {
+            if let Some(existing) = merged.iter_mut().find(|b| b.target == bl.target) {
+                if bl.score > existing.score {
+                    *existing = bl;
+                }
+            } else {
+                merged.push(bl);
+            }
+        }
+        merged
+    }
+
     /// Applique les backlinks calculés à une mémoire (mutation domaine).
     pub fn apply_to_memory(memory: &mut Memory, backlinks: Vec<Backlink>) {
         memory.set_backlinks(backlinks);
@@ -200,6 +216,16 @@ mod tests {
             BacklinkCalculator::merge_backlinks(semantic.clone(), vec![target]).unwrap();
         assert_eq!(merged.len(), 1);
         assert_eq!(merged[0].kind, BacklinkKind::Semantic);
+    }
+
+    #[test]
+    fn union_keeps_higher_score_per_target() {
+        let target = MemoryId::new();
+        let a = vec![Backlink::new(target, 0.6, BacklinkKind::Semantic).unwrap()];
+        let b = vec![Backlink::new(target, 0.9, BacklinkKind::ExplicitWikilink).unwrap()];
+        let merged = BacklinkCalculator::union_backlinks(a, b);
+        assert_eq!(merged.len(), 1);
+        assert!((merged[0].score - 0.9).abs() < f32::EPSILON);
     }
 
     #[test]

@@ -11,6 +11,7 @@ pub struct SkillRegistry {
 
 impl SkillRegistry {
     /// Crée un registre vide.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             skills: HashMap::new(),
@@ -18,6 +19,7 @@ impl SkillRegistry {
     }
 
     /// Crée un registre avec la skill `noop` pré-enregistrée.
+    #[must_use]
     pub fn with_defaults() -> Self {
         let mut registry = Self::new();
         registry.register(Arc::new(super::skill::NoopSkill::new()));
@@ -30,6 +32,7 @@ impl SkillRegistry {
     }
 
     /// Liste les paires (nom, description) des skills enregistrées.
+    #[must_use]
     pub fn list(&self) -> Vec<(&'static str, &'static str)> {
         let mut entries: Vec<_> = self
             .skills
@@ -41,6 +44,10 @@ impl SkillRegistry {
     }
 
     /// Exécute une skill par son nom.
+    ///
+    /// # Errors
+    ///
+    /// Retourne [`SkillError::NotFound`] ou [`SkillError::ExecutionFailed`].
     pub async fn execute(
         &self,
         name: &str,

@@ -8,7 +8,7 @@ mod tag;
 
 pub use backlink::{Backlink, BacklinkKind};
 pub use error::CortexError;
-pub use events::{DomainEvent, MemoryAssimilated};
+pub use events::{DomainEvent, KnowledgeGraphValidated, MemoryAssimilated};
 pub use knowledge_graph::KnowledgeGraph;
 pub use memory::Memory;
 pub use memory_id::MemoryId;

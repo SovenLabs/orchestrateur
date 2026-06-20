@@ -10,11 +10,16 @@ pub struct GetMemory {
 
 impl GetMemory {
     /// Crée le use case avec les dépendances injectées.
+    #[must_use]
     pub fn new(deps: AppDependencies) -> Self {
         Self { deps }
     }
 
     /// Charge une mémoire ou retourne `CortexError::MemoryNotFound`.
+    ///
+    /// # Errors
+    ///
+    /// Propage une [`OrchestratorError`] si la mémoire est introuvable.
     pub async fn execute(&self, id: MemoryId) -> Result<Memory, OrchestratorError> {
         Ok(self.deps.memory_repo.get_by_id(id).await?)
     }

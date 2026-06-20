@@ -34,6 +34,7 @@ pub struct NoopSkill;
 
 impl NoopSkill {
     /// Crée la skill noop.
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

@@ -31,6 +31,7 @@ infrastructure = { path = "crates/infrastructure" }
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 thiserror = "2"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["fs", "macros", "rt-multi-thread"] }
+toml = "0.8"
 tracing = "0.1"
 uuid = { version = "1", features = ["v7", "serde"] }

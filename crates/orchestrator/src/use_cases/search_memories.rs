@@ -3,6 +3,9 @@ use cortex::{SearchFilter, SearchHit};
 use crate::deps::AppDependencies;
 use crate::error::OrchestratorError;
 
+/// Limite interne pour la phase de recherche vectorielle avant filtrage tags.
+const SEMANTIC_CANDIDATE_LIMIT: usize = 256;
+
 /// Use case : recherche hybride (vectorielle + filtrage tags via le dépôt).
 pub struct SearchMemories {
     deps: AppDependencies,
@@ -10,22 +13,36 @@ pub struct SearchMemories {
 
 impl SearchMemories {
     /// Crée le use case avec les dépendances injectées.
+    #[must_use]
     pub fn new(deps: AppDependencies) -> Self {
         Self { deps }
     }
 
     /// Recherche des mémoires similaires à la requête textuelle.
+    ///
+    /// # Errors
+    ///
+    /// Propage une [`OrchestratorError`] si l'embedding ou la recherche échoue.
     pub async fn execute(
         &self,
         query: &str,
         filter: &SearchFilter,
     ) -> Result<Vec<SearchHit>, OrchestratorError> {
+        tracing::debug!(query, "recherche démarrée");
+
         let embedding = self.deps.embedding.embed(query).await?;
+
+        let mut vector_filter = filter.clone();
+        vector_filter.limit = None;
         let mut hits = self
             .deps
             .vector_store
-            .hybrid_search(&embedding, filter)
+            .hybrid_search(&embedding, &vector_filter)
             .await?;
+
+        if let Some(min) = filter.min_score {
+            hits.retain(|h| h.score >= min);
+        }
 
         if !filter.tags.is_empty() {
             hits = self.filter_by_tags(hits, &filter.tags).await?;
@@ -33,8 +50,11 @@ impl SearchMemories {
 
         if let Some(limit) = filter.limit {
             hits.truncate(limit);
+        } else {
+            hits.truncate(SEMANTIC_CANDIDATE_LIMIT);
         }
 
+        tracing::info!(query, results = hits.len(), "recherche terminée");
         Ok(hits)
     }
 

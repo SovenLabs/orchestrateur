@@ -18,6 +18,7 @@ pub struct OrchestratorFacade {
 
 impl OrchestratorFacade {
     /// Construit la facade avec dépendances injectées et registre de skills par défaut.
+    #[must_use]
     pub fn new(deps: AppDependencies) -> Self {
         Self {
             deps,
@@ -26,36 +27,55 @@ impl OrchestratorFacade {
     }
 
     /// Construit la facade avec un registre de skills personnalisé.
+    #[must_use]
     pub fn with_skills(deps: AppDependencies, skills: SkillRegistry) -> Self {
         Self { deps, skills }
     }
 
     /// Accès en lecture aux dépendances (tests / composition).
+    #[must_use]
     pub fn deps(&self) -> &AppDependencies {
         &self.deps
     }
 
     /// Accès au registre de skills.
+    #[must_use]
     pub fn skills(&self) -> &SkillRegistry {
         &self.skills
     }
 
     /// Liste toutes les mémoires.
+    ///
+    /// # Errors
+    ///
+    /// Propage une [`OrchestratorError`] si le port échoue.
     pub async fn list_memories(&self) -> Result<Vec<Memory>, OrchestratorError> {
         ListMemories::new(self.deps.clone()).execute().await
     }
 
     /// Récupère une mémoire par identifiant.
+    ///
+    /// # Errors
+    ///
+    /// Propage une [`OrchestratorError`] si la mémoire est introuvable ou si le port échoue.
     pub async fn get_memory(&self, id: MemoryId) -> Result<Memory, OrchestratorError> {
         GetMemory::new(self.deps.clone()).execute(id).await
     }
 
     /// Persiste une mémoire et indexe son embedding.
+    ///
+    /// # Errors
+    ///
+    /// Propage une [`OrchestratorError`] si la persistance ou l'indexation échoue.
     pub async fn save_memory(&self, memory: &Memory) -> Result<Memory, OrchestratorError> {
         SaveMemory::new(self.deps.clone()).execute(memory).await
     }
 
     /// Recherche hybride par requête textuelle.
+    ///
+    /// # Errors
+    ///
+    /// Propage une [`OrchestratorError`] si l'embedding ou la recherche échoue.
     pub async fn search_memories(
         &self,
         query: &str,
@@ -65,6 +85,10 @@ impl OrchestratorFacade {
     }
 
     /// Assimile un brouillon (dry-run Phase 2, sans appel IA).
+    ///
+    /// # Errors
+    ///
+    /// Propage une [`OrchestratorError`] si la validation, le graphe ou la persistance échoue.
     pub async fn assimilate_from_draft(
         &self,
         draft: MemoryDraft,
@@ -75,11 +99,16 @@ impl OrchestratorFacade {
     }
 
     /// Liste les skills enregistrées (nom, description).
+    #[must_use]
     pub fn list_skills(&self) -> Vec<(&'static str, &'static str)> {
         self.skills.list()
     }
 
     /// Exécute une skill par son nom.
+    ///
+    /// # Errors
+    ///
+    /// Retourne [`SkillError::NotFound`] ou [`SkillError::ExecutionFailed`].
     pub async fn execute_skill(
         &self,
         name: &str,
@@ -133,7 +162,7 @@ mod tests {
         };
         let (memory, events) = f.assimilate_from_draft(draft).await.unwrap();
         assert_eq!(memory.title, "Nouveau");
-        assert!(matches!(events[0], DomainEvent::MemoryAssimilated(_)));
+        assert!(events.iter().any(|e| matches!(e, DomainEvent::MemoryAssimilated(_))));
     }
 
     #[tokio::test]

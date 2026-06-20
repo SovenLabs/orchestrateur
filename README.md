@@ -187,7 +187,12 @@ Tags Git : `phase1-closed`, `phase2-closed`, `phase3-v0.1.0`, `phase4-v0.3.0`.
 | 5 | TUI ratatui intégré au cœur, mode dégradé sans IA |
 | 6 | Skills opérationnelles, bridge chat/skills, HUD/TUI chat, packaging Windows |
 
-**Packaging Windows** : `.\scripts\package-windows.ps1`
+**Packaging Windows** :
+```powershell
+.\scripts\build-installer.ps1 -InstallInno   # Setup.exe + zip
+.\scripts\package-windows.ps1                # zip uniquement
+```
+Artefacts dans `dist/` : `Orchestrateur-v0.5.0-Setup-win64.exe`, `Orchestrateur-v0.5.0-win64.zip`
 
 ---
 

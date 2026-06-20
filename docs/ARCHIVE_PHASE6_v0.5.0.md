@@ -40,9 +40,11 @@ Types : `BridgeSkillContext`, `SkillSummary`.
 - **HUD** : onglet Chat (`HudMainView::Chat`)
 - **TUI** : vue Chat (`c`), vues Graph/Audit, événements domaine
 
-### Packaging
+### Packaging / installateur Windows
 
-- `scripts/package-windows.ps1` — build release + zip `dist/Orchestrateur-v0.5.0-win64.zip`
+- `scripts/build-installer.ps1` — release + zip + **Setup.exe** (Inno Setup 6)
+- `scripts/package-windows.ps1` — zip uniquement
+- `installer/orchestrateur.iss` — script Inno (raccourcis, workspace `%APPDATA%`)
 
 ---
 
@@ -52,7 +54,7 @@ Types : `BridgeSkillContext`, `SkillSummary`.
 cargo test -p orchestrator --features tui
 cargo test -p orchestrateur-cli -p orchestrateur-hud
 cargo clippy -p orchestrator --features tui -p orchestrateur-cli -p orchestrateur-hud -- -D warnings
-.\scripts\package-windows.ps1
+.\scripts\build-installer.ps1 -InstallInno
 ```
 
 ---

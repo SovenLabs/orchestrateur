@@ -1,6 +1,6 @@
 # PROMPT MAÎTRE COMPLET – Projet Orchestrateur
-## Version du prompt : 2026-06-20 | Phase 0 CLOSED
-## Version document : **v0.1.1-final** | Version Cargo workspace : **0.0.2**
+## Version du prompt : 2026-06-20 | Phase 2 CLOSED
+## Version document : **v0.2.0-final** | Version Cargo workspace : **0.1.0**
 ## Objectif de ce prompt : Fournir à l’IA **TOUTES** les informations nécessaires sans aucune omission afin qu’elle puisse gérer le développement du code de manière rigoureuse, stratégique et cohérente sur plusieurs années.
 
 > Compagnon veille : [`PROMPT_VEILLE.md`](./PROMPT_VEILLE.md)
@@ -47,9 +47,9 @@ Le projet s’appelle **Orchestrateur**.
 **Versioning** (3 axes distincts — ne pas confondre) :
 | Axe | Rôle | Valeur actuelle |
 |-----|------|-----------------|
-| **Document** | Prompt maître / veille | **v0.1.0-final** (Phase 0 CLOSED) |
-| **Cargo workspace** | Binaires et crates | **0.0.2** (Phase 0 scaffolding) |
-| **Projet interne** | Release fonctionnelle | **0.1.0** (atteinte en fin de Phase 1) |
+| **Document** | Prompt maître / veille | **v0.2.0-final** (Phase 2 CLOSED) |
+| **Cargo workspace** | Binaires et crates | **0.1.0** (Cortex + Orchestrator validés) |
+| **Projet interne** | Release fonctionnelle | **0.2.0** (atteinte en fin de Phase 2) |
 | **Public** | Distribution | **1.0.0** |
 
 **Directive document (obligatoire)** :
@@ -185,8 +185,8 @@ Le parsing se fait via split sur `---` + `serde_yaml` (simple, robuste, contrôl
 Tu suis toujours ce plan de phases (sauf validation explicite de changement) :
 
 - **Phase 0** ✅ CLOSED (v0.1.0-final prompt)
-- **Phase 1** : Crate `cortex` complet (modèles, ports, services purs, tests unitaires exhaustifs, compilation isolée). Workspace Cargo déjà initialisé en Phase 0 — pas de re-init.
-- **Phase 2** : Crate `orchestrator` (facade, use cases de base, Skill Registry skeleton, sans appel Grok réel).
+- **Phase 1** ✅ CLOSED — Crate `cortex` complet (modèles, ports, services purs, tests unitaires exhaustifs, compilation isolée).
+- **Phase 2** ✅ CLOSED — Crate `orchestrator` (facade, use cases, Skill Registry skeleton, mocks in-memory, sans appel Grok réel). Voir [`ARCHIVE_PHASE2_v0.1.0.md`](./ARCHIVE_PHASE2_v0.1.0.md).
 - **Phase 3** : Crate `infrastructure` (FileMemoryRepository, WorkspaceManager, LancedbVectorStore, OllamaEmbeddingProvider).
 - **Phase 4** : Intégration Grok (xAI client) + premier use case d’assimilation réel + fallback Ollama.
 - **Phase 5** : Binaire `cli` fully functional (commandes assimilate, search, chat, graph).
@@ -361,4 +361,4 @@ Aucune omission. Contrôle total. Longévité maximale garantie.
 
 *Fin du Prompt Maître Complet – Version v0.1.0-final (Phase 0 clôturée)*
 
-**Prochaine étape : Phase 1 GO**
+**Prochaine étape : Phase 3 GO** (infrastructure — adapters réels)

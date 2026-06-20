@@ -1,29 +1,41 @@
 //! # Orchestrateur — L'Esprit
 //!
-//! Phase 2 : facade, use cases, Skill Registry.
-//! Ce crate ne dépend que du squelette [`cortex`] et de ses ports.
+//! Couche application : facade, use cases, Skill Registry.
+//! Ne dépend que du squelette [`cortex`] et de ses ports.
 //!
 //! Garde-fous : Rust stable uniquement — pas de `#![feature(...)]`.
 
-pub mod memory_draft;
+#![forbid(unsafe_code)]
+#![warn(missing_docs, rust_2018_idioms)]
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 
+/// Configuration applicative (`OrchestratorConfig`).
+pub mod config;
+/// Injection des ports Cortex (`AppDependencies`).
+pub mod deps;
+/// Erreurs de la couche application.
+pub mod error;
+/// Facade publique stable (`OrchestratorFacade`).
+pub mod facade;
+/// Brouillon structuré issu des providers IA (`MemoryDraft`).
+pub mod memory_draft;
+/// Squelette Skills (trait, registre, noop).
+pub mod skills;
+/// Use cases applicatifs testables en mémoire.
+pub mod use_cases;
+
+/// Mocks in-memory des ports pour tests isolés.
+pub mod testing;
+
+pub use config::OrchestratorConfig;
+pub use deps::AppDependencies;
+pub use error::{OrchestratorError, SkillError};
+pub use facade::OrchestratorFacade;
 pub use memory_draft::{BacklinkDraft, BacklinkDraftKind, MemoryDraft};
+pub use skills::{NoopSkill, Skill, SkillContext, SkillOutput, SkillRegistry};
 
 /// Version du crate alignée sur le workspace.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Point d'entrée applicatif — implémenté en Phase 2.
-pub struct OrchestratorApp;
-
-impl OrchestratorApp {
-    /// Crée l'application (squelette Phase 0).
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl Default for OrchestratorApp {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+/// Alias historique — préférer [`OrchestratorFacade`].
+pub type OrchestratorApp = OrchestratorFacade;

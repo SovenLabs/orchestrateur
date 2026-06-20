@@ -9,8 +9,11 @@ use serde::{Deserialize, Serialize};
 /// Candidat de backlink tel que renvoyé par un LLM (avant validation domaine).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BacklinkDraft {
+    /// Identifiant cible (UUID string) avant parsing domaine.
     pub target: String,
+    /// Score de similarité ou de confiance (0.0–1.0).
     pub score: f32,
+    /// Type de lien (sémantique ou wikilink explicite).
     #[serde(default)]
     pub kind: BacklinkDraftKind,
 }
@@ -19,8 +22,10 @@ pub struct BacklinkDraft {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BacklinkDraftKind {
+    /// Lien sémantique calculé par similarité.
     #[default]
     Semantic,
+    /// Lien explicite `[[uuid]]` dans le contenu.
     ExplicitWikilink,
 }
 
@@ -30,10 +35,14 @@ pub enum BacklinkDraftKind {
 /// `xAI JSON → MemoryDraft → validation → Memory (cortex)`
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MemoryDraft {
+    /// Titre du souvenir candidat.
     pub title: String,
+    /// Contenu Markdown brut.
     pub content: String,
+    /// Tags sous forme de chaînes (normalisés à la conversion).
     #[serde(default)]
     pub tags: Vec<String>,
+    /// Backlinks candidats issus du LLM.
     #[serde(default)]
     pub backlinks: Vec<BacklinkDraft>,
 }
@@ -44,7 +53,7 @@ impl MemoryDraft {
         let tags: Vec<Tag> = self
             .tags
             .into_iter()
-            .map(|t| Tag::new(t))
+            .map(Tag::new)
             .collect::<Result<_, _>>()?;
 
         let mut memory = Memory::new(self.title, self.content)?;

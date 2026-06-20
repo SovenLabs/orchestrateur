@@ -48,7 +48,7 @@ Couverture (`cargo llvm-cov -p cortex`) : **91.51 %** lignes | **92.64 %** régi
 
 - [x] Correctifs archive portés
 - [x] `cargo test -p cortex` vert (stable)
-- [x] `ARCHIVE_PHASE1.md` dans le repo
+- [x] `docs/ARCHIVE_PHASE1.md` dans le repo
 - [x] Cargo **0.1.0**
 - [x] Tag git `phase1-closed`
 

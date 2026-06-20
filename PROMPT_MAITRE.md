@@ -186,7 +186,7 @@ Tu suis toujours ce plan de phases (sauf validation explicite de changement) :
 
 - **Phase 0** ✅ CLOSED (v0.1.0-final prompt)
 - **Phase 1** ✅ CLOSED — Crate `cortex` complet (modèles, ports, services purs, tests unitaires exhaustifs, compilation isolée).
-- **Phase 2** ✅ CLOSED — Crate `orchestrator` (facade, use cases, Skill Registry skeleton, mocks in-memory, sans appel Grok réel). Voir [`ARCHIVE_PHASE2_v0.1.0.md`](./ARCHIVE_PHASE2_v0.1.0.md).
+- **Phase 2** ✅ CLOSED — Crate `orchestrator` (facade, use cases, Skill Registry skeleton, mocks in-memory, sans appel Grok réel). Voir [`ARCHIVE_PHASE2_v0.1.0.md`](./docs/ARCHIVE_PHASE2_v0.1.0.md).
 - **Phase 3** : Crate `infrastructure` (FileMemoryRepository, WorkspaceManager, LancedbVectorStore, OllamaEmbeddingProvider).
 - **Phase 4** : Intégration Grok (xAI client) + premier use case d’assimilation réel + fallback Ollama.
 - **Phase 5** : Binaire `cli` fully functional (commandes assimilate, search, chat, graph).

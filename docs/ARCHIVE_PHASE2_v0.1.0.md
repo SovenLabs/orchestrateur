@@ -75,7 +75,7 @@ cargo llvm-cov -p orchestrator → 93.48 % lignes | 93.00 % régions (seuil ≥ 
 - [x] `SkillRegistry` avec skill `noop`
 - [x] Kill Criteria Phase 2 respectés
 - [x] `MemoryDraft` dans `orchestrator` uniquement (pas dans Cortex)
-- [x] `ARCHIVE_PHASE2_v0.1.0.md` présent
+- [x] `docs/ARCHIVE_PHASE2_v0.1.0.md` présent
 - [x] Crate `orchestrator` version **0.1.0** (workspace)
 - [x] Tag git `phase2-closed`
 

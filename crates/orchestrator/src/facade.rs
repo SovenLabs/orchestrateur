@@ -5,7 +5,8 @@ use crate::error::{OrchestratorError, SkillError};
 use crate::memory_draft::MemoryDraft;
 use crate::skills::{SkillContext, SkillOutput, SkillRegistry};
 use crate::use_cases::{
-    AssimilateFromDraft, AssimilationResult, GetMemory, ListMemories, SaveMemory, SearchMemories,
+    AssimilateFromDraft, AssimilateFromText, AssimilationResult, GetMemory, ListMemories,
+    SaveMemory, SearchMemories,
 };
 
 /// Point d'entrée public stable de l'orchestrateur (CLI, GUI, tests d'intégration).
@@ -84,7 +85,7 @@ impl OrchestratorFacade {
         SearchMemories::new(self.deps.clone()).execute(query, filter).await
     }
 
-    /// Assimile un brouillon (dry-run Phase 2, sans appel IA).
+    /// Assimile un brouillon pré-construit (sans appel LLM).
     ///
     /// # Errors
     ///
@@ -95,6 +96,21 @@ impl OrchestratorFacade {
     ) -> Result<AssimilationResult, OrchestratorError> {
         AssimilateFromDraft::new(self.deps.clone())
             .execute(draft)
+            .await
+    }
+
+    /// Assimile du texte brut via le provider LLM configuré (flux opérationnel Phase 3).
+    ///
+    /// # Errors
+    ///
+    /// Propage une [`OrchestratorError`] si le LLM, la validation ou la persistance échoue.
+    pub async fn assimilate(
+        &self,
+        user_prompt: &str,
+        system_prompt: Option<&str>,
+    ) -> Result<AssimilationResult, OrchestratorError> {
+        AssimilateFromText::new(self.deps.clone())
+            .execute(user_prompt, system_prompt)
             .await
     }
 

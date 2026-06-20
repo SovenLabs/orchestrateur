@@ -30,7 +30,7 @@ impl SaveMemory {
         self.deps.memory_repo.save(memory).await?;
         self.deps
             .vector_store
-            .upsert(memory.id, &embedding)
+            .upsert(memory.id, embedding.as_slice())
             .await?;
         Ok(memory.clone())
     }

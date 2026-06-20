@@ -1,35 +1,34 @@
-# Orchestrateur — configuration workspace (copier vers orchestrator.toml)
-
 [workspace]
-root = "./workspace"
-
-[memory]
-directory = "memories"
-
-[vector]
-directory = ".vector"
-
-[embeddings]
-provider = "ollama"
-model = "nomic-embed-text"
-ollama_url = "http://127.0.0.1:11434"
-
-[orchestrator]
-default_model = "grok"
-# XAI_API_KEY via variable d'environnement — jamais hardcodé
-
-[grok]
-api_base = "https://api.x.ai/v1"
-model = "grok-3-mini"
-
-[ollama]
-chat_model = "llama3.2"
-fallback_enabled = true
+path = "./memories"
 
 [backlinks]
 semantic_min = 0.75
 max_links = 10
 
-[logging]
-directory = "logs"
-level = "info"
+[providers]
+primary_llm = "xai"
+fallback_llm = ["ollama"]
+primary_embedding = "ollama"
+fallback_embedding = []
+
+[xai]
+api_key_env = "XAI_API_KEY"
+model = "grok-3-latest"
+timeout_secs = 30
+max_retries = 2
+
+[ollama]
+url = "http://127.0.0.1:11434"
+embedding_model = "qwen3-embedding:8b"
+chat_model = "qwen3:8b"
+timeout_secs = 60
+max_retries = 2
+
+[vector_store]
+type = "lancedb"
+path = ".orchestrateur/lancedb"
+embedding_dimension = 768
+
+[lancedb]
+path = ".orchestrateur/lancedb"
+embedding_dimension = 768

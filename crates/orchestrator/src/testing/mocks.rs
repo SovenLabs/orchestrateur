@@ -3,9 +3,12 @@ use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
 use cortex::{
-    cosine_similarity, CortexError, EmbeddingProvider, Memory, MemoryId, MemoryRepository,
-    SearchFilter, SearchHit, VectorStore,
+    cosine_similarity, CortexError, Embedding, EmbeddingCapabilities, EmbeddingError,
+    EmbeddingProvider, Memory, MemoryId, MemoryRepository, SearchFilter, SearchHit, VectorStore,
 };
+
+use crate::llm::{LlmCapabilities, LlmError, LlmProvider};
+use crate::memory_draft::MemoryDraft;
 
 use crate::config::OrchestratorConfig;
 use crate::deps::AppDependencies;
@@ -19,6 +22,8 @@ pub struct MockBundle {
     pub vector_store: Arc<InMemoryVectorStore>,
     /// Mock d'embeddings déterministes.
     pub embedding: Arc<InMemoryEmbeddingProvider>,
+    /// Mock LLM déterministe.
+    pub llm: Arc<InMemoryLlmProvider>,
     /// Configuration de test.
     pub config: OrchestratorConfig,
 }
@@ -29,10 +34,12 @@ impl MockBundle {
     pub fn new() -> Self {
         let config = OrchestratorConfig::default();
         let embedding = Arc::new(InMemoryEmbeddingProvider::new(config.embedding_dim));
+        let llm = Arc::new(InMemoryLlmProvider);
         Self {
             memory_repo: Arc::new(InMemoryMemoryRepository::new()),
             vector_store: Arc::new(InMemoryVectorStore::new()),
             embedding,
+            llm,
             config,
         }
     }
@@ -44,6 +51,7 @@ impl MockBundle {
             self.memory_repo,
             self.vector_store,
             self.embedding,
+            self.llm,
             self.config,
             Arc::new(NoopEventPublisher),
         )
@@ -259,16 +267,69 @@ impl InMemoryEmbeddingProvider {
 
 #[async_trait]
 impl EmbeddingProvider for InMemoryEmbeddingProvider {
-    async fn embed(&self, text: &str) -> Result<Vec<f32>, CortexError> {
-        Ok(self.deterministic_vector(text))
+    fn name(&self) -> &'static str {
+        "in-memory"
     }
 
-    async fn embed_batch(&self, texts: &[&str]) -> Result<Vec<Vec<f32>>, CortexError> {
-        let mut out = Vec::with_capacity(texts.len());
-        for text in texts {
-            out.push(self.embed(text).await?);
+    fn capabilities(&self) -> EmbeddingCapabilities {
+        EmbeddingCapabilities {
+            typical_dimensions: Some(self.dim),
+            ..Default::default()
         }
-        Ok(out)
+    }
+
+    async fn embed(&self, text: &str) -> Result<Embedding, EmbeddingError> {
+        Ok(Embedding::new(self.deterministic_vector(text)))
+    }
+}
+
+/// LLM mock : titre fixe, contenu = prompt utilisateur.
+pub struct InMemoryLlmProvider;
+
+#[async_trait]
+impl LlmProvider for InMemoryLlmProvider {
+    fn name(&self) -> &'static str {
+        "in-memory-llm"
+    }
+
+    fn capabilities(&self) -> LlmCapabilities {
+        LlmCapabilities {
+            supports_structured_output: true,
+            ..Default::default()
+        }
+    }
+
+    async fn generate_memory_draft(
+        &self,
+        _system: &str,
+        user: &str,
+    ) -> Result<MemoryDraft, LlmError> {
+        let title = user
+            .split_whitespace()
+            .take(4)
+            .collect::<Vec<_>>()
+            .join(" ");
+        let title = if title.is_empty() {
+            "Sans titre".into()
+        } else {
+            title
+        };
+        Ok(MemoryDraft {
+            title,
+            content: user.into(),
+            tags: vec![],
+            backlinks: vec![],
+        })
+    }
+
+    async fn chat(
+        &self,
+        messages: &[crate::llm::ChatMessage],
+    ) -> Result<String, LlmError> {
+        Ok(messages
+            .last()
+            .map(|m| m.content.clone())
+            .unwrap_or_default())
     }
 }
 
@@ -326,6 +387,6 @@ mod tests {
     async fn mock_bundle_into_deps() {
         let bundle = MockBundle::new();
         let deps = bundle.into_deps();
-        assert_eq!(deps.config.embedding_dim, 8);
+        assert_eq!(deps.config.embedding_dim, 768);
     }
 }

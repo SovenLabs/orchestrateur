@@ -37,7 +37,7 @@ impl SearchMemories {
         let mut hits = self
             .deps
             .vector_store
-            .hybrid_search(&embedding, &vector_filter)
+            .hybrid_search(embedding.as_slice(), &vector_filter)
             .await?;
 
         if let Some(min) = filter.min_score {

@@ -19,6 +19,8 @@ pub mod error;
 pub mod events;
 /// Facade publique stable (`OrchestratorFacade`).
 pub mod facade;
+/// Ports LLM — génération de [`MemoryDraft`] et chat.
+pub mod llm;
 /// Brouillon structuré issu des providers IA (`MemoryDraft`).
 pub mod memory_draft;
 /// Squelette Skills (trait, registre, noop).
@@ -29,11 +31,15 @@ pub mod use_cases;
 /// Mocks in-memory des ports pour tests isolés.
 pub mod testing;
 
-pub use config::{ConfigError, OrchestratorConfig};
+pub use config::{
+    ConfigError, OllamaConfig, OrchestratorConfig, ProvidersConfig, VectorStoreConfig, XaiConfig,
+};
 pub use deps::AppDependencies;
 pub use error::{OrchestratorError, SkillError};
 pub use events::{EventPublisher, NoopEventPublisher, TracingEventPublisher};
 pub use facade::OrchestratorFacade;
+pub use use_cases::DEFAULT_ASSIMILATION_SYSTEM_PROMPT;
+pub use llm::{ChatMessage, LlmCapabilities, LlmError, LlmProvider};
 pub use memory_draft::{BacklinkDraft, BacklinkDraftKind, MemoryDraft};
 pub use skills::{NoopSkill, Skill, SkillContext, SkillOutput, SkillRegistry};
 

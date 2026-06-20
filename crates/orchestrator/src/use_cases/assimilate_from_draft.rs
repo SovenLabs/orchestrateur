@@ -41,7 +41,7 @@ impl AssimilateFromDraft {
         let corpus = self.build_embedding_corpus(memory.id).await?;
         let semantic = BacklinkCalculator::compute_semantic_backlinks(
             memory.id,
-            &embedding,
+            embedding.as_slice(),
             &corpus,
             self.deps.config.similarity_thresholds,
         )?;
@@ -54,7 +54,7 @@ impl AssimilateFromDraft {
         self.deps.memory_repo.save(&memory).await?;
         self.deps
             .vector_store
-            .upsert(memory.id, &embedding)
+            .upsert(memory.id, embedding.as_slice())
             .await?;
 
         let all_memories = self.deps.memory_repo.list().await?;
@@ -95,7 +95,7 @@ impl AssimilateFromDraft {
             } else {
                 let text = format!("{} {}", mem.title, mem.content);
                 tracing::debug!(memory_id = %mem.id, "embedding calculé (cache absent)");
-                self.deps.embedding.embed(&text).await?
+                self.deps.embedding.embed(&text).await?.into_vec()
             };
             corpus.push((mem.id, embedding));
         }
@@ -110,7 +110,7 @@ mod tests {
     use crate::memory_draft::{BacklinkDraft, BacklinkDraftKind, MemoryDraft};
     use crate::testing::MockBundle;
     use crate::use_cases::save_memory::SaveMemory;
-    use cortex::{DomainEvent, Memory, MemoryRepository};
+    use cortex::{DomainEvent, Memory};
 
     #[tokio::test]
     async fn assimilates_valid_draft_and_emits_event() {

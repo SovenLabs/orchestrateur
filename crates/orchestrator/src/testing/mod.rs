@@ -3,5 +3,6 @@
 mod mocks;
 
 pub use mocks::{
-    InMemoryEmbeddingProvider, InMemoryMemoryRepository, InMemoryVectorStore, MockBundle,
+    InMemoryEmbeddingProvider, InMemoryLlmProvider, InMemoryMemoryRepository,
+    InMemoryVectorStore, MockBundle,
 };

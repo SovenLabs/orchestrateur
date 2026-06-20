@@ -4,6 +4,7 @@ use cortex::{EmbeddingProvider, MemoryRepository, VectorStore};
 
 use crate::config::OrchestratorConfig;
 use crate::events::{EventPublisher, TracingEventPublisher};
+use crate::llm::LlmProvider;
 
 /// Injection des ports Cortex — seul point de couplage vers l'infrastructure future.
 #[derive(Clone)]
@@ -14,6 +15,8 @@ pub struct AppDependencies {
     pub vector_store: Arc<dyn VectorStore>,
     /// Génération d'embeddings.
     pub embedding: Arc<dyn EmbeddingProvider>,
+    /// Génération LLM (Structured Outputs, chat).
+    pub llm: Arc<dyn LlmProvider>,
     /// Configuration applicative.
     pub config: OrchestratorConfig,
     /// Publication des événements de domaine.
@@ -27,12 +30,14 @@ impl AppDependencies {
         memory_repo: Arc<dyn MemoryRepository>,
         vector_store: Arc<dyn VectorStore>,
         embedding: Arc<dyn EmbeddingProvider>,
+        llm: Arc<dyn LlmProvider>,
         config: OrchestratorConfig,
     ) -> Self {
         Self::with_events(
             memory_repo,
             vector_store,
             embedding,
+            llm,
             config,
             Arc::new(TracingEventPublisher),
         )
@@ -44,6 +49,7 @@ impl AppDependencies {
         memory_repo: Arc<dyn MemoryRepository>,
         vector_store: Arc<dyn VectorStore>,
         embedding: Arc<dyn EmbeddingProvider>,
+        llm: Arc<dyn LlmProvider>,
         config: OrchestratorConfig,
         events: Arc<dyn EventPublisher>,
     ) -> Self {
@@ -51,6 +57,7 @@ impl AppDependencies {
             memory_repo,
             vector_store,
             embedding,
+            llm,
             config,
             events,
         }

@@ -26,7 +26,10 @@ pub use domain::{
     Memory, MemoryAssimilated,
     MemoryId, Tag,
 };
-pub use ports::{EmbeddingProvider, MemoryRepository, SearchFilter, SearchHit, VectorStore};
+pub use ports::{
+    Embedding, EmbeddingCapabilities, EmbeddingError, EmbeddingProvider, MemoryRepository,
+    SearchFilter, SearchHit, VectorStore,
+};
 pub use services::{
     BacklinkCalculator, BacklinkCandidate, MarkdownParser, MemoryDocument, SimilarityThresholds,
     cosine_similarity, parse_memory_markdown, serialize_memory,

@@ -8,9 +8,17 @@ description = "Orchestrateur — Adapters (FS, LanceDB, Ollama, Grok)"
 
 [dependencies]
 async-trait.workspace = true
+arrow-array.workspace = true
+arrow-schema.workspace = true
 cortex.workspace = true
+futures.workspace = true
+lancedb.workspace = true
+orchestrator.workspace = true
+reqwest.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 tracing.workspace = true
 
 [dev-dependencies]

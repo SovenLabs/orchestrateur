@@ -160,7 +160,10 @@ mod tests {
     #[test]
     fn new_memory_has_uuid_v7() {
         let mem = Memory::new("Titre", "Contenu").unwrap();
-        assert_eq!(mem.id.as_uuid().get_version(), Some(uuid::Version::SortRand));
+        assert_eq!(
+            mem.id.as_uuid().get_version(),
+            Some(uuid::Version::SortRand)
+        );
     }
 
     #[test]
@@ -170,7 +173,10 @@ mod tests {
 
     #[test]
     fn rejects_empty_content() {
-        assert!(matches!(Memory::new("t", ""), Err(CortexError::EmptyContent)));
+        assert!(matches!(
+            Memory::new("t", ""),
+            Err(CortexError::EmptyContent)
+        ));
     }
 
     #[test]

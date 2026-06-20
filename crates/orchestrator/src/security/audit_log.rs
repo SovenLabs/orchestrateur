@@ -110,10 +110,7 @@ impl AuditLog {
         }
         let timestamp = Utc::now().to_rfc3339();
         let mut state = lock_or_recover(&self.state);
-        let payload = format!(
-            "{timestamp}|{event_type}|{details}|{}",
-            state.last_hash
-        );
+        let payload = format!("{timestamp}|{event_type}|{details}|{}", state.last_hash);
         let hash = hash_payload(payload.as_bytes());
         let event = AuditEvent {
             timestamp,
@@ -122,7 +119,8 @@ impl AuditLog {
             previous_hash: state.last_hash.clone(),
             hash: hash.clone(),
         };
-        let line = serde_json::to_string(&event).map_err(|e| AuditError::Serialize(e.to_string()))?;
+        let line =
+            serde_json::to_string(&event).map_err(|e| AuditError::Serialize(e.to_string()))?;
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)
@@ -168,9 +166,8 @@ fn load_last_hash(path: &Path) -> Result<String, AuditError> {
     let Some(last_line) = raw.lines().rfind(|l| !l.trim().is_empty()) else {
         return Ok(AUDIT_GENESIS.to_string());
     };
-    let event: AuditEvent = serde_json::from_str(last_line).map_err(|e| AuditError::Serialize(
-        e.to_string(),
-    ))?;
+    let event: AuditEvent =
+        serde_json::from_str(last_line).map_err(|e| AuditError::Serialize(e.to_string()))?;
     Ok(event.hash)
 }
 

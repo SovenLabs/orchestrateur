@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
 use async_trait::async_trait;
-use cortex::{serialize_memory, CortexError, Memory, MemoryId, MemoryRepository, parse_memory_markdown};
+use cortex::{
+    parse_memory_markdown, serialize_memory, CortexError, Memory, MemoryId, MemoryRepository,
+};
 use tokio::fs;
 
 /// Persistance des mémoires au format Markdown canonique sur disque.
@@ -44,15 +46,13 @@ impl MemoryRepository for FileMemoryRepository {
 
     async fn get_by_id(&self, id: MemoryId) -> Result<Memory, CortexError> {
         let path = self.file_path(id);
-        let raw = fs::read_to_string(&path)
-            .await
-            .map_err(|e| {
-                if e.kind() == std::io::ErrorKind::NotFound {
-                    CortexError::MemoryNotFound(id)
-                } else {
-                    CortexError::GraphError(format!("lecture {}: {e}", path.display()))
-                }
-            })?;
+        let raw = fs::read_to_string(&path).await.map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                CortexError::MemoryNotFound(id)
+            } else {
+                CortexError::GraphError(format!("lecture {}: {e}", path.display()))
+            }
+        })?;
         let doc = parse_memory_markdown(&raw)?;
         Ok(doc.memory)
     }
@@ -84,15 +84,13 @@ impl MemoryRepository for FileMemoryRepository {
 
     async fn delete(&self, id: MemoryId) -> Result<(), CortexError> {
         let path = self.file_path(id);
-        fs::remove_file(&path)
-            .await
-            .map_err(|e| {
-                if e.kind() == std::io::ErrorKind::NotFound {
-                    CortexError::MemoryNotFound(id)
-                } else {
-                    CortexError::GraphError(format!("suppression {}: {e}", path.display()))
-                }
-            })?;
+        fs::remove_file(&path).await.map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                CortexError::MemoryNotFound(id)
+            } else {
+                CortexError::GraphError(format!("suppression {}: {e}", path.display()))
+            }
+        })?;
         Ok(())
     }
 }

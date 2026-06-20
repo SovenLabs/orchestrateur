@@ -23,9 +23,7 @@ pub fn visible_row_range(
     if total_rows == 0 {
         return (0, 0);
     }
-    let start_row = ((clip_min_y - content_min_y) / row_height)
-        .floor()
-        .max(0.0) as usize;
+    let start_row = ((clip_min_y - content_min_y) / row_height).floor().max(0.0) as usize;
     let end_row = (((clip_max_y - content_min_y) / row_height).ceil() as usize).min(total_rows);
     (start_row, end_row)
 }
@@ -52,8 +50,10 @@ pub fn show_virtual_memory_list(
         .show(ui, |ui| {
             let total_rows = memories.len();
             let total_height = total_rows as f32 * ROW_HEIGHT;
-            let (content_rect, _) =
-                ui.allocate_exact_size(Vec2::new(ui.available_width(), total_height), Sense::hover());
+            let (content_rect, _) = ui.allocate_exact_size(
+                Vec2::new(ui.available_width(), total_height),
+                Sense::hover(),
+            );
 
             let clip = ui.clip_rect();
             let (start_row, end_row) = visible_row_range(

@@ -31,6 +31,10 @@ pub enum Response {
         status: String,
         /// Version du crate orchestrateur.
         version: String,
+        /// Provider LLM joignable.
+        llm_available: bool,
+        /// Provider d'embeddings joignable (recherche sémantique).
+        embedding_available: bool,
     },
     /// Erreur métier ou technique sérialisable.
     Error(AppError),

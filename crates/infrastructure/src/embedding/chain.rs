@@ -17,7 +17,10 @@ impl ChainedEmbeddingProvider {
     /// Panique si la liste est vide (construction invalide).
     #[must_use]
     pub fn new(providers: Vec<Arc<dyn EmbeddingProvider>>) -> Self {
-        assert!(!providers.is_empty(), "au moins un embedding provider requis");
+        assert!(
+            !providers.is_empty(),
+            "au moins un embedding provider requis"
+        );
         Self { providers }
     }
 }

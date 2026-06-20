@@ -169,10 +169,11 @@ impl LlmProvider for XaiGrokProvider {
             return Err(map_llm_http_status("xai", response.status()));
         }
 
-        let parsed: XaiChatResponse = response.json().await.map_err(|e| LlmError::ProviderError {
-            provider: "xai".into(),
-            message: e.to_string(),
-        })?;
+        let parsed: XaiChatResponse =
+            response.json().await.map_err(|e| LlmError::ProviderError {
+                provider: "xai".into(),
+                message: e.to_string(),
+            })?;
 
         self.record_usage("generate_memory_draft", parsed.usage.as_ref());
         if let Some(usage) = &parsed.usage {
@@ -245,10 +246,11 @@ impl LlmProvider for XaiGrokProvider {
             return Err(map_llm_http_status("xai", response.status()));
         }
 
-        let parsed: XaiChatResponse = response.json().await.map_err(|e| LlmError::ProviderError {
-            provider: "xai".into(),
-            message: e.to_string(),
-        })?;
+        let parsed: XaiChatResponse =
+            response.json().await.map_err(|e| LlmError::ProviderError {
+                provider: "xai".into(),
+                message: e.to_string(),
+            })?;
 
         self.record_usage("chat", parsed.usage.as_ref());
 

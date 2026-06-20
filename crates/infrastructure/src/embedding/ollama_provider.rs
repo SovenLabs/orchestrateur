@@ -89,12 +89,14 @@ impl OllamaEmbeddingProvider {
             return Err(map_embedding_http_status("ollama", response.status()));
         }
 
-        let parsed: OllamaEmbeddingResponse = response.json().await.map_err(|e| {
-            EmbeddingError::InvalidResponse {
-                provider: "ollama".into(),
-                message: e.to_string(),
-            }
-        })?;
+        let parsed: OllamaEmbeddingResponse =
+            response
+                .json()
+                .await
+                .map_err(|e| EmbeddingError::InvalidResponse {
+                    provider: "ollama".into(),
+                    message: e.to_string(),
+                })?;
 
         Ok(parsed.embedding)
     }

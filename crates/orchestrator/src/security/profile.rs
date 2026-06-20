@@ -110,7 +110,10 @@ mod tests {
 
     #[test]
     fn parses_aliases() {
-        assert_eq!(SecurityProfile::parse("ai-assisted"), Some(SecurityProfile::AiAssisted));
+        assert_eq!(
+            SecurityProfile::parse("ai-assisted"),
+            Some(SecurityProfile::AiAssisted)
+        );
         assert_eq!(SecurityProfile::parse("unknown"), None);
     }
 }

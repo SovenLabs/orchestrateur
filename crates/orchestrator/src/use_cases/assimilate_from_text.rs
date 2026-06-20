@@ -69,6 +69,8 @@ mod tests {
             .unwrap();
         assert!(!memory.title.is_empty());
         assert!(memory.content.contains("hexagonale"));
-        assert!(events.iter().any(|e| matches!(e, DomainEvent::MemoryAssimilated(_))));
+        assert!(events
+            .iter()
+            .any(|e| matches!(e, DomainEvent::MemoryAssimilated(_))));
     }
 }

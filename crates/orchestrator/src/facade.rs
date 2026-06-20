@@ -82,7 +82,9 @@ impl OrchestratorFacade {
         query: &str,
         filter: &SearchFilter,
     ) -> Result<Vec<SearchHit>, OrchestratorError> {
-        SearchMemories::new(self.deps.clone()).execute(query, filter).await
+        SearchMemories::new(self.deps.clone())
+            .execute(query, filter)
+            .await
     }
 
     /// Assimile un brouillon pré-construit (sans appel LLM).
@@ -178,7 +180,9 @@ mod tests {
         };
         let (memory, events) = f.assimilate_from_draft(draft).await.unwrap();
         assert_eq!(memory.title, "Nouveau");
-        assert!(events.iter().any(|e| matches!(e, DomainEvent::MemoryAssimilated(_))));
+        assert!(events
+            .iter()
+            .any(|e| matches!(e, DomainEvent::MemoryAssimilated(_))));
     }
 
     #[tokio::test]

@@ -68,7 +68,11 @@ impl LancedbVectorStore {
         ]))
     }
 
-    fn record_batch(memory_id: &str, embedding: &[f32], dimension: usize) -> Result<RecordBatch, CortexError> {
+    fn record_batch(
+        memory_id: &str,
+        embedding: &[f32],
+        dimension: usize,
+    ) -> Result<RecordBatch, CortexError> {
         if embedding.len() != dimension {
             return Err(CortexError::GraphError(format!(
                 "dimension embedding {} != attendue {dimension}",
@@ -80,7 +84,8 @@ impl LancedbVectorStore {
         let values: Vec<Option<f32>> = embedding.iter().map(|v| Some(*v)).collect();
         let list = FixedSizeListArray::from_iter_primitive::<Float32Type, _, _>(
             std::iter::once(Some(values)),
-            i32::try_from(dimension).map_err(|_| CortexError::GraphError("dimension invalide".into()))?,
+            i32::try_from(dimension)
+                .map_err(|_| CortexError::GraphError("dimension invalide".into()))?,
         );
         RecordBatch::try_new(schema, vec![Arc::new(ids), Arc::new(list)])
             .map_err(|e| CortexError::GraphError(e.to_string()))
@@ -137,11 +142,7 @@ impl LancedbVectorStore {
                 .num_partitions(1)
                 .sample_rate(1),
         );
-        match table
-            .create_index(&["embedding"], index)
-            .execute()
-            .await
-        {
+        match table.create_index(&["embedding"], index).execute().await {
             Ok(()) => {
                 *created = true;
                 tracing::info!("index vectoriel LanceDB créé à l'initialisation");

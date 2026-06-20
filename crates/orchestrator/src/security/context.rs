@@ -6,7 +6,7 @@ use cortex::{Memory, MemoryId, MemoryRepository};
 
 use crate::config::OrchestratorConfig;
 
-use super::audit_log::{AuditLog, AuditError};
+use super::audit_log::{AuditError, AuditLog};
 use super::behavioral_guard::{BehavioralError, BehavioralGuard};
 use super::honeypot::{is_honeypot_memory, seed_honeypots_if_needed};
 use super::integrity::{verify_config_integrity, IntegrityError, IntegrityStatus};
@@ -77,10 +77,9 @@ impl SecurityContext {
         }
         let ids = seed_honeypots_if_needed(repo, config.security.integrity.honeypot_count).await?;
         if !ids.is_empty() {
-            let _ = self.audit.record(
-                "honeypot_seed",
-                &format!("count={}", ids.len()),
-            );
+            let _ = self
+                .audit
+                .record("honeypot_seed", &format!("count={}", ids.len()));
         }
         Ok(ids)
     }
@@ -102,9 +101,7 @@ impl SecurityContext {
     /// # Errors
     ///
     /// Retourne [`SecurityGateError`] en mode dégradé ou si le rate limiting bloque.
-    pub fn gate_assimilation(
-        &self,
-    ) -> Result<(), SecurityGateError> {
+    pub fn gate_assimilation(&self) -> Result<(), SecurityGateError> {
         self.check_operational()?;
         self.behavioral.check_assimilation()?;
         Ok(())
@@ -169,8 +166,7 @@ impl SecurityContext {
     }
 
     fn audit_degraded(&self, reason: &str) -> Result<(), AuditError> {
-        self.audit
-            .record("integrity_degraded", reason)
+        self.audit.record("integrity_degraded", reason)
     }
 }
 

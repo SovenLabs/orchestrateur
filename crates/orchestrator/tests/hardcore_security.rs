@@ -4,9 +4,9 @@
 
 use cortex::MemoryRepository;
 use orchestrator::memory_draft::MemoryDraft;
+use orchestrator::security::{BehavioralGuard, SecurityContext};
 use orchestrator::testing::MockBundle;
 use orchestrator::use_cases::AssimilateFromDraft;
-use orchestrator::security::{BehavioralGuard, SecurityContext};
 use orchestrator::{
     BehavioralConfig, BehavioralError, OrchestratorError, SecurityGateError, ValidationError,
 };

@@ -5,9 +5,7 @@
 use std::sync::Arc;
 
 use orchestrator::memory_draft::MemoryDraft;
-use orchestrator::testing::{
-    assert_workspace_consistent, build_test_facade, MockBundle,
-};
+use orchestrator::testing::{assert_workspace_consistent, build_test_facade, MockBundle};
 use orchestrator::OrchestratorFacade;
 
 fn shared_facade() -> Arc<OrchestratorFacade> {
@@ -41,7 +39,10 @@ async fn intensity1_ten_parallel_assimilations() {
         }
     }
 
-    assert_eq!(ok, 10, "toutes les assimilations parallèles doivent réussir");
+    assert_eq!(
+        ok, 10,
+        "toutes les assimilations parallèles doivent réussir"
+    );
     assert_workspace_consistent(&deps)
         .await
         .expect("état cohérent après concurrence");

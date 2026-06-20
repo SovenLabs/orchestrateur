@@ -1,9 +1,14 @@
 /target/
 **/*.rs.bk
-Cargo.lock
 .idea/
 .vscode/
 *.pdb
+
+# Outils de build locaux (PROTOC vendored — voir .cargo/config.toml)
+.tools/
+
+# Workspace parasite si lancé depuis la racine du repo (cwd incorrect)
+/memories/
 
 # Workspace runtime (données locales)
 workspace/.vector/**
@@ -12,5 +17,6 @@ workspace/memories/*.md
 workspace/logs/*.log
 workspace/config/orchestrator.toml
 
-# Artefacts tests orchestrator (audit temporaire)
-crates/orchestrator/m/
+# LanceDB local (généré au premier run)
+workspace/.orchestrateur/**
+!workspace/.orchestrateur/.gitkeep

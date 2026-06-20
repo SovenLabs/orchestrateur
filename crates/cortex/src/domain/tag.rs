@@ -68,10 +68,7 @@ mod tests {
 
     #[test]
     fn rejects_empty() {
-        assert!(matches!(
-            Tag::new("  "),
-            Err(CortexError::InvalidTag(_))
-        ));
+        assert!(matches!(Tag::new("  "), Err(CortexError::InvalidTag(_))));
     }
 
     #[test]

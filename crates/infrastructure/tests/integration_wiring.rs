@@ -23,8 +23,7 @@ use std::sync::Arc;
 use cortex::{Memory, SearchFilter, VectorStore};
 use infrastructure::{build_app_dependencies, LancedbVectorStore};
 use orchestrator::{
-    testing::InMemoryVectorStore,
-    AppDependencies, OrchestratorConfig, OrchestratorFacade,
+    testing::InMemoryVectorStore, AppDependencies, OrchestratorConfig, OrchestratorFacade,
 };
 use tempfile::tempdir;
 
@@ -113,10 +112,7 @@ async fn lancedb_open_isolated() {
     let dir = tempdir().unwrap();
     let store = LancedbVectorStore::open(dir.path(), 4).await.unwrap();
     let mem = Memory::new("T", "C").unwrap();
-    store
-        .upsert(mem.id, &[1.0, 0.0, 0.0, 0.0])
-        .await
-        .unwrap();
+    store.upsert(mem.id, &[1.0, 0.0, 0.0, 0.0]).await.unwrap();
     let emb = store.get_embedding(mem.id).await.unwrap();
     assert!(emb.is_some());
 }

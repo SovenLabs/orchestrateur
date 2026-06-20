@@ -51,10 +51,7 @@ impl KnowledgeGraph {
     /// Voisins directs (cibles des backlinks).
     #[must_use]
     pub fn neighbors(&self, id: MemoryId) -> Vec<MemoryId> {
-        self.outgoing(id)
-            .iter()
-            .map(|bl| bl.target)
-            .collect()
+        self.outgoing(id).iter().map(|bl| bl.target).collect()
     }
 
     /// Nombre de nœuds connus.
@@ -134,7 +131,10 @@ mod tests {
     #[test]
     fn builds_from_memories() {
         let a = Memory::new("A", "ca").unwrap();
-        let b = sample_memory("B", vec![Backlink::new(a.id, 0.8, BacklinkKind::Semantic).unwrap()]);
+        let b = sample_memory(
+            "B",
+            vec![Backlink::new(a.id, 0.8, BacklinkKind::Semantic).unwrap()],
+        );
 
         let graph = KnowledgeGraph::from_memories(&[a, b]);
         assert_eq!(graph.node_count(), 2);
@@ -193,7 +193,9 @@ mod tests {
             vec![Backlink::new(target, 1.0, BacklinkKind::Semantic).unwrap()],
         );
         let graph = KnowledgeGraph::from_memories(std::slice::from_ref(&mem));
-        assert!(graph.validate_resolvable(std::slice::from_ref(&mem)).is_err());
+        assert!(graph
+            .validate_resolvable(std::slice::from_ref(&mem))
+            .is_err());
     }
 
     #[test]

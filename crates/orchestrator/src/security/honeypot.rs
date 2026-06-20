@@ -11,10 +11,7 @@ pub const CANARY_TITLE_PREFIX: &str = "\u{200B}canary-";
 /// Indique si une mémoire est un honeypot.
 #[must_use]
 pub fn is_honeypot_memory(memory: &Memory) -> bool {
-    memory
-        .tags
-        .iter()
-        .any(|tag| tag.as_str() == CANARY_TAG)
+    memory.tags.iter().any(|tag| tag.as_str() == CANARY_TAG)
         || memory.title.starts_with(CANARY_TITLE_PREFIX)
 }
 
@@ -41,9 +38,7 @@ pub async fn seed_honeypots_if_needed(
     let mut ids = Vec::with_capacity(count);
     for i in 0..count {
         let title = format!("{CANARY_TITLE_PREFIX}{i}");
-        let content = format!(
-            "CANARY_TOKEN_ORCHESTRATEUR_{i}_NE_PAS_MODIFIER_NI_EXFILTRER"
-        );
+        let content = format!("CANARY_TOKEN_ORCHESTRATEUR_{i}_NE_PAS_MODIFIER_NI_EXFILTRER");
         let mut memory = Memory::new(title, content)?;
         memory.add_tag(tag.clone());
         let id = memory.id;

@@ -4,6 +4,9 @@ use std::sync::Arc;
 use orchestrator::{LlmProvider, OrchestratorConfig};
 use reqwest::Client;
 use thiserror::Error;
+use tracing::warn;
+
+use crate::providers::UnavailableLlmProvider;
 
 use super::{ChainedLlmProvider, OllamaLlmProvider, XaiGrokProvider};
 
@@ -28,16 +31,28 @@ pub fn build_llm_provider(
     names.extend(config.providers.fallback_llm.clone());
 
     let mut providers: Vec<Arc<dyn LlmProvider>> = Vec::new();
+    let mut failures: Vec<String> = Vec::new();
     for name in names {
         if providers.iter().any(|p| p.name() == name) {
             continue;
         }
-        let provider = resolve_llm(name.as_str(), config, client)?;
-        providers.push(provider);
+        match resolve_llm(name.as_str(), config, client) {
+            Ok(provider) => providers.push(provider),
+            Err(err) => {
+                warn!(provider = %name, error = %err, "LLM provider ignoré au démarrage");
+                failures.push(format!("{name}: {err}"));
+            }
+        }
     }
 
     if providers.is_empty() {
-        return Err(LlmFactoryError::Build("aucun LLM provider configuré".into()));
+        let reason = if failures.is_empty() {
+            "aucun LLM provider configuré".to_string()
+        } else {
+            failures.join("; ")
+        };
+        warn!(reason = %reason, "démarrage avec LLM indisponible (mode dégradé)");
+        return Ok(Arc::new(UnavailableLlmProvider::new(reason)));
     }
 
     if providers.len() == 1 {
@@ -75,6 +90,8 @@ fn resolve_llm(
             config.ollama.timeout_secs,
             config.ollama.max_retries,
         ))),
-        other => Err(LlmFactoryError::Build(format!("LLM provider inconnu: {other}"))),
+        other => Err(LlmFactoryError::Build(format!(
+            "LLM provider inconnu: {other}"
+        ))),
     }
 }

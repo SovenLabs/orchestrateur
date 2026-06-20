@@ -1,6 +1,4 @@
-use cortex::{
-    BacklinkCalculator, DomainEvent, KnowledgeGraph, Memory, MemoryId,
-};
+use cortex::{BacklinkCalculator, DomainEvent, KnowledgeGraph, Memory, MemoryId};
 
 use crate::deps::AppDependencies;
 use crate::error::OrchestratorError;
@@ -27,7 +25,10 @@ impl AssimilateFromDraft {
     /// # Errors
     ///
     /// Propage une [`OrchestratorError`] si la validation, le graphe ou la persistance échoue.
-    pub async fn execute(&self, draft: MemoryDraft) -> Result<AssimilationResult, OrchestratorError> {
+    pub async fn execute(
+        &self,
+        draft: MemoryDraft,
+    ) -> Result<AssimilationResult, OrchestratorError> {
         self.deps.security.gate_assimilation()?;
 
         if self.deps.config.security.enabled {
@@ -309,7 +310,10 @@ mod tests {
             backlinks: vec![],
         };
 
-        let err = AssimilateFromDraft::new(deps).execute(draft).await.unwrap_err();
+        let err = AssimilateFromDraft::new(deps)
+            .execute(draft)
+            .await
+            .unwrap_err();
         assert!(matches!(
             err,
             OrchestratorError::Cortex(cortex::CortexError::MemoryNotFound(_))

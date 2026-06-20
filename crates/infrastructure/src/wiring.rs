@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use cortex::{EmbeddingProvider, MemoryRepository, VectorStore};
 use orchestrator::{
-    build_security_context, AppDependencies, LlmProvider, OrchestratorConfig, SecurityBootstrapError,
+    build_security_context, AppDependencies, LlmProvider, OrchestratorConfig,
+    SecurityBootstrapError,
 };
 use reqwest::Client;
 use thiserror::Error;

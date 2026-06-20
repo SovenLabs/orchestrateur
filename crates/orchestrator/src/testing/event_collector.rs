@@ -21,18 +21,12 @@ impl CollectingEventPublisher {
 
     /// Événements de domaine capturés.
     pub fn domain_events(&self) -> Vec<DomainEvent> {
-        self.domain
-            .lock()
-            .map(|g| g.clone())
-            .unwrap_or_default()
+        self.domain.lock().map(|g| g.clone()).unwrap_or_default()
     }
 
     /// Traces d'usage LLM capturées.
     pub fn llm_usage_events(&self) -> Vec<LlmUsageRecorded> {
-        self.llm_usage
-            .lock()
-            .map(|g| g.clone())
-            .unwrap_or_default()
+        self.llm_usage.lock().map(|g| g.clone()).unwrap_or_default()
     }
 
     /// Nombre d'assimilations enregistrées.

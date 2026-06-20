@@ -122,6 +122,10 @@ pub struct HudState {
     pub focus_search: bool,
     /// Afficher les métriques frame dans la barre.
     pub show_frame_metrics: bool,
+    /// Provider LLM joignable (assimilation / chat).
+    pub llm_available: bool,
+    /// Provider embeddings joignable (recherche sémantique).
+    pub embedding_available: bool,
 }
 
 impl Default for HudState {
@@ -146,6 +150,8 @@ impl Default for HudState {
             dark_mode: true,
             focus_search: false,
             show_frame_metrics: true,
+            llm_available: true,
+            embedding_available: true,
         }
     }
 }
@@ -155,9 +161,27 @@ impl HudState {
     #[must_use]
     pub fn apply_response(&mut self, response: Response) -> HudAction {
         match response {
-            Response::Health { status, version } => {
+            Response::Health {
+                status,
+                version,
+                llm_available,
+                embedding_available,
+            } => {
                 self.version = Some(version);
-                self.status = format!("Santé: {status}");
+                self.llm_available = llm_available;
+                self.embedding_available = embedding_available;
+                self.status = if status == "ok" {
+                    format!("Santé: {status}")
+                } else {
+                    let mut parts = vec!["Santé: dégradée".to_string()];
+                    if !llm_available {
+                        parts.push("LLM indisponible".into());
+                    }
+                    if !embedding_available {
+                        parts.push("recherche indisponible".into());
+                    }
+                    parts.join(" — ")
+                };
                 self.clear_busy();
                 HudAction::None
             }
@@ -190,13 +214,15 @@ impl HudState {
                 self.push_info(format!("Recherche : {count} hit(s)"));
                 HudAction::None
             }
-            Response::Event(event) => {
-                self.apply_domain_event(event)
-            }
+            Response::Event(event) => self.apply_domain_event(event),
             Response::Error(err) => {
                 self.status.clone_from(&err.message);
                 self.clear_busy();
-                self.push_error(format!("[{kind}] {msg}", kind = err.kind, msg = err.message));
+                self.push_error(format!(
+                    "[{kind}] {msg}",
+                    kind = err.kind,
+                    msg = err.message
+                ));
                 HudAction::None
             }
             Response::Success { message } => {
@@ -212,10 +238,7 @@ impl HudState {
     pub fn apply_domain_event(&mut self, event: DomainEvent) -> HudAction {
         match event {
             DomainEvent::MemoryAssimilated(payload) => {
-                self.push_success(format!(
-                    "Assimilation réussie ({})",
-                    payload.memory_id
-                ));
+                self.push_success(format!("Assimilation réussie ({})", payload.memory_id));
                 HudAction::RefreshList
             }
             DomainEvent::KnowledgeGraphValidated(payload) => {
@@ -296,8 +319,11 @@ mod tests {
         let _ = state.apply_response(Response::Health {
             status: "ok".into(),
             version: "0.3.0".into(),
+            llm_available: true,
+            embedding_available: true,
         });
         assert_eq!(state.version.as_deref(), Some("0.3.0"));
+        assert!(state.llm_available);
         assert!(!state.busy);
     }
 

@@ -19,7 +19,10 @@ pub struct ScriptedLlmProvider {
 impl ScriptedLlmProvider {
     /// Crée un provider nommé avec un script de réponses.
     #[must_use]
-    pub fn new(provider_name: &'static str, script: Vec<Result<MemoryDraft, LlmError>>) -> Arc<Self> {
+    pub fn new(
+        provider_name: &'static str,
+        script: Vec<Result<MemoryDraft, LlmError>>,
+    ) -> Arc<Self> {
         Arc::new(Self {
             provider_name,
             script: Mutex::new(script.into()),

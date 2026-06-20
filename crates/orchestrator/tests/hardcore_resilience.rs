@@ -47,7 +47,11 @@ async fn intensity1_fallback_xai_429_then_ollama_success() {
         .expect("le fallback Ollama doit réussir");
 
     assert_eq!(memory.title, "Ollama fallback");
-    assert_eq!(xai.call_count(), 1, "xAI ne doit être appelé qu'une fois avant fallback");
+    assert_eq!(
+        xai.call_count(),
+        1,
+        "xAI ne doit être appelé qu'une fois avant fallback"
+    );
 }
 
 #[tokio::test]

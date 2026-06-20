@@ -4,7 +4,11 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Orchestrateur — Binaire CLI (contrôle total terminal / VS Code) — Phase 3"
+description = "Orchestrateur — Binaire cœur (CLI + TUI optionnel) — Phase 5"
+
+[features]
+default = ["tui"]
+tui = ["orchestrator/tui"]
 
 [[bin]]
 name = "orchestrateur"

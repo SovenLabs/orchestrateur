@@ -30,8 +30,10 @@ pub fn show_virtual_search_list(
         .show(ui, |ui| {
             let total_rows = hits.len();
             let total_height = total_rows as f32 * SEARCH_ROW_HEIGHT;
-            let (content_rect, _) =
-                ui.allocate_exact_size(Vec2::new(ui.available_width(), total_height), Sense::hover());
+            let (content_rect, _) = ui.allocate_exact_size(
+                Vec2::new(ui.available_width(), total_height),
+                Sense::hover(),
+            );
 
             let clip = ui.clip_rect();
             let (start_row, end_row) = visible_row_range(
@@ -59,10 +61,7 @@ pub fn show_virtual_search_list(
                 ui.allocate_ui_at_rect(row_rect, |ui| {
                     ui.vertical(|ui| {
                         let score_pct = (hit.score.clamp(0.0, 1.0) * 100.0) as u32;
-                        let title = hit
-                            .snippet
-                            .as_deref()
-                            .unwrap_or(&hit.id);
+                        let title = hit.snippet.as_deref().unwrap_or(&hit.id);
                         let label = format!("{score_pct}% — {title}");
                         let response = ui.selectable_label(selected, label);
                         if response.clicked() {

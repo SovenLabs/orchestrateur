@@ -182,7 +182,9 @@ impl BehavioralGuard {
 
     fn prune_instant_vec(&self, vec: &mut Vec<Instant>) {
         let window = Duration::from_secs(self.config.window_secs);
-        let cutoff = Instant::now().checked_sub(window).unwrap_or_else(Instant::now);
+        let cutoff = Instant::now()
+            .checked_sub(window)
+            .unwrap_or_else(Instant::now);
         vec.retain(|t| *t >= cutoff);
     }
 

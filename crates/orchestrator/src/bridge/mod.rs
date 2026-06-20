@@ -1,4 +1,4 @@
-//! Bridge de communication HUD ↔ Orchestrateur (Phase 4).
+//! Bridge de communication Peau ↔ Orchestrateur (HUD egui, TUI ratatui, CLI).
 //!
 //! Contrat découplé : la présentation envoie des [`Command`] et reçoit des [`Response`]
 //! via le trait [`OrchestratorHandle`], sans accès direct aux ports Cortex.

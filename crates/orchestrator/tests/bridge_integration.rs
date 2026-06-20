@@ -7,10 +7,7 @@ use orchestrator::bridge::{Command, OrchestratorHandle, Response};
 use orchestrator::testing::MockBundle;
 use orchestrator::{spawn_orchestrator_bridge, OrchestratorFacade};
 
-fn wait_for_response(
-    handle: &impl OrchestratorHandle,
-    timeout: Duration,
-) -> Option<Response> {
+fn wait_for_response(handle: &impl OrchestratorHandle, timeout: Duration) -> Option<Response> {
     let deadline = std::time::Instant::now() + timeout;
     while std::time::Instant::now() < deadline {
         if let Ok(Some(response)) = handle.try_recv_response() {
@@ -33,9 +30,16 @@ fn bridge_health_check_roundtrip() {
 
     let response = response.expect("timeout health check");
     match response {
-        Response::Health { status, version } => {
+        Response::Health {
+            status,
+            version,
+            llm_available,
+            embedding_available,
+        } => {
             assert_eq!(status, "ok");
             assert!(!version.is_empty());
+            assert!(llm_available);
+            assert!(embedding_available);
         }
         other => panic!("réponse inattendue: {other:?}"),
     }
@@ -64,8 +68,7 @@ fn bridge_list_and_get_memory_roundtrip() {
         })
         .unwrap();
 
-    let list_response = wait_for_response(&handle, Duration::from_secs(2))
-        .expect("timeout list");
+    let list_response = wait_for_response(&handle, Duration::from_secs(2)).expect("timeout list");
     match list_response {
         Response::MemoryList { items, total } => {
             assert_eq!(total, 1);
@@ -75,13 +78,10 @@ fn bridge_list_and_get_memory_roundtrip() {
     }
 
     handle
-        .send_command(Command::GetMemory {
-            id: id.to_string(),
-        })
+        .send_command(Command::GetMemory { id: id.to_string() })
         .unwrap();
 
-    let detail_response = wait_for_response(&handle, Duration::from_secs(2))
-        .expect("timeout get");
+    let detail_response = wait_for_response(&handle, Duration::from_secs(2)).expect("timeout get");
     match detail_response {
         Response::MemoryDetail { memory: detail } => {
             assert_eq!(detail.id, id);

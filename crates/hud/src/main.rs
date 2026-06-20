@@ -23,7 +23,11 @@ use icon::app_icon;
 
 /// Orchestrateur HUD — interface native egui.
 #[derive(Parser)]
-#[command(name = "orchestrateur-hud", version, about = "Orchestrateur HUD egui — Phase 4")]
+#[command(
+    name = "orchestrateur-hud",
+    version,
+    about = "Orchestrateur HUD egui — Phase 4"
+)]
 struct Cli {
     /// Racine du workspace (défaut: ./workspace).
     #[arg(long, default_value = "workspace")]

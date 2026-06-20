@@ -28,15 +28,12 @@ pub fn build_test_facade(deps: AppDependencies) -> OrchestratorFacade {
 ///
 /// Retourne une description lisible si une incohérence est détectée.
 pub async fn assert_workspace_consistent(deps: &AppDependencies) -> Result<(), String> {
-    let memories = deps
-        .memory_repo
-        .list()
-        .await
-        .map_err(|e| e.to_string())?;
+    let memories = deps.memory_repo.list().await.map_err(|e| e.to_string())?;
 
     let graph = KnowledgeGraph::from_memories(&memories);
     graph.validate().map_err(|e| e.to_string())?;
-    graph.validate_resolvable(&memories)
+    graph
+        .validate_resolvable(&memories)
         .map_err(|e| e.to_string())?;
 
     for mem in &memories {
@@ -83,11 +80,7 @@ pub fn test_memories(count: usize) -> Result<Vec<Memory>, cortex::CortexError> {
 ///
 /// Retourne une description si un backlink cible une mémoire absente.
 pub async fn assert_no_ghost_nodes(deps: &AppDependencies) -> Result<(), String> {
-    let memories = deps
-        .memory_repo
-        .list()
-        .await
-        .map_err(|e| e.to_string())?;
+    let memories = deps.memory_repo.list().await.map_err(|e| e.to_string())?;
     let ids: std::collections::HashSet<MemoryId> = memories.iter().map(|m| m.id).collect();
 
     for mem in &memories {

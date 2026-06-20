@@ -35,7 +35,11 @@ impl Backlink {
                 "score hors bornes: {score}"
             )));
         }
-        Ok(Self { target, score, kind })
+        Ok(Self {
+            target,
+            score,
+            kind,
+        })
     }
 }
 

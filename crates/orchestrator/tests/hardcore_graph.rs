@@ -61,9 +61,7 @@ async fn intensity1_workspace_consistent_after_assimilations() {
     assert_workspace_consistent(&deps)
         .await
         .expect("cohérence workspace");
-    assert_no_ghost_nodes(&deps)
-        .await
-        .expect("pas de fantômes");
+    assert_no_ghost_nodes(&deps).await.expect("pas de fantômes");
 }
 
 #[tokio::test]

@@ -103,8 +103,7 @@ impl LlmError {
             Self::ProviderError { message, .. } => {
                 message.contains("HTTP 5") || message.contains("timeout")
             }
-            Self::AuthenticationFailed { .. }
-            | Self::StructuredOutputInvalid { .. } => false,
+            Self::AuthenticationFailed { .. } | Self::StructuredOutputInvalid { .. } => false,
         }
     }
 }

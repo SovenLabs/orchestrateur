@@ -154,9 +154,8 @@ fn write_manifest(path: &Path, hash: &str) -> Result<(), IntegrityError> {
         hash: hash.to_string(),
         source: "orchestrator.toml".into(),
     };
-    let json = serde_json::to_string_pretty(&manifest).map_err(|e| {
-        IntegrityError::InvalidManifest(e.to_string())
-    })?;
+    let json = serde_json::to_string_pretty(&manifest)
+        .map_err(|e| IntegrityError::InvalidManifest(e.to_string()))?;
     fs::write(path, json).map_err(|e| IntegrityError::Io {
         path: path.to_path_buf(),
         message: e.to_string(),

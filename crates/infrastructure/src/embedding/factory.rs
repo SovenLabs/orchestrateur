@@ -4,6 +4,9 @@ use cortex::EmbeddingProvider;
 use orchestrator::OrchestratorConfig;
 use reqwest::Client;
 use thiserror::Error;
+use tracing::warn;
+
+use crate::providers::UnavailableEmbeddingProvider;
 
 use super::{ChainedEmbeddingProvider, OllamaEmbeddingProvider};
 
@@ -28,18 +31,28 @@ pub fn build_embedding_provider(
     names.extend(config.providers.fallback_embedding.clone());
 
     let mut providers: Vec<Arc<dyn EmbeddingProvider>> = Vec::new();
+    let mut failures: Vec<String> = Vec::new();
     for name in names {
         if providers.iter().any(|p| p.name() == name) {
             continue;
         }
-        let provider = resolve_embedding(name.as_str(), config, client)?;
-        providers.push(provider);
+        match resolve_embedding(name.as_str(), config, client) {
+            Ok(provider) => providers.push(provider),
+            Err(err) => {
+                warn!(provider = %name, error = %err, "embedding provider ignoré au démarrage");
+                failures.push(format!("{name}: {err}"));
+            }
+        }
     }
 
     if providers.is_empty() {
-        return Err(EmbeddingFactoryError::Build(
-            "aucun embedding provider configuré".into(),
-        ));
+        let reason = if failures.is_empty() {
+            "aucun embedding provider configuré".to_string()
+        } else {
+            failures.join("; ")
+        };
+        warn!(reason = %reason, "démarrage avec embeddings indisponibles (mode dégradé)");
+        return Ok(Arc::new(UnavailableEmbeddingProvider::new(reason)));
     }
 
     if providers.len() == 1 {

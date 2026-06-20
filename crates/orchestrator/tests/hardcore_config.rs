@@ -9,7 +9,7 @@ use orchestrator::OrchestratorConfig;
 use reqwest::Client;
 
 #[tokio::test]
-async fn intensity1_missing_xai_key_fails_build_without_panic() {
+async fn intensity1_missing_xai_key_degrades_to_unavailable_without_panic() {
     let mut cfg = OrchestratorConfig::default();
     cfg.providers.primary_llm = "xai".into();
     cfg.providers.fallback_llm.clear();
@@ -18,13 +18,12 @@ async fn intensity1_missing_xai_key_fails_build_without_panic() {
     env::remove_var("HARDCORE_MISSING_XAI_KEY_TEST");
 
     let client = Client::builder().build().expect("client http");
-    let err = match build_llm_provider(&cfg, &client) {
-        Err(e) => e,
-        Ok(_) => panic!("clé absente = erreur claire"),
-    };
-    let msg = err.to_string();
-    assert!(msg.contains("HARDCORE_MISSING_XAI_KEY_TEST"));
-    assert!(!msg.contains("sk-"), "aucun secret ne doit fuiter dans l'erreur");
+    let provider = build_llm_provider(&cfg, &client).expect("démarrage dégradé sans panique");
+    assert_eq!(
+        provider.name(),
+        "unavailable",
+        "clé absente → stub unavailable, l'app peut s'ouvrir"
+    );
 }
 
 #[tokio::test]
@@ -39,8 +38,11 @@ async fn intensity1_ollama_embedding_factory_builds_without_api_key() {
 #[test]
 fn intensity1_incomplete_toml_uses_defaults() {
     let dir = tempfile::tempdir().expect("tempdir");
-    std::fs::write(dir.path().join("orchestrator.toml"), "[workspace]\npath = \"./m\"\n")
-        .expect("write toml");
+    std::fs::write(
+        dir.path().join("orchestrator.toml"),
+        "[workspace]\npath = \"./m\"\n",
+    )
+    .expect("write toml");
     let cfg = OrchestratorConfig::load_workspace(dir.path()).expect("charge defaults");
     assert_eq!(cfg.providers.primary_llm, "xai");
     assert_eq!(cfg.embedding_dim, 768);

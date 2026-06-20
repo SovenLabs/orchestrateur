@@ -23,14 +23,13 @@ pub mod services;
 
 pub use domain::{
     Backlink, BacklinkKind, CortexError, DomainEvent, KnowledgeGraph, KnowledgeGraphValidated,
-    Memory, MemoryAssimilated,
-    MemoryId, Tag,
+    Memory, MemoryAssimilated, MemoryId, Tag,
 };
 pub use ports::{
     Embedding, EmbeddingCapabilities, EmbeddingError, EmbeddingProvider, MemoryRepository,
     SearchFilter, SearchHit, VectorStore,
 };
 pub use services::{
-    BacklinkCalculator, BacklinkCandidate, MarkdownParser, MemoryDocument, SimilarityThresholds,
-    cosine_similarity, parse_memory_markdown, serialize_memory,
+    cosine_similarity, parse_memory_markdown, serialize_memory, BacklinkCalculator,
+    BacklinkCandidate, MarkdownParser, MemoryDocument, SimilarityThresholds,
 };

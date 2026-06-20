@@ -47,7 +47,11 @@ impl FrameMetrics {
 
     /// Percentile 99 approximatif (tri local, fenêtre ≤ 120).
     #[must_use]
-    #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss
+    )]
     pub fn p99(&self) -> Option<f32> {
         if self.samples.is_empty() {
             return None;

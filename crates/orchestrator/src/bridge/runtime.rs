@@ -8,6 +8,7 @@ use tracing::error;
 
 use crate::deps::AppDependencies;
 use crate::facade::OrchestratorFacade;
+use crate::health::probe_services;
 use crate::VERSION;
 
 use super::command::Command;
@@ -106,10 +107,20 @@ async fn orchestrator_loop(
 
 async fn dispatch_command(facade: &OrchestratorFacade, cmd: Command) -> Response {
     match cmd {
-        Command::HealthCheck => Response::Health {
-            status: "ok".to_string(),
-            version: VERSION.to_string(),
-        },
+        Command::HealthCheck => {
+            let probe = probe_services(facade.deps()).await;
+            let status = if probe.llm_available && probe.embedding_available {
+                "ok"
+            } else {
+                "degraded"
+            };
+            Response::Health {
+                status: status.to_string(),
+                version: VERSION.to_string(),
+                llm_available: probe.llm_available,
+                embedding_available: probe.embedding_available,
+            }
+        }
         Command::SubscribeToEvents => Response::Success {
             message: "abonnement événements actif".to_string(),
         },
@@ -119,21 +130,15 @@ async fn dispatch_command(facade: &OrchestratorFacade, cmd: Command) -> Response
             limit,
         } => match facade.list_memories().await {
             Ok(memories) => {
-                let mut summaries: Vec<MemorySummary> = memories
-                    .iter()
-                    .map(MemorySummary::from_memory)
-                    .collect();
+                let mut summaries: Vec<MemorySummary> =
+                    memories.iter().map(MemorySummary::from_memory).collect();
                 if let Some(ref needle) = filter {
                     if !needle.is_empty() {
                         summaries.retain(|item| item.matches_filter(needle));
                     }
                 }
                 let total = summaries.len();
-                let items = summaries
-                    .into_iter()
-                    .skip(offset)
-                    .take(limit)
-                    .collect();
+                let items = summaries.into_iter().skip(offset).take(limit).collect();
                 Response::MemoryList { items, total }
             }
             Err(err) => Response::Error(AppError::from_orchestrator(&err)),
@@ -195,9 +200,16 @@ mod tests {
         let facade = OrchestratorFacade::new(MockBundle::new().into_deps());
         let response = dispatch_command(&facade, Command::HealthCheck).await;
         match response {
-            Response::Health { status, version } => {
+            Response::Health {
+                status,
+                version,
+                llm_available,
+                embedding_available,
+            } => {
                 assert_eq!(status, "ok");
                 assert_eq!(version, VERSION);
+                assert!(llm_available);
+                assert!(embedding_available);
             }
             other => panic!("réponse inattendue: {other:?}"),
         }
@@ -259,9 +271,6 @@ mod tests {
             }
             other => panic!("réponse inattendue: {other:?}"),
         }
-        assert!(
-            elapsed.as_millis() < 2000,
-            "list 5k trop lent: {elapsed:?}"
-        );
+        assert!(elapsed.as_millis() < 2000, "list 5k trop lent: {elapsed:?}");
     }
 }

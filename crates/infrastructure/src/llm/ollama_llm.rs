@@ -136,10 +136,11 @@ impl LlmProvider for OllamaLlmProvider {
             return Err(map_llm_http_status("ollama", response.status()));
         }
 
-        let parsed: OllamaChatResponse = response.json().await.map_err(|e| LlmError::ProviderError {
-            provider: "ollama".into(),
-            message: e.to_string(),
-        })?;
+        let parsed: OllamaChatResponse =
+            response.json().await.map_err(|e| LlmError::ProviderError {
+                provider: "ollama".into(),
+                message: e.to_string(),
+            })?;
 
         tracing::info!(
             provider = "ollama",
@@ -192,10 +193,11 @@ impl LlmProvider for OllamaLlmProvider {
             return Err(map_llm_http_status("ollama", response.status()));
         }
 
-        let parsed: OllamaChatResponse = response.json().await.map_err(|e| LlmError::ProviderError {
-            provider: "ollama".into(),
-            message: e.to_string(),
-        })?;
+        let parsed: OllamaChatResponse =
+            response.json().await.map_err(|e| LlmError::ProviderError {
+                provider: "ollama".into(),
+                message: e.to_string(),
+            })?;
         Ok(parsed.message.content)
     }
 }

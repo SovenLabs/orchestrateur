@@ -212,8 +212,7 @@ mod tests {
     fn merge_deduplicates_explicit() {
         let target = MemoryId::new();
         let semantic = vec![Backlink::new(target, 0.8, BacklinkKind::Semantic).unwrap()];
-        let merged =
-            BacklinkCalculator::merge_backlinks(semantic.clone(), vec![target]).unwrap();
+        let merged = BacklinkCalculator::merge_backlinks(semantic.clone(), vec![target]).unwrap();
         assert_eq!(merged.len(), 1);
         assert_eq!(merged[0].kind, BacklinkKind::Semantic);
     }

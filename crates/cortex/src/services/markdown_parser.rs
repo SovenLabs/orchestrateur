@@ -6,9 +6,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::domain::{
-    Backlink, CortexError, Memory, MemoryId, Tag,
-};
+use crate::domain::{Backlink, CortexError, Memory, MemoryId, Tag};
 
 /// Frontmatter YAML — contrat strict (champs inconnus rejetés).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -62,9 +60,8 @@ impl MarkdownParser {
 pub fn parse_memory_markdown(raw: &str) -> Result<MemoryDocument, CortexError> {
     let (yaml_part, body_part) = split_frontmatter(raw.trim())?;
 
-    let frontmatter: MemoryFrontmatter = serde_yaml::from_str(yaml_part).map_err(|e| {
-        CortexError::InvalidFrontmatter(e.to_string())
-    })?;
+    let frontmatter: MemoryFrontmatter = serde_yaml::from_str(yaml_part)
+        .map_err(|e| CortexError::InvalidFrontmatter(e.to_string()))?;
 
     let memory = Memory::reconstruct(
         frontmatter.id,

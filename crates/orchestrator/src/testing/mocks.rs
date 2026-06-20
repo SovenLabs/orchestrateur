@@ -111,7 +111,10 @@ impl MemoryRepository for InMemoryMemoryRepository {
             .inner
             .read()
             .map_err(|e| CortexError::GraphError(e.to_string()))?;
-        guard.get(&id).cloned().ok_or(CortexError::MemoryNotFound(id))
+        guard
+            .get(&id)
+            .cloned()
+            .ok_or(CortexError::MemoryNotFound(id))
     }
 
     async fn list(&self) -> Result<Vec<Memory>, CortexError> {
@@ -211,7 +214,9 @@ impl VectorStore for InMemoryVectorStore {
         filter: &SearchFilter,
     ) -> Result<Vec<SearchHit>, CortexError> {
         let candidate_limit = filter.limit.unwrap_or(256);
-        let mut hits = self.semantic_search(query_embedding, candidate_limit).await?;
+        let mut hits = self
+            .semantic_search(query_embedding, candidate_limit)
+            .await?;
 
         if let Some(min) = filter.min_score {
             hits.retain(|h| h.score >= min);
@@ -233,7 +238,9 @@ impl VectorStore for InMemoryVectorStore {
             .inner
             .write()
             .map_err(|e| CortexError::GraphError(e.to_string()))?;
-        guard.remove(&memory_id).ok_or(CortexError::MemoryNotFound(memory_id))?;
+        guard
+            .remove(&memory_id)
+            .ok_or(CortexError::MemoryNotFound(memory_id))?;
         Ok(())
     }
 }
@@ -322,10 +329,7 @@ impl LlmProvider for InMemoryLlmProvider {
         })
     }
 
-    async fn chat(
-        &self,
-        messages: &[crate::llm::ChatMessage],
-    ) -> Result<String, LlmError> {
+    async fn chat(&self, messages: &[crate::llm::ChatMessage]) -> Result<String, LlmError> {
         Ok(messages
             .last()
             .map(|m| m.content.clone())

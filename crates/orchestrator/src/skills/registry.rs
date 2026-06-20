@@ -48,11 +48,7 @@ impl SkillRegistry {
     /// # Errors
     ///
     /// Retourne [`SkillError::NotFound`] ou [`SkillError::ExecutionFailed`].
-    pub async fn execute(
-        &self,
-        name: &str,
-        ctx: &SkillContext,
-    ) -> Result<SkillOutput, SkillError> {
+    pub async fn execute(&self, name: &str, ctx: &SkillContext) -> Result<SkillOutput, SkillError> {
         let skill = self
             .skills
             .get(name)
@@ -83,7 +79,10 @@ mod tests {
     #[tokio::test]
     async fn unknown_skill_returns_not_found() {
         let registry = SkillRegistry::new();
-        let err = registry.execute("missing", &SkillContext).await.unwrap_err();
+        let err = registry
+            .execute("missing", &SkillContext)
+            .await
+            .unwrap_err();
         assert_eq!(err, SkillError::NotFound("missing".into()));
     }
 }

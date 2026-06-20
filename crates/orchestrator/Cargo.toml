@@ -4,7 +4,11 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Orchestrateur — Esprit (use cases, facade, skills, bridge HUD) — Phase 4"
+description = "Orchestrateur — Esprit (use cases, facade, skills, bridge, TUI) — Phase 5"
+
+[features]
+default = []
+tui = ["dep:ratatui", "dep:crossterm"]
 
 [dependencies]
 async-trait.workspace = true
@@ -15,9 +19,11 @@ flume.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 thiserror.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
 toml.workspace = true
 tracing.workspace = true
+ratatui = { workspace = true, optional = true }
+crossterm = { workspace = true, optional = true }
 
 [dev-dependencies]
 infrastructure = { workspace = true }

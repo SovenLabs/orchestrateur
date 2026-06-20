@@ -165,9 +165,10 @@ impl MemoryDraftValidator {
     }
 
     fn check_control_characters(text: &str) -> Result<(), ValidationError> {
-        if text.chars().any(|c| {
-            c.is_control() && c != '\n' && c != '\r' && c != '\t'
-        }) {
+        if text
+            .chars()
+            .any(|c| c.is_control() && c != '\n' && c != '\r' && c != '\t')
+        {
             return Err(ValidationError::ControlCharacters);
         }
         Ok(())
@@ -200,9 +201,9 @@ impl MemoryDraftValidator {
 
 fn is_allowed_tag_chars(tag: &str) -> bool {
     !tag.is_empty()
-        && tag.chars().all(|c| {
-            c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '-'
-        })
+        && tag
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '-')
 }
 
 fn normalize_for_scan(text: &str) -> String {
@@ -213,8 +214,14 @@ fn normalize_for_scan(text: &str) -> String {
 }
 
 const INJECTION_PHRASES: &[(&str, &str)] = &[
-    ("ignore all previous instructions", "ignore all previous instructions"),
-    ("ignore previous instructions", "ignore previous instructions"),
+    (
+        "ignore all previous instructions",
+        "ignore all previous instructions",
+    ),
+    (
+        "ignore previous instructions",
+        "ignore previous instructions",
+    ),
     ("disregard all prior", "disregard all prior"),
     ("disregard prior", "disregard prior"),
     ("system prompt", "system prompt"),
@@ -261,8 +268,8 @@ fn find_injection_pattern(text: &str) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cortex::MemoryId;
     use crate::memory_draft::{BacklinkDraft, BacklinkDraftKind, MemoryDraft};
+    use cortex::MemoryId;
 
     fn validator() -> MemoryDraftValidator {
         MemoryDraftValidator::from_config(&SecurityConfig::default())

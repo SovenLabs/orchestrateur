@@ -21,6 +21,8 @@ pub mod error;
 pub mod events;
 /// Facade publique stable (`OrchestratorFacade`).
 pub mod facade;
+/// Sondes de disponibilité providers (health bridge).
+pub mod health;
 /// Ports LLM — génération de [`MemoryDraft`] et chat.
 pub mod llm;
 /// Brouillon structuré issu des providers IA (`MemoryDraft`).
@@ -29,6 +31,9 @@ pub mod memory_draft;
 pub mod security;
 /// Squelette Skills (trait, registre, noop).
 pub mod skills;
+/// Interface terminal ratatui (feature `tui` uniquement).
+#[cfg(feature = "tui")]
+pub mod tui;
 /// Use cases applicatifs testables en mémoire.
 pub mod use_cases;
 
@@ -44,20 +49,22 @@ pub use config::{
     AuditConfig, BehavioralConfig, ConfigError, IntegrityConfig, OllamaConfig, OrchestratorConfig,
     ProvidersConfig, SecurityConfig, VectorStoreConfig, XaiConfig,
 };
-pub use security::{
-    build_security_context, build_test_security_context, BehavioralError, IntegrityStatus,
-    MemoryDraftValidator, SecurityBootstrapError, SecurityContext, SecurityGateError,
-    SecurityProfile, ValidationError,
-};
 pub use cortex::DomainEvent;
 pub use deps::AppDependencies;
 pub use error::{OrchestratorError, SkillError};
 pub use events::{EventPublisher, NoopEventPublisher, TracingEventPublisher};
 pub use facade::OrchestratorFacade;
-pub use use_cases::DEFAULT_ASSIMILATION_SYSTEM_PROMPT;
 pub use llm::{ChatMessage, LlmCapabilities, LlmError, LlmProvider, LlmUsageRecorded};
 pub use memory_draft::{BacklinkDraft, BacklinkDraftKind, MemoryDraft};
+pub use security::{
+    build_security_context, build_test_security_context, BehavioralError, IntegrityStatus,
+    MemoryDraftValidator, SecurityBootstrapError, SecurityContext, SecurityGateError,
+    SecurityProfile, ValidationError,
+};
 pub use skills::{NoopSkill, Skill, SkillContext, SkillOutput, SkillRegistry};
+#[cfg(feature = "tui")]
+pub use tui::TuiApp;
+pub use use_cases::DEFAULT_ASSIMILATION_SYSTEM_PROMPT;
 
 /// Version du crate alignée sur le workspace.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

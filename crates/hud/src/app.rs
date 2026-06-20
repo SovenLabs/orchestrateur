@@ -113,32 +113,33 @@ impl HudApp {
     }
 
     fn request_search(&mut self) {
+        if !self.state.embedding_available {
+            self.state
+                .push_error("Recherche indisponible — provider embeddings hors ligne");
+            return;
+        }
         let query = self.state.search_query.trim().to_string();
         if query.is_empty() {
             self.state.left_panel = LeftPanelMode::Memories;
             self.request_list();
             return;
         }
-        self.send_command(
-            Command::Search {
-                query,
-                limit: 50,
-            },
-            "Recherche…",
-        );
+        self.send_command(Command::Search { query, limit: 50 }, "Recherche…");
     }
 
     fn request_assimilate(&mut self) {
+        if !self.state.llm_available {
+            self.state
+                .push_error("LLM indisponible — assimilation désactivée");
+            return;
+        }
         let text = self.state.assimilate_text.trim().to_string();
         if text.is_empty() {
             self.state.push_error("Texte d'assimilation vide");
             return;
         }
         let tags = self.state.parsed_assimilate_tags();
-        self.send_command(
-            Command::Assimilate { text, tags },
-            "Assimilation LLM…",
-        );
+        self.send_command(Command::Assimilate { text, tags }, "Assimilation LLM…");
     }
 
     fn request_detail(&mut self, id: String) {
@@ -195,7 +196,10 @@ impl HudApp {
                     }
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.button(if self.state.dark_mode { "☀" } else { "☾" }).clicked() {
+                    if ui
+                        .button(if self.state.dark_mode { "☀" } else { "☾" })
+                        .clicked()
+                    {
                         self.state.dark_mode = !self.state.dark_mode;
                     }
                     if ui
@@ -208,7 +212,14 @@ impl HudApp {
                         self.request_list();
                     }
                     let busy = self.state.busy;
-                    if ui.add_enabled(!busy, egui::Button::new("Rechercher")).clicked() {
+                    let search_ok = self.state.embedding_available;
+                    if ui
+                        .add_enabled(!busy && search_ok, egui::Button::new("Rechercher"))
+                        .on_disabled_hover_text(
+                            "Recherche indisponible — provider embeddings hors ligne",
+                        )
+                        .clicked()
+                    {
                         self.request_search();
                     }
                 });
@@ -255,7 +266,12 @@ impl HudApp {
                 );
                 ui.horizontal(|ui| {
                     let busy = self.state.busy;
-                    if ui.add_enabled(!busy, egui::Button::new("Lancer assimilation")).clicked() {
+                    let llm_ok = self.state.llm_available;
+                    if ui
+                        .add_enabled(!busy && llm_ok, egui::Button::new("Lancer assimilation"))
+                        .on_disabled_hover_text("LLM indisponible — assimilation désactivée")
+                        .clicked()
+                    {
                         self.request_assimilate();
                     }
                     if ui.button("Effacer").clicked() {
@@ -267,20 +283,41 @@ impl HudApp {
     }
 
     fn draw_search_panel(&mut self, ctx: &Context) {
+        let search_ok = self.state.embedding_available;
+        let accent = if search_ok {
+            ui_visual_weak(ctx)
+        } else {
+            egui::Color32::from_rgb(220, 80, 80)
+        };
+
         TopBottomPanel::bottom("search_panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label("Recherche:");
-                let response = ui.add(
-                    egui::TextEdit::singleline(&mut self.state.search_query)
-                        .id(self.search_id)
-                        .hint_text("Ctrl+K — recherche sémantique"),
-                );
-                if self.state.focus_search {
+                let label = if search_ok {
+                    "Recherche:"
+                } else {
+                    "Recherche (indisponible):"
+                };
+                ui.colored_label(accent, label);
+                let hint = if search_ok {
+                    "Ctrl+K — recherche sémantique"
+                } else {
+                    "Provider embeddings hors ligne — liste et détail restent disponibles"
+                };
+                let text_edit = egui::TextEdit::singleline(&mut self.state.search_query)
+                    .id(self.search_id)
+                    .hint_text(hint);
+                let response = if search_ok {
+                    ui.add(text_edit)
+                } else {
+                    ui.add_enabled(false, text_edit)
+                };
+                if self.state.focus_search && search_ok {
                     response.request_focus();
                     self.state.focus_search = false;
                 }
-                if ui.button("Go").clicked()
-                    || (response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)))
+                if search_ok
+                    && (ui.button("Go").clicked()
+                        || (response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter))))
                 {
                     self.request_search();
                 }
@@ -296,9 +333,7 @@ impl HudApp {
                     for toast in &self.state.toasts {
                         let fill = match toast.kind {
                             ToastKind::Error => ui.visuals().error_fg_color.gamma_multiply(0.18),
-                            ToastKind::Success => {
-                                ui.visuals().warn_fg_color.gamma_multiply(0.12)
-                            }
+                            ToastKind::Success => ui.visuals().warn_fg_color.gamma_multiply(0.12),
                             ToastKind::Info => ui.visuals().weak_text_color().gamma_multiply(0.15),
                         };
                         egui::Frame::popup(ui.style()).fill(fill).show(ui, |ui| {
@@ -379,7 +414,7 @@ impl HudApp {
 
     fn handle_shortcuts(&mut self, ctx: &Context) {
         ctx.input(|i| {
-            if i.modifiers.ctrl && i.key_pressed(egui::Key::K) {
+            if i.modifiers.ctrl && i.key_pressed(egui::Key::K) && self.state.embedding_available {
                 self.state.focus_search = true;
             }
             if i.modifiers.ctrl && i.key_pressed(egui::Key::N) {
@@ -437,6 +472,10 @@ impl eframe::App for HudApp {
             thread.join();
         }
     }
+}
+
+fn ui_visual_weak(ctx: &Context) -> egui::Color32 {
+    ctx.style().visuals.weak_text_color()
 }
 
 impl Drop for HudApp {

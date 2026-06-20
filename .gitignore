@@ -11,3 +11,6 @@ workspace/.vector/**
 workspace/memories/*.md
 workspace/logs/*.log
 workspace/config/orchestrator.toml
+
+# Artefacts tests orchestrator (audit temporaire)
+crates/orchestrator/m/

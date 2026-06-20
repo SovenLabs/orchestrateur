@@ -7,6 +7,7 @@ use serde::Deserialize;
 use tracing::instrument;
 
 use crate::http_retry::with_retry;
+use crate::http_status::map_llm_http_status;
 
 /// Provider LLM Ollama (fallback local, JSON mode).
 pub struct OllamaLlmProvider {
@@ -120,16 +121,19 @@ impl LlmProvider for OllamaLlmProvider {
             provider: "ollama".into(),
             message: "timeout".into(),
         })?
-        .map_err(|e| LlmError::ProviderError {
-            provider: "ollama".into(),
-            message: e.to_string(),
+        .map_err(|e| match e {
+            crate::http_retry::HttpRetryError::CircuitOpen(c) => LlmError::Unavailable {
+                provider: "ollama".into(),
+                message: format!("circuit ouvert ({})", c.retry_after_secs),
+            },
+            crate::http_retry::HttpRetryError::Request(err) => LlmError::ProviderError {
+                provider: "ollama".into(),
+                message: err.to_string(),
+            },
         })?;
 
         if !response.status().is_success() {
-            return Err(LlmError::Unavailable {
-                provider: "ollama".into(),
-                message: format!("HTTP {}", response.status()),
-            });
+            return Err(map_llm_http_status("ollama", response.status()));
         }
 
         let parsed: OllamaChatResponse = response.json().await.map_err(|e| LlmError::ProviderError {
@@ -157,16 +161,36 @@ impl LlmProvider for OllamaLlmProvider {
             "stream": false,
         });
         let url = self.url("/api/chat");
-        let response = tokio::time::timeout(self.timeout, self.client.post(&url).json(&body).send())
+        let client = self.client.clone();
+        let max_retries = self.max_retries;
+        let response = tokio::time::timeout(self.timeout, async {
+            with_retry("ollama", max_retries, || {
+                let client = client.clone();
+                let body = body.clone();
+                let url = url.clone();
+                async move { client.post(&url).json(&body).send().await }
+            })
             .await
-            .map_err(|_| LlmError::Unavailable {
+        })
+        .await
+        .map_err(|_| LlmError::Unavailable {
+            provider: "ollama".into(),
+            message: "timeout".into(),
+        })?
+        .map_err(|e| match e {
+            crate::http_retry::HttpRetryError::CircuitOpen(c) => LlmError::Unavailable {
                 provider: "ollama".into(),
-                message: "timeout".into(),
-            })?
-            .map_err(|e| LlmError::ProviderError {
+                message: format!("circuit ouvert ({})", c.retry_after_secs),
+            },
+            crate::http_retry::HttpRetryError::Request(err) => LlmError::ProviderError {
                 provider: "ollama".into(),
-                message: e.to_string(),
-            })?;
+                message: err.to_string(),
+            },
+        })?;
+
+        if !response.status().is_success() {
+            return Err(map_llm_http_status("ollama", response.status()));
+        }
 
         let parsed: OllamaChatResponse = response.json().await.map_err(|e| LlmError::ProviderError {
             provider: "ollama".into(),

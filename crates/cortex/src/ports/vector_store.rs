@@ -1,9 +1,10 @@
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
 use crate::domain::{CortexError, MemoryId, Tag};
 
 /// Résultat d'une recherche vectorielle.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SearchHit {
     /// Mémoire correspondante.
     pub memory_id: MemoryId,
@@ -14,7 +15,7 @@ pub struct SearchHit {
 }
 
 /// Filtres optionnels pour la recherche hybride.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct SearchFilter {
     /// Tags requis (tous doivent être présents sur la mémoire).
     pub tags: Vec<Tag>,

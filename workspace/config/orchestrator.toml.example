@@ -32,3 +32,34 @@ embedding_dimension = 768
 [lancedb]
 path = ".orchestrateur/lancedb"
 embedding_dimension = 768
+
+# Défense en profondeur — profils : default | ai_assisted | strict | expert
+# Pour travailler intensivement avec l'IA : profile = "ai_assisted"
+[security]
+profile = "ai_assisted"
+enabled = true
+max_content_length = 64000
+max_title_length = 512
+max_tags = 32
+max_backlinks = 20
+detect_injection_patterns = true
+
+# Surcharges optionnelles (prioritaires sur le profil) :
+# [security.behavioral]
+# max_assimilations_per_minute = 500
+
+[security.integrity]
+enabled = true
+verify_config_hash = true
+bootstrap_on_missing = true
+require_manifest = false
+seed_honeypots = false
+honeypot_count = 3
+
+[security.audit]
+enabled = true
+path = "logs/audit.jsonl"
+
+# Test E2E Ollama (optionnel, marqué #[ignore] par défaut) :
+#   cargo test -p infrastructure ollama_end_to_end_when_available -- --ignored
+# Prérequis : ollama serve + modèles embedding_model et chat_model tirés.

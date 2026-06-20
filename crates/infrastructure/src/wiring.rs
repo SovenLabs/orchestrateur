@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use cortex::{EmbeddingProvider, MemoryRepository, VectorStore};
-use orchestrator::{AppDependencies, LlmProvider, OrchestratorConfig};
+use orchestrator::{
+    build_security_context, AppDependencies, LlmProvider, OrchestratorConfig, SecurityBootstrapError,
+};
 use reqwest::Client;
 use thiserror::Error;
 
@@ -25,6 +27,9 @@ pub enum WiringError {
     /// Mode mémoire (tests) demandé hors contexte test.
     #[error("vector store type=memory : utiliser MockBundle en tests")]
     MemoryMode,
+    /// Initialisation sécurité.
+    #[error(transparent)]
+    Security(#[from] SecurityBootstrapError),
 }
 
 /// Construit [`AppDependencies`] complètes pour la production (FS + `LanceDB` + providers).
@@ -48,8 +53,15 @@ pub async fn build_app_dependencies(
         .build()
         .map_err(|e| WiringError::Embedding(EmbeddingFactoryError::Build(e.to_string())))?;
 
+    let security = build_security_context(&config)?;
+
     let memory_repo: Arc<dyn MemoryRepository> =
         Arc::new(FileMemoryRepository::new(config.memories_dir()));
+    security
+        .seed_honeypots_if_needed(memory_repo.as_ref(), &config)
+        .await
+        .map_err(|e| WiringError::VectorStore(VectorStoreFactoryError::Build(e.to_string())))?;
+
     let vector_store: Arc<dyn VectorStore> = build_vector_store(&config).await?;
     let embedding: Arc<dyn EmbeddingProvider> = build_embedding_provider(&config, &client)?;
     let llm: Arc<dyn LlmProvider> = build_llm_provider(&config, &client)?;
@@ -60,5 +72,6 @@ pub async fn build_app_dependencies(
         embedding,
         llm,
         config,
+        security,
     ))
 }

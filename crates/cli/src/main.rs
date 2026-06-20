@@ -1,4 +1,4 @@
-//! CLI Orchestrateur — Phase 3 : assimilate, search, list, graph, chat.
+//! CLI Orchestrateur — Phase 4 : commandes alignées sur le bridge HUD.
 
 use std::path::PathBuf;
 
@@ -7,14 +7,14 @@ use clap::{Parser, Subcommand};
 use cortex::{KnowledgeGraph, SearchFilter};
 use infrastructure::{build_app_dependencies, WiringError};
 use orchestrator::{
-    ChatMessage, OrchestratorConfig, OrchestratorFacade, OrchestratorError,
-    DEFAULT_ASSIMILATION_SYSTEM_PROMPT,
+    format_assimilate_user_prompt, ChatMessage, OrchestratorConfig, OrchestratorFacade,
+    OrchestratorError, VERSION, DEFAULT_ASSIMILATION_SYSTEM_PROMPT,
 };
 use tracing_subscriber::EnvFilter;
 
 /// Orchestrateur — second cerveau local souverain.
 #[derive(Parser)]
-#[command(name = "orchestrateur", version, about = "Orchestrateur v0.1.0 — Cortex + Esprit")]
+#[command(name = "orchestrateur", version, about = "Orchestrateur v0.3.0 — Cortex + Esprit + CLI")]
 struct Cli {
     /// Racine du workspace (défaut: ./workspace).
     #[arg(long, global = true, default_value = "workspace")]
@@ -26,8 +26,25 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Liste les mémoires persistées.
-    List,
+    /// Santé du service (équivalent `HealthCheck` bridge).
+    Health,
+    /// Liste les mémoires persistées (pagination / filtre).
+    List {
+        /// Filtre titre ou tags (sous-chaîne).
+        #[arg(long)]
+        filter: Option<String>,
+        /// Décalage pagination.
+        #[arg(long, default_value = "0")]
+        offset: usize,
+        /// Nombre maximal d'éléments.
+        #[arg(long, default_value = "100")]
+        limit: usize,
+    },
+    /// Affiche une mémoire par identifiant UUID.
+    Get {
+        /// Identifiant mémoire.
+        id: String,
+    },
     /// Recherche sémantique.
     Search {
         /// Requête textuelle.
@@ -40,6 +57,9 @@ enum Commands {
     Assimilate {
         /// Contenu à assimiler.
         text: String,
+        /// Tags suggérés (séparés par virgules).
+        #[arg(long, value_delimiter = ',')]
+        tags: Vec<String>,
     },
     /// Affiche les statistiques du graphe de connaissances.
     Graph,
@@ -71,12 +91,23 @@ async fn main() -> Result<()> {
     };
 
     match cli.command {
-        Commands::List => cmd_list(&facade).await?,
+        Commands::Health => cmd_health()?,
+        Commands::List {
+            filter,
+            offset,
+            limit,
+        } => cmd_list(&facade, filter.as_deref(), offset, limit).await?,
+        Commands::Get { id } => cmd_get(&facade, &id).await?,
         Commands::Search { query, limit } => cmd_search(&facade, &query, limit).await?,
-        Commands::Assimilate { text } => cmd_assimilate(&facade, &text).await?,
+        Commands::Assimilate { text, tags } => cmd_assimilate(&facade, &text, &tags).await?,
         Commands::Graph => cmd_graph(&facade).await?,
         Commands::Chat { message } => cmd_chat(&facade, &message).await?,
     }
+    Ok(())
+}
+
+fn cmd_health() -> Result<()> {
+    println!("status=ok version={VERSION}");
     Ok(())
 }
 
@@ -85,15 +116,57 @@ async fn build_facade(config: OrchestratorConfig) -> Result<OrchestratorFacade, 
     Ok(OrchestratorFacade::new(deps))
 }
 
-async fn cmd_list(facade: &OrchestratorFacade) -> Result<()> {
-    let memories = facade.list_memories().await?;
-    if memories.is_empty() {
-        println!("Aucune mémoire.");
+async fn cmd_list(
+    facade: &OrchestratorFacade,
+    filter: Option<&str>,
+    offset: usize,
+    limit: usize,
+) -> Result<()> {
+    let mut memories = facade.list_memories().await?;
+    if let Some(needle) = filter {
+        if !needle.is_empty() {
+            let needle = needle.to_lowercase();
+            memories.retain(|mem| {
+                mem.title.to_lowercase().contains(&needle)
+                    || mem
+                        .tags
+                        .iter()
+                        .any(|tag| tag.as_str().to_lowercase().contains(&needle))
+            });
+        }
+    }
+    let total = memories.len();
+    let page: Vec<_> = memories.into_iter().skip(offset).take(limit).collect();
+    if page.is_empty() {
+        println!("Aucune mémoire (total={total}).");
         return Ok(());
     }
-    for mem in memories {
-        println!("{} | {} | {} tags", mem.id, mem.title, mem.tags.len());
+    println!("# total={total} offset={offset} limit={limit}");
+    for mem in page {
+        let tags: Vec<_> = mem.tags.iter().map(|t| t.as_str()).collect();
+        println!(
+            "{} | {} | tags=[{}]",
+            mem.id,
+            mem.title,
+            tags.join(", ")
+        );
     }
+    Ok(())
+}
+
+async fn cmd_get(facade: &OrchestratorFacade, id: &str) -> Result<()> {
+    let memory_id = id
+        .parse()
+        .map_err(|e| anyhow::anyhow!("identifiant invalide: {e}"))?;
+    let mem = facade.get_memory(memory_id).await?;
+    println!("# {}", mem.title);
+    println!("id: {}", mem.id);
+    if !mem.tags.is_empty() {
+        let tags: Vec<_> = mem.tags.iter().map(|t| t.as_str()).collect();
+        println!("tags: {}", tags.join(", "));
+    }
+    println!("---");
+    println!("{}", mem.content);
     Ok(())
 }
 
@@ -109,17 +182,24 @@ async fn cmd_search(facade: &OrchestratorFacade, query: &str, limit: usize) -> R
     }
     for hit in hits {
         let mem = facade.get_memory(hit.memory_id).await?;
+        let snippet = hit
+            .snippet
+            .as_deref()
+            .unwrap_or(mem.content.as_str());
+        let preview: String = snippet.chars().take(120).collect();
         println!(
             "{:.3} | {} | {}",
             hit.score, mem.id, mem.title
         );
+        println!("    {preview}");
     }
     Ok(())
 }
 
-async fn cmd_assimilate(facade: &OrchestratorFacade, text: &str) -> Result<()> {
+async fn cmd_assimilate(facade: &OrchestratorFacade, text: &str, tags: &[String]) -> Result<()> {
+    let prompt = format_assimilate_user_prompt(text, tags);
     let (memory, events) = facade
-        .assimilate(text, Some(DEFAULT_ASSIMILATION_SYSTEM_PROMPT))
+        .assimilate(&prompt, Some(DEFAULT_ASSIMILATION_SYSTEM_PROMPT))
         .await
         .map_err(map_orch_err)?;
     println!("Assimilé : {} ({})", memory.title, memory.id);

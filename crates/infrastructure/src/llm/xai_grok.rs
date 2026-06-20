@@ -1,12 +1,16 @@
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
-use orchestrator::{ChatMessage, LlmCapabilities, LlmError, LlmProvider, MemoryDraft};
+use orchestrator::{
+    ChatMessage, LlmCapabilities, LlmError, LlmProvider, LlmUsageRecorded, MemoryDraft,
+};
 use reqwest::Client;
 use serde::Deserialize;
 use tracing::instrument;
 
 use crate::http_retry::with_retry;
+use crate::http_status::map_llm_http_status;
 
 const XAI_API_URL: &str = "https://api.x.ai/v1/chat/completions";
 
@@ -17,6 +21,7 @@ pub struct XaiGrokProvider {
     model: String,
     timeout: Duration,
     max_retries: u32,
+    last_usage: Mutex<Option<LlmUsageRecorded>>,
 }
 
 impl XaiGrokProvider {
@@ -35,6 +40,19 @@ impl XaiGrokProvider {
             model: model.into(),
             timeout: Duration::from_secs(timeout_secs),
             max_retries,
+            last_usage: Mutex::new(None),
+        }
+    }
+
+    fn record_usage(&self, operation: &str, usage: Option<&XaiUsage>) {
+        let recorded = LlmUsageRecorded {
+            provider: "xai".into(),
+            operation: operation.into(),
+            prompt_tokens: usage.and_then(|u| u.prompt_tokens),
+            completion_tokens: usage.and_then(|u| u.completion_tokens),
+        };
+        if let Ok(mut guard) = self.last_usage.lock() {
+            *guard = Some(recorded);
         }
     }
 
@@ -136,26 +154,19 @@ impl LlmProvider for XaiGrokProvider {
             provider: "xai".into(),
             message: "timeout".into(),
         })?
-        .map_err(|e| LlmError::ProviderError {
-            provider: "xai".into(),
-            message: e.to_string(),
+        .map_err(|e| match e {
+            crate::http_retry::HttpRetryError::CircuitOpen(c) => LlmError::Unavailable {
+                provider: "xai".into(),
+                message: format!("circuit ouvert ({})", c.retry_after_secs),
+            },
+            crate::http_retry::HttpRetryError::Request(err) => LlmError::ProviderError {
+                provider: "xai".into(),
+                message: err.to_string(),
+            },
         })?;
 
-        if response.status().as_u16() == 401 {
-            return Err(LlmError::AuthenticationFailed {
-                provider: "xai".into(),
-            });
-        }
-        if response.status().as_u16() == 429 {
-            return Err(LlmError::RateLimited {
-                provider: "xai".into(),
-            });
-        }
         if !response.status().is_success() {
-            return Err(LlmError::ProviderError {
-                provider: "xai".into(),
-                message: format!("HTTP {}", response.status()),
-            });
+            return Err(map_llm_http_status("xai", response.status()));
         }
 
         let parsed: XaiChatResponse = response.json().await.map_err(|e| LlmError::ProviderError {
@@ -163,6 +174,7 @@ impl LlmProvider for XaiGrokProvider {
             message: e.to_string(),
         })?;
 
+        self.record_usage("generate_memory_draft", parsed.usage.as_ref());
         if let Some(usage) = &parsed.usage {
             tracing::info!(
                 provider = "xai",
@@ -196,28 +208,49 @@ impl LlmProvider for XaiGrokProvider {
         });
         let client = self.client.clone();
         let api_key = self.api_key.clone();
+        let max_retries = self.max_retries;
         let response = tokio::time::timeout(self.timeout, async {
-            client
-                .post(XAI_API_URL)
-                .bearer_auth(api_key)
-                .json(&body)
-                .send()
-                .await
+            with_retry("xai", max_retries, || {
+                let client = client.clone();
+                let body = body.clone();
+                let api_key = api_key.clone();
+                async move {
+                    client
+                        .post(XAI_API_URL)
+                        .bearer_auth(api_key)
+                        .json(&body)
+                        .send()
+                        .await
+                }
+            })
+            .await
         })
         .await
         .map_err(|_| LlmError::Unavailable {
             provider: "xai".into(),
             message: "timeout".into(),
         })?
-        .map_err(|e| LlmError::ProviderError {
-            provider: "xai".into(),
-            message: e.to_string(),
+        .map_err(|e| match e {
+            crate::http_retry::HttpRetryError::CircuitOpen(c) => LlmError::Unavailable {
+                provider: "xai".into(),
+                message: format!("circuit ouvert ({})", c.retry_after_secs),
+            },
+            crate::http_retry::HttpRetryError::Request(err) => LlmError::ProviderError {
+                provider: "xai".into(),
+                message: err.to_string(),
+            },
         })?;
+
+        if !response.status().is_success() {
+            return Err(map_llm_http_status("xai", response.status()));
+        }
 
         let parsed: XaiChatResponse = response.json().await.map_err(|e| LlmError::ProviderError {
             provider: "xai".into(),
             message: e.to_string(),
         })?;
+
+        self.record_usage("chat", parsed.usage.as_ref());
 
         parsed
             .choices
@@ -227,5 +260,9 @@ impl LlmProvider for XaiGrokProvider {
                 provider: "xai".into(),
                 message: "réponse vide".into(),
             })
+    }
+
+    fn last_usage(&self) -> Option<LlmUsageRecorded> {
+        self.last_usage.lock().ok().and_then(|g| g.clone())
     }
 }

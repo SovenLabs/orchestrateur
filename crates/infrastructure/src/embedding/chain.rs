@@ -40,10 +40,11 @@ impl EmbeddingProvider for ChainedEmbeddingProvider {
         for provider in &self.providers {
             match provider.embed(text).await {
                 Ok(e) => return Ok(e),
-                Err(e) => {
+                Err(e) if e.should_fallback() => {
                     warn!(provider = provider.name(), error = %e, "embedding fallback");
                     last_err = Some(e);
                 }
+                Err(e) => return Err(e),
             }
         }
         Err(last_err.unwrap_or_else(|| EmbeddingError::Internal {
@@ -53,10 +54,18 @@ impl EmbeddingProvider for ChainedEmbeddingProvider {
     }
 
     async fn embed_batch(&self, texts: &[&str]) -> Result<Vec<Embedding>, EmbeddingError> {
-        let mut out = Vec::with_capacity(texts.len());
-        for text in texts {
-            out.push(self.embed(text).await?);
+        for provider in &self.providers {
+            match provider.embed_batch(texts).await {
+                Ok(batch) => return Ok(batch),
+                Err(e) if e.should_fallback() => {
+                    warn!(provider = provider.name(), error = %e, "embed_batch fallback");
+                }
+                Err(e) => return Err(e),
+            }
         }
-        Ok(out)
+        Err(EmbeddingError::Internal {
+            provider: "chain".into(),
+            message: "aucun provider".into(),
+        })
     }
 }

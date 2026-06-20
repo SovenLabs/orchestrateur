@@ -94,6 +94,41 @@ pub enum EmbeddingError {
         /// Détail de l'erreur.
         message: String,
     },
+
+    /// Limite de débit atteinte.
+    #[error("rate limit {provider}")]
+    RateLimited {
+        /// Nom du provider.
+        provider: String,
+    },
+
+    /// Authentification refusée.
+    #[error("authentification refusée pour {provider}")]
+    AuthenticationFailed {
+        /// Nom du provider.
+        provider: String,
+    },
+
+    /// Modèle ou service surchargé (HTTP 503/529…).
+    #[error("modèle surchargé pour {provider}")]
+    ModelOverloaded {
+        /// Nom du provider.
+        provider: String,
+    },
+}
+
+impl EmbeddingError {
+    /// Indique si la chaîne de fallback doit tenter le provider suivant.
+    #[must_use]
+    pub fn should_fallback(&self) -> bool {
+        matches!(
+            self,
+            Self::Unavailable { .. }
+                | Self::Network { .. }
+                | Self::RateLimited { .. }
+                | Self::ModelOverloaded { .. }
+        )
+    }
 }
 
 /// Port de génération d'embeddings vectoriels — provider-agnostic.
@@ -181,6 +216,18 @@ mod tests {
             let v = vec![text.len() as f32, 0.0, 1.0];
             Ok(Embedding::new(v))
         }
+    }
+
+    #[test]
+    fn should_fallback_on_transient_errors_only() {
+        assert!(EmbeddingError::RateLimited {
+            provider: "ollama".into()
+        }
+        .should_fallback());
+        assert!(!EmbeddingError::AuthenticationFailed {
+            provider: "ollama".into()
+        }
+        .should_fallback());
     }
 
     #[tokio::test]

@@ -9,6 +9,7 @@ use arrow_schema::{DataType, Field, Schema};
 use async_trait::async_trait;
 use cortex::{CortexError, MemoryId, SearchFilter, SearchHit, VectorStore};
 use futures::TryStreamExt;
+use lancedb::index::vector::IvfFlatIndexBuilder;
 use lancedb::index::Index;
 use lancedb::query::{ExecutableQuery, QueryBase};
 use lancedb::{connect, Connection, Table};
@@ -119,8 +120,39 @@ impl LancedbVectorStore {
                 .map_err(|e| CortexError::GraphError(e.to_string()))?
         };
 
+        let table_clone = table.clone();
         *guard = Some(table);
+        drop(guard);
+        self.try_create_vector_index(&table_clone).await;
         Ok(())
+    }
+
+    async fn try_create_vector_index(&self, table: &Table) {
+        let mut created = self.index_created.lock().await;
+        if *created {
+            return;
+        }
+        let index = Index::IvfFlat(
+            IvfFlatIndexBuilder::default()
+                .num_partitions(1)
+                .sample_rate(1),
+        );
+        match table
+            .create_index(&["embedding"], index)
+            .execute()
+            .await
+        {
+            Ok(()) => {
+                *created = true;
+                tracing::info!("index vectoriel LanceDB créé à l'initialisation");
+            }
+            Err(e) => {
+                tracing::warn!(
+                    error = %e,
+                    "création index vectoriel à l'init — nouvelle tentative après upsert"
+                );
+            }
+        }
     }
 
     async fn with_table<F, Fut, T>(&self, f: F) -> Result<T, CortexError>
@@ -177,9 +209,6 @@ impl VectorStore for LancedbVectorStore {
     async fn upsert(&self, memory_id: MemoryId, embedding: &[f32]) -> Result<(), CortexError> {
         let id_str = memory_id.to_string();
         let batch = Self::record_batch(&id_str, embedding, self.dimension)?;
-        let dim = self.dimension;
-        let index_flag = Arc::clone(&self.index_created);
-
         self.with_table(move |table| async move {
             let _ = table
                 .delete(&format!("memory_id = '{id_str}'"))
@@ -192,23 +221,17 @@ impl VectorStore for LancedbVectorStore {
                 .await
                 .map_err(|e| CortexError::GraphError(e.to_string()))?;
 
-            let mut created = index_flag.lock().await;
-            if !*created {
-                match table
-                    .create_index(&["embedding"], Index::Auto)
-                    .execute()
-                    .await
-                {
-                    Ok(()) => *created = true,
-                    Err(e) => {
-                        tracing::debug!(error = %e, "index ANN reporté (corpus trop petit)");
-                    }
-                }
-            }
             Ok(())
         })
         .await?;
-        let _ = dim;
+
+        let table = {
+            let guard = self.table.lock().await;
+            guard.as_ref().cloned()
+        };
+        if let Some(table) = table {
+            self.try_create_vector_index(&table).await;
+        }
         Ok(())
     }
 

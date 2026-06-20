@@ -100,6 +100,127 @@ impl Default for OllamaConfig {
     }
 }
 
+/// Configuration couche 3 — garde comportemental.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BehavioralConfig {
+    /// Active le rate limiting comportemental.
+    pub enabled: bool,
+    /// Assimilations max par fenêtre.
+    pub max_assimilations_per_minute: u32,
+    /// Recherches max par fenêtre.
+    pub max_searches_per_minute: u32,
+    /// Recherches identiques max par fenêtre.
+    pub max_repetitive_searches: u32,
+    /// Durée de la fenêtre glissante (secondes).
+    pub window_secs: u64,
+    /// Seuil de blocage du score d'anomalie.
+    pub anomaly_block_threshold: f32,
+}
+
+impl Default for BehavioralConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            max_assimilations_per_minute: 60,
+            max_searches_per_minute: 120,
+            max_repetitive_searches: 15,
+            window_secs: 60,
+            anomaly_block_threshold: 80.0,
+        }
+    }
+}
+
+/// Configuration couche 2 — intégrité et honeypots.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::struct_excessive_bools)]
+pub struct IntegrityConfig {
+    /// Active la couche intégrité.
+    pub enabled: bool,
+    /// Vérifie l'empreinte BLAKE3 de `orchestrator.toml`.
+    pub verify_config_hash: bool,
+    /// Crée le manifeste s'il est absent (trust-on-first-use).
+    pub bootstrap_on_missing: bool,
+    /// Mode dégradé si manifeste absent.
+    pub require_manifest: bool,
+    /// Plante des mémoires canari au démarrage.
+    pub seed_honeypots: bool,
+    /// Nombre de canaris à planter.
+    pub honeypot_count: usize,
+}
+
+impl Default for IntegrityConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            verify_config_hash: true,
+            bootstrap_on_missing: true,
+            require_manifest: false,
+            seed_honeypots: false,
+            honeypot_count: 3,
+        }
+    }
+}
+
+/// Configuration couche 4 — audit tamper-evident.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuditConfig {
+    /// Active le journal d'audit chaîné.
+    pub enabled: bool,
+    /// Chemin relatif au workspace.
+    pub path: PathBuf,
+}
+
+impl Default for AuditConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            path: PathBuf::from("logs/audit.jsonl"),
+        }
+    }
+}
+
+/// Configuration de la couche sécurité (défense en profondeur).
+#[derive(Debug, Clone, PartialEq)]
+pub struct SecurityConfig {
+    /// Active la validation adversariale des [`MemoryDraft`] (couche 1).
+    pub enabled: bool,
+    /// Longueur maximale du contenu Markdown.
+    pub max_content_length: usize,
+    /// Longueur maximale du titre.
+    pub max_title_length: usize,
+    /// Nombre maximal de tags.
+    pub max_tags: usize,
+    /// Nombre maximal de backlinks candidats issus du LLM.
+    pub max_backlinks: usize,
+    /// Détecte les patterns d'injection / poisoning connus.
+    pub detect_injection_patterns: bool,
+    /// Couche 3 — comportemental.
+    pub behavioral: BehavioralConfig,
+    /// Couche 2 — intégrité.
+    pub integrity: IntegrityConfig,
+    /// Couche 4 — audit.
+    pub audit: AuditConfig,
+    /// Profil actif (`ai_assisted`, `strict`, `expert`, …).
+    pub profile: Option<crate::security::SecurityProfile>,
+}
+
+impl Default for SecurityConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            max_content_length: 64_000,
+            max_title_length: 512,
+            max_tags: 32,
+            max_backlinks: 20,
+            detect_injection_patterns: true,
+            behavioral: BehavioralConfig::default(),
+            integrity: IntegrityConfig::default(),
+            audit: AuditConfig::default(),
+            profile: None,
+        }
+    }
+}
+
 /// Configuration applicative de l'orchestrateur.
 #[derive(Debug, Clone, PartialEq)]
 pub struct OrchestratorConfig {
@@ -117,6 +238,8 @@ pub struct OrchestratorConfig {
     pub xai: XaiConfig,
     /// Section Ollama.
     pub ollama: OllamaConfig,
+    /// Couche sécurité adversariale (validation des brouillons LLM).
+    pub security: SecurityConfig,
 }
 
 impl Default for OrchestratorConfig {
@@ -130,6 +253,7 @@ impl Default for OrchestratorConfig {
             vector_store,
             xai: XaiConfig::default(),
             ollama: OllamaConfig::default(),
+            security: SecurityConfig::default(),
         }
     }
 }
@@ -276,6 +400,85 @@ impl OrchestratorConfig {
                 self.ollama.max_retries = v;
             }
         }
+        if let Some(s) = settings.security {
+            merge_security(&mut self.security, s);
+        }
+    }
+}
+
+fn merge_security(target: &mut SecurityConfig, section: SecuritySection) {
+    if let Some(ref name) = section.profile {
+        if let Some(profile) = crate::security::SecurityProfile::parse(name) {
+            profile.apply(target);
+        } else {
+            tracing::warn!(profile = %name, "profil sécurité inconnu — ignoré");
+        }
+    }
+    if let Some(v) = section.enabled {
+        target.enabled = v;
+    }
+    if let Some(v) = section.max_content_length {
+        target.max_content_length = v;
+    }
+    if let Some(v) = section.max_title_length {
+        target.max_title_length = v;
+    }
+    if let Some(v) = section.max_tags {
+        target.max_tags = v;
+    }
+    if let Some(v) = section.max_backlinks {
+        target.max_backlinks = v;
+    }
+    if let Some(v) = section.detect_injection_patterns {
+        target.detect_injection_patterns = v;
+    }
+    if let Some(b) = section.behavioral {
+        if let Some(v) = b.enabled {
+            target.behavioral.enabled = v;
+        }
+        if let Some(v) = b.max_assimilations_per_minute {
+            target.behavioral.max_assimilations_per_minute = v;
+        }
+        if let Some(v) = b.max_searches_per_minute {
+            target.behavioral.max_searches_per_minute = v;
+        }
+        if let Some(v) = b.max_repetitive_searches {
+            target.behavioral.max_repetitive_searches = v;
+        }
+        if let Some(v) = b.window_secs {
+            target.behavioral.window_secs = v;
+        }
+        if let Some(v) = b.anomaly_block_threshold {
+            target.behavioral.anomaly_block_threshold = v;
+        }
+    }
+    if let Some(i) = section.integrity {
+        if let Some(v) = i.enabled {
+            target.integrity.enabled = v;
+        }
+        if let Some(v) = i.verify_config_hash {
+            target.integrity.verify_config_hash = v;
+        }
+        if let Some(v) = i.bootstrap_on_missing {
+            target.integrity.bootstrap_on_missing = v;
+        }
+        if let Some(v) = i.require_manifest {
+            target.integrity.require_manifest = v;
+        }
+        if let Some(v) = i.seed_honeypots {
+            target.integrity.seed_honeypots = v;
+        }
+        if let Some(v) = i.honeypot_count {
+            target.integrity.honeypot_count = v;
+        }
+    }
+    if let Some(a) = section.audit {
+        if let Some(v) = a.enabled {
+            target.audit.enabled = v;
+        }
+        if let Some(v) = a.path {
+            target.audit.path = PathBuf::from(v);
+        }
     }
 }
 
@@ -309,6 +512,7 @@ struct SettingsToml {
     lancedb: Option<LancedbSection>,
     xai: Option<XaiSection>,
     ollama: Option<OllamaSection>,
+    security: Option<SecuritySection>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -359,6 +563,46 @@ struct OllamaSection {
     chat_model: Option<String>,
     timeout_secs: Option<u64>,
     max_retries: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SecuritySection {
+    profile: Option<String>,
+    enabled: Option<bool>,
+    max_content_length: Option<usize>,
+    max_title_length: Option<usize>,
+    max_tags: Option<usize>,
+    max_backlinks: Option<usize>,
+    detect_injection_patterns: Option<bool>,
+    behavioral: Option<BehavioralSection>,
+    integrity: Option<IntegritySection>,
+    audit: Option<AuditSection>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BehavioralSection {
+    enabled: Option<bool>,
+    max_assimilations_per_minute: Option<u32>,
+    max_searches_per_minute: Option<u32>,
+    max_repetitive_searches: Option<u32>,
+    window_secs: Option<u64>,
+    anomaly_block_threshold: Option<f32>,
+}
+
+#[derive(Debug, Deserialize)]
+struct IntegritySection {
+    enabled: Option<bool>,
+    verify_config_hash: Option<bool>,
+    bootstrap_on_missing: Option<bool>,
+    require_manifest: Option<bool>,
+    seed_honeypots: Option<bool>,
+    honeypot_count: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AuditSection {
+    enabled: Option<bool>,
+    path: Option<String>,
 }
 
 #[cfg(test)]
@@ -432,6 +676,81 @@ embedding_model = "nomic-embed-text"
         assert_eq!(cfg.vector_store.store_type, "lancedb");
         assert_eq!(cfg.embedding_dim, 384);
         assert_eq!(cfg.ollama.embedding_model, "nomic-embed-text");
+    }
+
+    #[test]
+    fn loads_ai_assisted_profile_from_toml() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_dir = dir.path().join("config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        let toml_path = config_dir.join("orchestrator.toml");
+        let mut file = std::fs::File::create(&toml_path).unwrap();
+        writeln!(
+            file,
+            r#"
+[security]
+profile = "ai_assisted"
+"#
+        )
+        .unwrap();
+
+        let cfg = OrchestratorConfig::load_workspace(dir.path()).unwrap();
+        assert_eq!(
+            cfg.security.profile,
+            Some(crate::security::SecurityProfile::AiAssisted)
+        );
+        assert_eq!(cfg.security.behavioral.max_assimilations_per_minute, 300);
+        assert_eq!(cfg.security.behavioral.max_repetitive_searches, 80);
+    }
+
+    #[test]
+    fn profile_explicit_override_wins() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_dir = dir.path().join("config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        let toml_path = config_dir.join("orchestrator.toml");
+        let mut file = std::fs::File::create(&toml_path).unwrap();
+        writeln!(
+            file,
+            r#"
+[security]
+profile = "ai_assisted"
+
+[security.behavioral]
+max_assimilations_per_minute = 500
+"#
+        )
+        .unwrap();
+
+        let cfg = OrchestratorConfig::load_workspace(dir.path()).unwrap();
+        assert_eq!(cfg.security.behavioral.max_assimilations_per_minute, 500);
+        assert_eq!(cfg.security.behavioral.max_searches_per_minute, 600);
+    }
+
+    #[test]
+    fn loads_security_from_toml() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_dir = dir.path().join("config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        let toml_path = config_dir.join("orchestrator.toml");
+        let mut file = std::fs::File::create(&toml_path).unwrap();
+        writeln!(
+            file,
+            r#"
+[security]
+enabled = true
+max_content_length = 10000
+max_backlinks = 5
+detect_injection_patterns = false
+"#
+        )
+        .unwrap();
+
+        let cfg = OrchestratorConfig::load_workspace(dir.path()).unwrap();
+        assert!(cfg.security.enabled);
+        assert_eq!(cfg.security.max_content_length, 10_000);
+        assert_eq!(cfg.security.max_backlinks, 5);
+        assert!(!cfg.security.detect_injection_patterns);
     }
 
     #[test]

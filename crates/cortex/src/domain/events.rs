@@ -1,9 +1,10 @@
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 use super::MemoryId;
 
 /// Événement de domaine émis après assimilation réussie.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MemoryAssimilated {
     /// Identifiant de la mémoire assimilée.
     pub memory_id: MemoryId,
@@ -14,7 +15,7 @@ pub struct MemoryAssimilated {
 }
 
 /// Événement émis après validation du graphe de connaissances.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KnowledgeGraphValidated {
     /// Nombre de nœuds dans le graphe.
     pub node_count: usize,
@@ -23,7 +24,7 @@ pub struct KnowledgeGraphValidated {
 }
 
 /// Union des événements du domaine Cortex.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DomainEvent {
     /// Une mémoire a été assimilée avec succès.
     MemoryAssimilated(MemoryAssimilated),

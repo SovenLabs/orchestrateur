@@ -43,6 +43,10 @@ impl AssimilateFromText {
             .generate_memory_draft(system, user_prompt)
             .await?;
 
+        if let Some(usage) = self.deps.llm.last_usage() {
+            self.deps.events.publish_llm_usage(&usage);
+        }
+
         tracing::info!(provider, title = %draft.title, "MemoryDraft généré");
         AssimilateFromDraft::new(self.deps.clone())
             .execute(draft)

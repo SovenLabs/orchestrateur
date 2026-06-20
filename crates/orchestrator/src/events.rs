@@ -1,9 +1,16 @@
 use cortex::DomainEvent;
 
+use crate::llm::LlmUsageRecorded;
+
 /// Publie les événements de domaine vers des consommateurs externes (logs, UI, bus futur).
 pub trait EventPublisher: Send + Sync {
-    /// Publie un lot d'événements.
+    /// Publie un lot d'événements Cortex.
     fn publish(&self, events: &[DomainEvent]);
+
+    /// Publie une trace d'usage LLM (coût, tokens, traçabilité long terme).
+    fn publish_llm_usage(&self, usage: &LlmUsageRecorded) {
+        let _ = usage;
+    }
 }
 
 /// Publisher silencieux — utile en tests ou quand aucun consommateur n'est branché.
@@ -23,6 +30,16 @@ impl EventPublisher for TracingEventPublisher {
         for event in events {
             tracing::info!(?event, "domain_event");
         }
+    }
+
+    fn publish_llm_usage(&self, usage: &LlmUsageRecorded) {
+        tracing::info!(
+            provider = %usage.provider,
+            operation = %usage.operation,
+            prompt_tokens = ?usage.prompt_tokens,
+            completion_tokens = ?usage.completion_tokens,
+            "llm_usage_recorded"
+        );
     }
 }
 

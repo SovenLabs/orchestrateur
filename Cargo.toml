@@ -5,6 +5,7 @@ members = [
     "crates/orchestrator",
     "crates/infrastructure",
     "crates/cli",
+    "crates/hud",
 ]
 default-members = [
     "crates/cortex",
@@ -14,15 +15,16 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["Sovën"]
 license = "MIT OR Apache-2.0"
-rust-version = "1.75"
+rust-version = "1.80"
 description = "Orchestrateur — Second cerveau local souverain (Cortex + Esprit + Peau)"
 
 [workspace.dependencies]
 anyhow = "1"
+blake3 = "1"
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 cortex = { path = "crates/cortex" }
@@ -43,3 +45,6 @@ arrow-schema = "58"
 futures = "0.3"
 clap = { version = "4", features = ["derive"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+flume = "0.11"
+egui = "0.30"
+eframe = { version = "0.30", default-features = true }

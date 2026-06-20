@@ -28,6 +28,7 @@ impl SearchMemories {
         query: &str,
         filter: &SearchFilter,
     ) -> Result<Vec<SearchHit>, OrchestratorError> {
+        self.deps.security.gate_search(query)?;
         tracing::debug!(query, "recherche démarrée");
 
         let embedding = self.deps.embedding.embed(query).await?;
@@ -53,6 +54,16 @@ impl SearchMemories {
         } else {
             hits.truncate(SEMANTIC_CANDIDATE_LIMIT);
         }
+
+        for hit in &hits {
+            if let Ok(memory) = self.deps.memory_repo.get_by_id(hit.memory_id).await {
+                self.deps
+                    .security
+                    .observe_memory_access(&memory, "search_hit");
+            }
+        }
+
+        self.deps.security.record_search(query, hits.len());
 
         tracing::info!(query, results = hits.len(), "recherche terminée");
         Ok(hits)

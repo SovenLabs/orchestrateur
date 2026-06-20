@@ -70,6 +70,43 @@ pub enum LlmError {
         /// Détail lisible.
         message: String,
     },
+
+    /// Modèle ou service surchargé (HTTP 503/529…).
+    #[error("modèle surchargé pour {provider}")]
+    ModelOverloaded {
+        /// Nom du provider.
+        provider: String,
+    },
+}
+
+/// Consommation de tokens LLM — traçabilité coût et usage.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LlmUsageRecorded {
+    /// Nom du provider (`xai`, `ollama`…).
+    pub provider: String,
+    /// Opération (`generate_memory_draft`, `chat`…).
+    pub operation: String,
+    /// Tokens du prompt.
+    pub prompt_tokens: Option<u32>,
+    /// Tokens de complétion.
+    pub completion_tokens: Option<u32>,
+}
+
+impl LlmError {
+    /// Indique si la chaîne de fallback doit tenter le provider suivant.
+    #[must_use]
+    pub fn should_fallback(&self) -> bool {
+        match self {
+            Self::Unavailable { .. } | Self::RateLimited { .. } | Self::ModelOverloaded { .. } => {
+                true
+            }
+            Self::ProviderError { message, .. } => {
+                message.contains("HTTP 5") || message.contains("timeout")
+            }
+            Self::AuthenticationFailed { .. }
+            | Self::StructuredOutputInvalid { .. } => false,
+        }
+    }
 }
 
 /// Port de génération LLM — provider-agnostic, manipule [`MemoryDraft`] uniquement.
@@ -114,6 +151,11 @@ pub trait LlmProvider: Send + Sync {
     ///
     /// Retourne [`LlmError`] si le provider échoue.
     async fn chat(&self, messages: &[ChatMessage]) -> Result<String, LlmError>;
+
+    /// Dernière consommation de tokens enregistrée par le provider (si disponible).
+    fn last_usage(&self) -> Option<LlmUsageRecorded> {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -154,6 +196,27 @@ mod tests {
                 .map(|m| m.content.clone())
                 .unwrap_or_default())
         }
+    }
+
+    #[test]
+    fn should_fallback_on_transient_errors_only() {
+        assert!(LlmError::RateLimited {
+            provider: "xai".into()
+        }
+        .should_fallback());
+        assert!(LlmError::ModelOverloaded {
+            provider: "xai".into()
+        }
+        .should_fallback());
+        assert!(!LlmError::AuthenticationFailed {
+            provider: "xai".into()
+        }
+        .should_fallback());
+        assert!(!LlmError::StructuredOutputInvalid {
+            provider: "xai".into(),
+            message: "bad json".into()
+        }
+        .should_fallback());
     }
 
     #[tokio::test]

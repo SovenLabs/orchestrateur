@@ -47,7 +47,7 @@ impl MockBundle {
     /// Convertit le bundle en [`AppDependencies`] (publisher noop pour les tests).
     #[must_use]
     pub fn into_deps(self) -> AppDependencies {
-        AppDependencies::with_events(
+        AppDependencies::for_tests(
             self.memory_repo,
             self.vector_store,
             self.embedding,

@@ -2,6 +2,7 @@ use cortex::{CortexError, EmbeddingError};
 use thiserror::Error;
 
 use crate::llm::LlmError;
+use crate::security::{SecurityGateError, ValidationError};
 
 /// Erreurs de la couche application (orchestrateur).
 #[derive(Debug, Error)]
@@ -17,6 +18,14 @@ pub enum OrchestratorError {
     /// Erreur d'un provider LLM (frontière ports IA).
     #[error(transparent)]
     Llm(#[from] LlmError),
+
+    /// Brouillon LLM rejeté par la couche sécurité.
+    #[error(transparent)]
+    Validation(#[from] ValidationError),
+
+    /// Garde comportemental ou mode dégradé.
+    #[error(transparent)]
+    Security(#[from] SecurityGateError),
 }
 
 /// Erreurs liées aux Skills.

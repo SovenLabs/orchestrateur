@@ -1,4 +1,22 @@
 //! Tests d'intégration Phase 3 — skippés si dépendances externes absentes.
+//!
+//! ## Test Ollama E2E (`ollama_end_to_end_when_available`)
+//!
+//! Marqué `#[ignore]` car il nécessite Ollama actif en local.
+//!
+//! Prérequis :
+//! 1. Installer [Ollama](https://ollama.com/) et lancer le daemon (`ollama serve`).
+//! 2. Tirer les modèles configurés dans `orchestrator.toml` :
+//!    ```text
+//!    ollama pull qwen3-embedding:8b
+//!    ollama pull qwen3:8b
+//!    ```
+//! 3. Vérifier l'endpoint : `curl http://127.0.0.1:11434/api/tags`
+//!
+//! Exécution :
+//! ```text
+//! cargo test -p infrastructure ollama_end_to_end_when_available -- --ignored
+//! ```
 
 use std::sync::Arc;
 
@@ -41,7 +59,14 @@ async fn lancedb_store_with_file_repo_smoke() {
     let memory_repo: Arc<dyn cortex::MemoryRepository> =
         Arc::new(FileMemoryRepository::new(cfg.memories_dir()));
 
-    let deps = AppDependencies::new(memory_repo, vector_store, embedding, llm, cfg);
+    let deps = AppDependencies::for_tests(
+        memory_repo,
+        vector_store,
+        embedding,
+        llm,
+        cfg,
+        Arc::new(orchestrator::NoopEventPublisher),
+    );
     let facade = OrchestratorFacade::new(deps);
     let mem = Memory::new("Intégration LanceDB", "Test persistance vectorielle.").unwrap();
     facade.save_memory(&mem).await.expect("save");
@@ -71,12 +96,13 @@ async fn ollama_end_to_end_when_available() {
 #[tokio::test]
 async fn memory_mode_deps_via_mocks() {
     let bundle = orchestrator::testing::MockBundle::new();
-    let deps = AppDependencies::new(
+    let deps = AppDependencies::for_tests(
         bundle.memory_repo,
         Arc::new(InMemoryVectorStore::new()),
         bundle.embedding,
         bundle.llm,
         bundle.config,
+        Arc::new(orchestrator::NoopEventPublisher),
     );
     let facade = OrchestratorFacade::new(deps);
     assert!(facade.list_memories().await.unwrap().is_empty());

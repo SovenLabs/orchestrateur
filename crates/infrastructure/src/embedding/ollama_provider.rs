@@ -7,6 +7,7 @@ use serde::Deserialize;
 use tracing::instrument;
 
 use crate::http_retry::with_retry;
+use crate::http_status::map_embedding_http_status;
 
 /// Provider d'embeddings via l'API Ollama (`/api/embeddings`).
 pub struct OllamaEmbeddingProvider {
@@ -72,17 +73,20 @@ impl OllamaEmbeddingProvider {
             message: "timeout".into(),
             source: None,
         })?
-        .map_err(|e| EmbeddingError::Network {
-            provider: "ollama".into(),
-            message: e.to_string(),
-            source: Some(Box::new(e)),
+        .map_err(|e| match e {
+            crate::http_retry::HttpRetryError::CircuitOpen(c) => EmbeddingError::Unavailable {
+                provider: "ollama".into(),
+                message: format!("circuit ouvert ({})", c.retry_after_secs),
+            },
+            crate::http_retry::HttpRetryError::Request(err) => EmbeddingError::Network {
+                provider: "ollama".into(),
+                message: err.to_string(),
+                source: Some(Box::new(err)),
+            },
         })?;
 
         if !response.status().is_success() {
-            return Err(EmbeddingError::Unavailable {
-                provider: "ollama".into(),
-                message: format!("HTTP {}", response.status()),
-            });
+            return Err(map_embedding_http_status("ollama", response.status()));
         }
 
         let parsed: OllamaEmbeddingResponse = response.json().await.map_err(|e| {

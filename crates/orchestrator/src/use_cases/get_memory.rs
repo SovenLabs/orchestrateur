@@ -21,7 +21,11 @@ impl GetMemory {
     ///
     /// Propage une [`OrchestratorError`] si la mémoire est introuvable.
     pub async fn execute(&self, id: MemoryId) -> Result<Memory, OrchestratorError> {
-        Ok(self.deps.memory_repo.get_by_id(id).await?)
+        let memory = self.deps.memory_repo.get_by_id(id).await?;
+        self.deps
+            .security
+            .observe_memory_access(&memory, "get_memory");
+        Ok(memory)
     }
 }
 

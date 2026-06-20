@@ -2,4 +2,4 @@
 
 mod llm_provider;
 
-pub use llm_provider::{ChatMessage, LlmCapabilities, LlmError, LlmProvider};
+pub use llm_provider::{ChatMessage, LlmCapabilities, LlmError, LlmProvider, LlmUsageRecorded};

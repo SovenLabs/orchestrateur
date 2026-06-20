@@ -10,6 +10,7 @@
 
 mod embedding;
 mod http_retry;
+mod http_status;
 mod llm;
 mod memory_repository;
 mod vector_store;

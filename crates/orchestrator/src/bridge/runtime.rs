@@ -7,8 +7,10 @@ use flume::{Receiver, Sender};
 use tracing::error;
 
 use crate::deps::AppDependencies;
+use crate::error::SkillError;
 use crate::facade::OrchestratorFacade;
 use crate::health::probe_services;
+use crate::skills::SkillContext;
 use crate::VERSION;
 
 use super::command::Command;
@@ -16,7 +18,7 @@ use super::error::BridgeError;
 use super::events::FanoutEventPublisher;
 use super::handle::ChannelHandle;
 use super::response::Response;
-use super::types::{AppError, HubSummary, MemorySummary};
+use super::types::{AppError, HubSummary, MemorySummary, SkillSummary};
 
 /// Capacité des canaux commandes/réponses (back-pressure léger).
 const CMD_CHANNEL_CAPACITY: usize = 64;
@@ -158,6 +160,11 @@ pub async fn execute_command(facade: &OrchestratorFacade, cmd: Command) -> Respo
         Command::Assimilate { text, tags } => execute_assimilate(facade, &text, &tags).await,
         Command::Graph => execute_graph(facade).await,
         Command::Audit { limit } => execute_audit(facade, limit),
+        Command::Chat { message } => execute_chat(facade, &message).await,
+        Command::ListSkills => execute_list_skills(facade),
+        Command::ExecuteSkill { name, context } => {
+            execute_skill(facade, &name, context.into()).await
+        }
     }
 }
 
@@ -219,6 +226,48 @@ async fn execute_graph(facade: &OrchestratorFacade) -> Response {
             }
         }
         Err(err) => Response::Error(AppError::from_orchestrator(&err)),
+    }
+}
+
+async fn execute_chat(facade: &OrchestratorFacade, message: &str) -> Response {
+    let probe = probe_services(facade.deps()).await;
+    if !probe.llm_available {
+        return Response::Error(AppError {
+            kind: "degraded".to_string(),
+            message: "chat indisponible — provider LLM hors ligne".to_string(),
+        });
+    }
+    match facade.chat(message).await {
+        Ok(reply) => Response::ChatReply { reply },
+        Err(err) => Response::Error(AppError::from_orchestrator(&err)),
+    }
+}
+
+fn execute_list_skills(facade: &OrchestratorFacade) -> Response {
+    let skills = facade
+        .list_skills()
+        .into_iter()
+        .map(|(name, description)| SkillSummary {
+            name: name.to_string(),
+            description: description.to_string(),
+        })
+        .collect();
+    Response::SkillList { skills }
+}
+
+async fn execute_skill(facade: &OrchestratorFacade, name: &str, ctx: SkillContext) -> Response {
+    match facade.execute_skill(name, &ctx).await {
+        Ok(output) => Response::SkillResult {
+            message: output.message,
+        },
+        Err(SkillError::NotFound(skill)) => Response::Error(AppError {
+            kind: "skill".to_string(),
+            message: format!("skill introuvable: {skill}"),
+        }),
+        Err(SkillError::ExecutionFailed(message)) => Response::Error(AppError {
+            kind: "skill".to_string(),
+            message,
+        }),
     }
 }
 
@@ -302,6 +351,34 @@ mod tests {
                 assert_eq!(total, 1);
                 assert_eq!(items[0].title, "Titre HUD");
             }
+            other => panic!("réponse inattendue: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn dispatch_list_skills_includes_operational_skills() {
+        let facade = OrchestratorFacade::new(MockBundle::new().into_deps());
+        let response = execute_command(&facade, Command::ListSkills).await;
+        match response {
+            Response::SkillList { skills } => {
+                assert!(skills.iter().any(|s| s.name == "search"));
+            }
+            other => panic!("réponse inattendue: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn dispatch_chat_returns_reply() {
+        let facade = OrchestratorFacade::new(MockBundle::new().into_deps());
+        let response = execute_command(
+            &facade,
+            Command::Chat {
+                message: "ping".into(),
+            },
+        )
+        .await;
+        match response {
+            Response::ChatReply { reply } => assert!(!reply.is_empty()),
             other => panic!("réponse inattendue: {other:?}"),
         }
     }

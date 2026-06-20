@@ -54,6 +54,29 @@ impl MemorySummary {
 /// Résultat de recherche exposé au bridge (réutilise le type Cortex).
 pub type BridgeSearchHit = SearchHit;
 
+/// Contexte sérialisable pour `Command::ExecuteSkill`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub struct BridgeSkillContext {
+    /// Requête de recherche (`search`).
+    pub query: Option<String>,
+    /// Texte à assimiler (`assimilate`).
+    pub text: Option<String>,
+    /// Tags suggérés ou filtre.
+    #[serde(default)]
+    pub tags: Vec<String>,
+    /// Limite de résultats (`search`).
+    pub limit: Option<usize>,
+}
+
+/// Métadonnées d'une skill exposée au bridge.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SkillSummary {
+    /// Identifiant stable de la skill.
+    pub name: String,
+    /// Description lisible.
+    pub description: String,
+}
+
 /// Hub du graphe de connaissances (backlinks entrants).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HubSummary {

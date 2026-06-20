@@ -1,10 +1,38 @@
 use async_trait::async_trait;
 
-use crate::error::SkillError;
+use crate::error::{OrchestratorError, SkillError};
 
-/// Contexte minimal passé aux Skills (étendu en phases ultérieures).
+/// Convertit une erreur orchestrateur en erreur skill.
+#[must_use]
+pub(crate) fn map_orchestrator_error(err: &OrchestratorError) -> SkillError {
+    SkillError::ExecutionFailed(err.to_string())
+}
+
+use crate::bridge::BridgeSkillContext;
+
+/// Paramètres optionnels passés aux skills opérationnelles.
 #[derive(Debug, Clone, Default)]
-pub struct SkillContext;
+pub struct SkillContext {
+    /// Requête de recherche sémantique (`search`).
+    pub query: Option<String>,
+    /// Texte à assimiler (`assimilate`).
+    pub text: Option<String>,
+    /// Tags suggérés (filtre `search` ou contexte `assimilate`).
+    pub tags: Vec<String>,
+    /// Limite de résultats (`search`).
+    pub limit: Option<usize>,
+}
+
+impl From<BridgeSkillContext> for SkillContext {
+    fn from(ctx: BridgeSkillContext) -> Self {
+        Self {
+            query: ctx.query,
+            text: ctx.text,
+            tags: ctx.tags,
+            limit: ctx.limit,
+        }
+    }
+}
 
 /// Résultat d'exécution d'une Skill.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,7 +99,7 @@ mod tests {
     async fn noop_skill_executes() {
         let skill = NoopSkill::new();
         assert_eq!(skill.name(), "noop");
-        let out = skill.execute(&SkillContext).await.unwrap();
+        let out = skill.execute(&SkillContext::default()).await.unwrap();
         assert_eq!(out.message, "noop ok");
     }
 }

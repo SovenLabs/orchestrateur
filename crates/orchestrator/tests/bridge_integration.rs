@@ -138,4 +138,62 @@ fn bridge_command_response_are_serializable() {
     let graph_cmd = Command::Graph;
     let graph_json = serde_json::to_string(&graph_cmd).unwrap();
     assert!(graph_json.contains("\"command\":\"Graph\""));
+
+    let skill_cmd = Command::ExecuteSkill {
+        name: "noop".into(),
+        context: orchestrator::BridgeSkillContext::default(),
+    };
+    let skill_json = serde_json::to_string(&skill_cmd).unwrap();
+    assert!(skill_json.contains("\"command\":\"ExecuteSkill\""));
+}
+
+#[test]
+fn bridge_list_skills_and_execute_noop() {
+    let deps = MockBundle::new().into_deps();
+    let (handle, thread) = spawn_orchestrator_bridge(deps).unwrap();
+
+    handle.send_command(Command::ListSkills).unwrap();
+    let list_response = wait_for_response(&handle, Duration::from_secs(2)).expect("timeout skills");
+    match list_response {
+        Response::SkillList { skills } => {
+            assert!(skills.iter().any(|s| s.name == "noop"));
+            assert!(skills.iter().any(|s| s.name == "list_memories"));
+        }
+        other => panic!("réponse inattendue: {other:?}"),
+    }
+
+    handle
+        .send_command(Command::ExecuteSkill {
+            name: "noop".into(),
+            context: orchestrator::BridgeSkillContext::default(),
+        })
+        .unwrap();
+    let run_response = wait_for_response(&handle, Duration::from_secs(2)).expect("timeout run");
+    match run_response {
+        Response::SkillResult { message } => assert_eq!(message, "noop ok"),
+        other => panic!("réponse inattendue: {other:?}"),
+    }
+
+    drop(handle);
+    thread.join();
+}
+
+#[test]
+fn bridge_chat_roundtrip() {
+    let deps = MockBundle::new().into_deps();
+    let (handle, thread) = spawn_orchestrator_bridge(deps).unwrap();
+
+    handle
+        .send_command(Command::Chat {
+            message: "Bonjour orchestrateur".into(),
+        })
+        .unwrap();
+    let response = wait_for_response(&handle, Duration::from_secs(2)).expect("timeout chat");
+    drop(handle);
+    thread.join();
+
+    match response {
+        Response::ChatReply { reply } => assert!(!reply.is_empty()),
+        other => panic!("réponse inattendue: {other:?}"),
+    }
 }

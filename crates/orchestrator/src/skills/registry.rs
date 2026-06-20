@@ -1,7 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::deps::AppDependencies;
 use crate::error::SkillError;
+use crate::skills::assimilate::AssimilateSkill;
+use crate::skills::list_memories::ListMemoriesSkill;
+use crate::skills::search::SearchMemoriesSkill;
 use crate::skills::skill::{Skill, SkillContext, SkillOutput};
 
 /// Registre centralisé des Skills disponibles.
@@ -23,6 +27,16 @@ impl SkillRegistry {
     pub fn with_defaults() -> Self {
         let mut registry = Self::new();
         registry.register(Arc::new(super::skill::NoopSkill::new()));
+        registry
+    }
+
+    /// Crée un registre avec les skills opérationnelles (`list_memories`, `search`, `assimilate`).
+    #[must_use]
+    pub fn with_operational_skills(deps: AppDependencies) -> Self {
+        let mut registry = Self::with_defaults();
+        registry.register(Arc::new(ListMemoriesSkill::new(deps.clone())));
+        registry.register(Arc::new(SearchMemoriesSkill::new(deps.clone())));
+        registry.register(Arc::new(AssimilateSkill::new(deps)));
         registry
     }
 
@@ -72,7 +86,10 @@ mod tests {
         let registry = SkillRegistry::with_defaults();
         let list = registry.list();
         assert!(list.iter().any(|(n, _)| *n == "noop"));
-        let out = registry.execute("noop", &SkillContext).await.unwrap();
+        let out = registry
+            .execute("noop", &SkillContext::default())
+            .await
+            .unwrap();
         assert_eq!(out.message, "noop ok");
     }
 
@@ -80,7 +97,7 @@ mod tests {
     async fn unknown_skill_returns_not_found() {
         let registry = SkillRegistry::new();
         let err = registry
-            .execute("missing", &SkillContext)
+            .execute("missing", &SkillContext::default())
             .await
             .unwrap_err();
         assert_eq!(err, SkillError::NotFound("missing".into()));

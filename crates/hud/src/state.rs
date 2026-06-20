@@ -38,6 +38,8 @@ pub enum HudMainView {
     Graph,
     /// Journal d'audit.
     Audit,
+    /// Chat libre LLM.
+    Chat,
 }
 
 /// Panneau gauche actif.
@@ -140,6 +142,10 @@ pub struct HudState {
     pub audit_entries: Vec<AuditEvent>,
     /// Chaîne d'audit intacte.
     pub audit_chain_intact: bool,
+    /// Saisie chat en cours.
+    pub chat_input: String,
+    /// Dernière réponse LLM affichée.
+    pub chat_reply: Option<String>,
 }
 
 impl Default for HudState {
@@ -172,6 +178,8 @@ impl Default for HudState {
             graph_hubs: Vec::new(),
             audit_entries: Vec::new(),
             audit_chain_intact: true,
+            chat_input: String::new(),
+            chat_reply: None,
         }
     }
 }
@@ -246,32 +254,69 @@ impl HudState {
                 node_count,
                 edge_count,
                 hubs,
-            } => {
-                self.graph_node_count = node_count;
-                self.graph_edge_count = edge_count;
-                self.graph_hubs = hubs;
-                self.status = format!("Graphe : {node_count} nœuds, {edge_count} arêtes");
-                self.clear_busy();
-                HudAction::None
-            }
+            } => self.apply_graph_summary(node_count, edge_count, hubs),
             Response::AuditLog {
                 entries,
                 chain_intact,
-            } => {
-                self.audit_entries = entries;
-                self.audit_chain_intact = chain_intact;
-                let chain = if chain_intact { "intacte" } else { "ROMPUE" };
-                self.status = format!(
-                    "Audit : {} entrée(s), chaîne {chain}",
-                    self.audit_entries.len()
-                );
-                self.clear_busy();
-                if !chain_intact {
-                    self.push_error("Chaîne d'audit compromise — vérification requise");
-                }
-                HudAction::None
-            }
+            } => self.apply_audit_log(entries, chain_intact),
+            Response::ChatReply { reply } => self.apply_chat_reply(reply),
+            Response::SkillList { skills } => self.apply_skill_list(&skills),
+            Response::SkillResult { message } => self.apply_skill_result(message),
         }
+    }
+
+    fn apply_graph_summary(
+        &mut self,
+        node_count: usize,
+        edge_count: usize,
+        hubs: Vec<orchestrator::HubSummary>,
+    ) -> HudAction {
+        self.graph_node_count = node_count;
+        self.graph_edge_count = edge_count;
+        self.graph_hubs = hubs;
+        self.status = format!("Graphe : {node_count} nœuds, {edge_count} arêtes");
+        self.clear_busy();
+        HudAction::None
+    }
+
+    fn apply_audit_log(
+        &mut self,
+        entries: Vec<orchestrator::AuditEvent>,
+        chain_intact: bool,
+    ) -> HudAction {
+        self.audit_entries = entries;
+        self.audit_chain_intact = chain_intact;
+        let chain = if chain_intact { "intacte" } else { "ROMPUE" };
+        self.status = format!(
+            "Audit : {} entrée(s), chaîne {chain}",
+            self.audit_entries.len()
+        );
+        self.clear_busy();
+        if !chain_intact {
+            self.push_error("Chaîne d'audit compromise — vérification requise");
+        }
+        HudAction::None
+    }
+
+    fn apply_chat_reply(&mut self, reply: String) -> HudAction {
+        self.chat_reply = Some(reply);
+        self.status = "Réponse chat reçue".to_string();
+        self.clear_busy();
+        HudAction::None
+    }
+
+    fn apply_skill_list(&mut self, skills: &[orchestrator::SkillSummary]) -> HudAction {
+        self.status = format!("{} skill(s) disponibles", skills.len());
+        self.clear_busy();
+        self.push_info(format!("Skills : {}", skills.len()));
+        HudAction::None
+    }
+
+    fn apply_skill_result(&mut self, message: String) -> HudAction {
+        self.status = "Skill exécutée".to_string();
+        self.clear_busy();
+        self.push_success(message);
+        HudAction::None
     }
 
     /// Applique un événement domaine poussé par le fan-out.

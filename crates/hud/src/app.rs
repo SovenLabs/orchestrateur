@@ -13,7 +13,7 @@ use crate::prefs::UiPreferences;
 use crate::search_list::show_virtual_search_list;
 use crate::state::{HudAction, HudMainView, HudState, LeftPanelMode, ToastKind};
 use crate::theme::apply_theme;
-use crate::views::{show_audit_view, show_degraded_banner, show_graph_view};
+use crate::views::{show_audit_view, show_chat_view, show_degraded_banner, show_graph_view};
 
 /// Application HUD branchée sur le bridge orchestrateur.
 pub struct HudApp {
@@ -158,7 +158,22 @@ impl HudApp {
             HudMainView::Audit => {
                 self.send_command(Command::Audit { limit: 100 }, "Chargement audit…");
             }
+            HudMainView::Chat => {}
         }
+    }
+
+    fn send_chat(&mut self) {
+        if !self.state.llm_available {
+            self.state
+                .push_error("Chat indisponible — provider LLM hors ligne");
+            return;
+        }
+        let message = self.state.chat_input.trim().to_string();
+        if message.is_empty() {
+            return;
+        }
+        self.send_command(Command::Chat { message }, "Chat…");
+        self.state.chat_input.clear();
     }
 
     fn send_startup_commands(&mut self) {
@@ -181,6 +196,7 @@ impl HudApp {
             HudMainView::Audit => {
                 self.send_command(Command::Audit { limit: 100 }, "Chargement audit…");
             }
+            HudMainView::Chat => {}
         }
     }
 
@@ -203,6 +219,12 @@ impl HudApp {
                 .clicked()
             {
                 self.switch_main_view(HudMainView::Audit);
+            }
+            if ui
+                .selectable_label(self.state.main_view == HudMainView::Chat, "Chat")
+                .clicked()
+            {
+                self.switch_main_view(HudMainView::Chat);
             }
         });
     }
@@ -484,6 +506,19 @@ impl HudApp {
                     &self.state.audit_entries,
                     self.state.audit_chain_intact,
                 );
+            }
+            HudMainView::Chat => {
+                let mut send = false;
+                show_chat_view(
+                    ui,
+                    &mut self.state.chat_input,
+                    self.state.chat_reply.as_deref(),
+                    self.state.llm_available,
+                    &mut || send = true,
+                );
+                if send {
+                    self.send_chat();
+                }
             }
         });
     }

@@ -43,7 +43,8 @@ pub mod testing;
 pub use bridge::{
     execute_command, format_assimilate_user_prompt, format_health_status, spawn_orchestrator_bridge,
     AppError, BridgeError, BridgeSearchHit, ChannelHandle, Command, FanoutEventPublisher,
-    HubSummary, MemoryDetailView, MemorySummary, OrchestratorHandle, OrchestratorThread, Response,
+    BridgeSkillContext, HubSummary, MemoryDetailView, MemorySummary, OrchestratorHandle,
+    OrchestratorThread, Response, SkillSummary,
 };
 pub use config::{
     AuditConfig, BehavioralConfig, ConfigError, IntegrityConfig, OllamaConfig, OrchestratorConfig,

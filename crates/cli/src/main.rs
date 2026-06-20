@@ -14,7 +14,7 @@ use orchestrator::spawn_orchestrator_bridge;
 #[cfg(feature = "tui")]
 use orchestrator::TuiApp;
 use orchestrator::{
-    execute_command, ChatMessage, Command, OrchestratorError, OrchestratorFacade, Response,
+    execute_command, BridgeSkillContext, Command, OrchestratorFacade, Response,
 };
 
 use tracing_subscriber::EnvFilter;
@@ -24,7 +24,7 @@ use tracing_subscriber::EnvFilter;
 #[command(
     name = "orchestrateur",
     version,
-    about = "Orchestrateur v0.4.0 — Cortex + Esprit + CLI/TUI/HTTP"
+    about = "Orchestrateur v0.5.0 — Cortex + Esprit + CLI/TUI/HTTP"
 )]
 struct Cli {
     /// Racine du workspace (défaut: ./workspace).
@@ -92,6 +92,11 @@ enum Commands {
         #[arg(long)]
         source: PathBuf,
     },
+    /// Skills opérationnelles (liste et exécution via bridge).
+    Skill {
+        #[command(subcommand)]
+        command: SkillCommands,
+    },
     /// Démarre le daemon HTTP (feature `http`).
     #[cfg(feature = "http")]
     Serve {
@@ -101,6 +106,29 @@ enum Commands {
         /// Adresse de liaison.
         #[arg(long, default_value = "127.0.0.1")]
         bind: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum SkillCommands {
+    /// Liste les skills enregistrées.
+    List,
+    /// Exécute une skill par son nom.
+    Run {
+        /// Identifiant (`list_memories`, `search`, `assimilate`, …).
+        name: String,
+        /// Requête (`search`).
+        #[arg(long)]
+        query: Option<String>,
+        /// Texte (`assimilate`).
+        #[arg(long)]
+        text: Option<String>,
+        /// Tags (filtre ou contexte).
+        #[arg(long, value_delimiter = ',')]
+        tags: Vec<String>,
+        /// Limite de résultats (`search`).
+        #[arg(long)]
+        limit: Option<usize>,
     },
 }
 
@@ -171,7 +199,33 @@ async fn main() -> Result<()> {
             }
         }
         Commands::Graph => run_bridge_command(&facade, Command::Graph).await?,
-        Commands::Chat { message } => cmd_chat(&facade, &message).await?,
+        Commands::Chat { message } => {
+            run_bridge_command(&facade, Command::Chat { message }).await?;
+        }
+        Commands::Skill { command } => match command {
+            SkillCommands::List => run_bridge_command(&facade, Command::ListSkills).await?,
+            SkillCommands::Run {
+                name,
+                query,
+                text,
+                tags,
+                limit,
+            } => {
+                run_bridge_command(
+                    &facade,
+                    Command::ExecuteSkill {
+                        name,
+                        context: BridgeSkillContext {
+                            query,
+                            text,
+                            tags,
+                            limit,
+                        },
+                    },
+                )
+                .await?;
+            }
+        },
         Commands::Import { source } => cmd_import(&facade, &source).await?,
         #[cfg(feature = "http")]
         Commands::Serve { port, bind } => run_http_server(facade, &bind, port).await?,
@@ -313,6 +367,21 @@ fn print_response(response: Response) -> Result<()> {
         Response::Success { message } => {
             println!("{message}");
         }
+        Response::ChatReply { reply } => {
+            println!("{reply}");
+        }
+        Response::SkillList { skills } => {
+            if skills.is_empty() {
+                println!("Aucune skill enregistrée.");
+                return Ok(());
+            }
+            for skill in skills {
+                println!("{} — {}", skill.name, skill.description);
+            }
+        }
+        Response::SkillResult { message } => {
+            println!("{message}");
+        }
         Response::Event(_) => {}
     }
     Ok(())
@@ -329,20 +398,6 @@ async fn cmd_import(facade: &OrchestratorFacade, source: &Path) -> Result<()> {
     for err in &result.errors {
         eprintln!("  erreur: {err}");
     }
-    Ok(())
-}
-
-async fn cmd_chat(facade: &OrchestratorFacade, message: &str) -> Result<()> {
-    let deps = facade.deps();
-    let reply = deps
-        .llm
-        .chat(&[ChatMessage {
-            role: "user".into(),
-            content: message.into(),
-        }])
-        .await
-        .map_err(OrchestratorError::Llm)?;
-    println!("{reply}");
     Ok(())
 }
 

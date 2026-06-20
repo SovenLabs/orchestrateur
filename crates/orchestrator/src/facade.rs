@@ -2,6 +2,7 @@ use cortex::{Memory, MemoryId, SearchFilter, SearchHit};
 
 use crate::deps::AppDependencies;
 use crate::error::{OrchestratorError, SkillError};
+use crate::llm::ChatMessage;
 use crate::memory_draft::MemoryDraft;
 use crate::skills::{SkillContext, SkillOutput, SkillRegistry};
 use std::path::Path;
@@ -23,10 +24,8 @@ impl OrchestratorFacade {
     /// Construit la facade avec dépendances injectées et registre de skills par défaut.
     #[must_use]
     pub fn new(deps: AppDependencies) -> Self {
-        Self {
-            deps,
-            skills: SkillRegistry::with_defaults(),
-        }
+        let skills = SkillRegistry::with_operational_skills(deps.clone());
+        Self { deps, skills }
     }
 
     /// Construit la facade avec un registre de skills personnalisé.
@@ -124,6 +123,26 @@ impl OrchestratorFacade {
         self.skills.list()
     }
 
+    /// Chat libre avec le provider LLM configuré.
+    ///
+    /// # Errors
+    ///
+    /// Propage [`OrchestratorError::Llm`] si le provider échoue.
+    pub async fn chat(&self, message: &str) -> Result<String, OrchestratorError> {
+        let reply = self
+            .deps
+            .llm
+            .chat(&[ChatMessage {
+                role: "user".into(),
+                content: message.into(),
+            }])
+            .await?;
+        if let Some(usage) = self.deps.llm.last_usage() {
+            self.deps.events.publish_llm_usage(&usage);
+        }
+        Ok(reply)
+    }
+
     /// Importe des mémoires Markdown depuis un répertoire (`*.md`).
     ///
     /// # Errors
@@ -206,7 +225,52 @@ mod tests {
         let f = facade();
         let skills = f.list_skills();
         assert!(skills.iter().any(|(n, _)| *n == "noop"));
-        let out = f.execute_skill("noop", &SkillContext).await.unwrap();
+        let out = f
+            .execute_skill("noop", &SkillContext::default())
+            .await
+            .unwrap();
         assert_eq!(out.message, "noop ok");
+    }
+
+    #[tokio::test]
+    async fn facade_executes_operational_skills() {
+        let f = facade();
+        let skills = f.list_skills();
+        assert!(skills.iter().any(|(n, _)| *n == "list_memories"));
+        assert!(skills.iter().any(|(n, _)| *n == "search"));
+        assert!(skills.iter().any(|(n, _)| *n == "assimilate"));
+
+        let mem = Memory::new("Skill", "contenu skill").unwrap();
+        f.save_memory(&mem).await.unwrap();
+
+        let out = f
+            .execute_skill("list_memories", &SkillContext::default())
+            .await
+            .unwrap();
+        assert!(out.message.contains("Skill"));
+
+        let out = f
+            .execute_skill(
+                "search",
+                &SkillContext {
+                    query: Some("contenu".into()),
+                    ..SkillContext::default()
+                },
+            )
+            .await
+            .unwrap();
+        assert!(out.message.contains("résultat"));
+
+        let out = f
+            .execute_skill(
+                "assimilate",
+                &SkillContext {
+                    text: Some("Texte à assimiler via facade.".into()),
+                    ..SkillContext::default()
+                },
+            )
+            .await
+            .unwrap();
+        assert!(out.message.contains("Assimilé"));
     }
 }

@@ -9,4 +9,4 @@ mod ui;
 
 pub use app::TuiApp;
 pub use crate::MemoryDetailView;
-pub use state::{AppState, View};
+pub use state::{AppState, TuiAction, View};

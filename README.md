@@ -185,8 +185,9 @@ Tags Git : `phase1-closed`, `phase2-closed`, `phase3-v0.1.0`, `phase4-v0.3.0`.
 | 3 | Infrastructure LanceDB/Ollama/xAI + sécurité |
 | 4 | Bridge HUD, CLI enrichi, egui virtualisé |
 | 5 | TUI ratatui intégré au cœur, mode dégradé sans IA |
+| 6 | Skills opérationnelles, bridge chat/skills, HUD/TUI chat, packaging Windows |
 
-**Prochaine étape** : installeur Windows + packaging release.
+**Packaging Windows** : `.\scripts\package-windows.ps1`
 
 ---
 

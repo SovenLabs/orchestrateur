@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::security::AuditEvent;
 
-use super::types::{AppError, BridgeSearchHit, HubSummary, MemorySummary};
+use super::types::{AppError, BridgeSearchHit, HubSummary, MemorySummary, SkillSummary};
 
 /// Réponse produite par le thread orchestrateur vers la couche présentation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -68,5 +68,20 @@ pub enum Response {
         entries: Vec<AuditEvent>,
         /// Chaîne BLAKE3 intacte sur le fichier complet.
         chain_intact: bool,
+    },
+    /// Réponse du provider LLM (chat libre).
+    ChatReply {
+        /// Texte généré.
+        reply: String,
+    },
+    /// Catalogue des skills disponibles.
+    SkillList {
+        /// Paires nom / description.
+        skills: Vec<SkillSummary>,
+    },
+    /// Résultat d'exécution d'une skill.
+    SkillResult {
+        /// Message ou payload textuel.
+        message: String,
     },
 }

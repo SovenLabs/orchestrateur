@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::types::BridgeSkillContext;
+
 /// Commande envoyée par la couche présentation (HUD, CLI, TUI) vers l'orchestrateur.
 ///
 /// Le HUD n'accède jamais aux ports Cortex : tout transite par ce contrat sérialisable.
@@ -44,5 +46,20 @@ pub enum Command {
     Audit {
         /// Nombre maximal d'entrées retournées (les plus récentes).
         limit: usize,
+    },
+    /// Chat libre avec le provider LLM configuré.
+    Chat {
+        /// Message utilisateur.
+        message: String,
+    },
+    /// Liste les skills enregistrées dans l'orchestrateur.
+    ListSkills,
+    /// Exécute une skill par son nom.
+    ExecuteSkill {
+        /// Identifiant de la skill (`list_memories`, `search`, …).
+        name: String,
+        /// Paramètres optionnels.
+        #[serde(default)]
+        context: BridgeSkillContext,
     },
 }

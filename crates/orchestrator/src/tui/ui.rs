@@ -52,6 +52,9 @@ fn draw_body(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
     match state.current_view {
         View::Detail => draw_detail(frame, area, state),
         View::Assimilate => draw_assimilate(frame, area, state),
+        View::Graph => draw_graph(frame, area, state),
+        View::Audit => draw_audit(frame, area, state),
+        View::Chat => draw_chat(frame, area, state),
         View::List | View::Help => draw_list(frame, area, state),
     }
 }
@@ -116,6 +119,109 @@ fn draw_detail(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
     frame.render_widget(paragraph, area);
 }
 
+fn draw_graph(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
+    let summary = format!(
+        "Nœuds : {} — Arêtes : {}",
+        state.graph_node_count, state.graph_edge_count
+    );
+    let items: Vec<ListItem<'_>> = if state.graph_hubs.is_empty() {
+        vec![ListItem::new("Aucun hub détecté.")]
+    } else {
+        state
+            .graph_hubs
+            .iter()
+            .enumerate()
+            .map(|(idx, hub)| {
+                let line = format!(
+                    "{} — {} lien(s) entrant(s)",
+                    hub.title, hub.inbound_links
+                );
+                let style = if idx == state.selected_index {
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default()
+                };
+                ListItem::new(line).style(style)
+            })
+            .collect()
+    };
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(format!("Graphe — {summary}"));
+    frame.render_widget(List::new(items).block(block), area);
+}
+
+fn draw_audit(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
+    let chain_label = if state.audit_chain_intact {
+        "Chaîne BLAKE3 : intacte"
+    } else {
+        "Chaîne BLAKE3 : ROMPUE"
+    };
+    let chain_color = if state.audit_chain_intact {
+        Color::Green
+    } else {
+        Color::Red
+    };
+
+    let items: Vec<ListItem<'_>> = if state.audit_entries.is_empty() {
+        vec![ListItem::new("Aucune entrée d'audit.")]
+    } else {
+        state
+            .audit_entries
+            .iter()
+            .map(|entry| {
+                let line = format!(
+                    "{} — {} | {}",
+                    entry.timestamp, entry.event_type, entry.details
+                );
+                ListItem::new(vec![
+                    Line::from(line),
+                    Line::from(Span::styled(
+                        format!("hash: {}", entry.hash),
+                        Style::default().fg(Color::DarkGray),
+                    )),
+                ])
+            })
+            .collect()
+    };
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(Span::styled(chain_label, Style::default().fg(chain_color)));
+    frame.render_widget(List::new(items).block(block), area);
+}
+
+fn draw_chat(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(6), Constraint::Min(0)])
+        .split(area);
+
+    let input = if state.chat_input.is_empty() {
+        "Saisissez votre message…".to_string()
+    } else {
+        state.chat_input.clone()
+    };
+    let input_widget = Paragraph::new(input).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title("Message (Entrée envoie, Esc retour)"),
+    );
+    frame.render_widget(input_widget, chunks[0]);
+
+    let reply = state
+        .chat_reply
+        .as_deref()
+        .unwrap_or("En attente de réponse…");
+    let reply_widget = Paragraph::new(reply)
+        .block(Block::default().borders(Borders::ALL).title("Réponse LLM"))
+        .wrap(Wrap { trim: false });
+    frame.render_widget(reply_widget, chunks[1]);
+}
+
 fn draw_assimilate(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
     let text = if state.assimilate_text.is_empty() {
         "Saisissez le texte à assimiler…".to_string()
@@ -135,10 +241,13 @@ fn draw_assimilate(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
 fn draw_footer(frame: &mut Frame<'_>, area: Rect, state: &AppState) {
     let help = match state.current_view {
         View::List => {
-            "j/k:nav  Entrée:détail  /:recherche  a:assimiler  r:refresh  ?:aide  q:quitter"
+            "j/k:nav  Entrée:détail  /:recherche  a:assimiler  c:chat  g:graphe  u:audit  r:refresh  ?:aide  q:quitter"
         }
         View::Detail => "Esc:retour  a:assimiler  ?:aide",
         View::Assimilate => "Entrée:envoyer  Esc:annuler",
+        View::Graph => "j/k:nav hubs  Entrée:détail  r:refresh  Esc:retour  ?:aide",
+        View::Audit => "r:refresh  Esc:retour  ?:aide",
+        View::Chat => "Entrée:envoyer  Esc:retour  ?:aide",
         View::Help => "Esc ou ?:fermer aide",
     };
     let status_color = if !state.llm_available || !state.embedding_available {
@@ -171,6 +280,9 @@ fn draw_help(frame: &mut Frame<'_>) {
         Line::from("/ = recherche sémantique (vectorielle)"),
         Line::from("a = assimiler via LLM"),
         Line::from("r = rafraîchir depuis LanceDB"),
+        Line::from("c = chat libre avec le LLM"),
+        Line::from("g = graphe de connaissances (hubs)"),
+        Line::from("u = journal d'audit BLAKE3"),
         Line::from("q = quitter  Ctrl+C = quitter"),
         Line::from(""),
         Line::from("Bridge: Command/Response — zéro logique métier ici"),

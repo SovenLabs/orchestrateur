@@ -72,14 +72,16 @@ Le projet s’appelle **Orchestrateur**.
 ### 3.1 Structure des crates (workspace Cargo)
 
 ```
-orchestrator/
+Orchestre/
 ├── Cargo.toml
 ├── crates/
 │   ├── cortex/                # LE SQUELETTE (Domain + Ports hexagonaux)
-│   ├── orchestrator/          # L’ESPRIT (Application / Use Cases / Facade)
-│   ├── infrastructure/        # Adapters concrets (implémentations des ports)
-│   ├── cli/                   # Binaire principal (contrôle total en terminal / VS Code tasks)
-│   └── presentation-egui/     # LA PEAU (optionnelle – build sélectif uniquement)
+│   ├── orchestrator/          # L’ESPRIT (Use Cases, Facade, Bridge, TUI feature `tui`)
+│   ├── infrastructure/        # Adapters concrets (LanceDB, Ollama, xAI, FS)
+│   ├── cli/                   # Binaire orchestrateur.exe (CLI + TUI)
+│   └── hud/                   # Binaire orchestrateur-hud.exe (Peau egui optionnelle)
+├── workspace/                 # Données utilisateur
+└── docs/                      # Archives phases + prompts
 ```
 
 ### 3.2 Couches et séparation
@@ -89,7 +91,7 @@ orchestrator/
 | **Domain / Core**   | `cortex`         | Entités, Value Objects, Domain Services purs, **Ports (traits)** | Zéro dépendance vers infra ou orchestrator. Testable isolément. |
 | **Application**     | `orchestrator`   | Use Cases, logique d’orchestration, Skill Registry, Thought Loop, Facade publique | Ne connaît que les ports du Cortex + ses propres traits. |
 | **Infrastructure**  | `infrastructure` | Implémentations concrètes des ports + clients Grok / Ollama / FS / Vector | Jamais appelée directement par les use cases (uniquement via traits). |
-| **Presentation**    | `presentation-egui` | HUD egui (optionnel)                             | Ne dépend que de la facade `orchestrator`. |
+| **Presentation**    | `hud`            | HUD egui (optionnel)                                | Bridge `Command`/`Response` uniquement. |
 
 ### 3.3 Architecture Hexagonale dans le Cortex
 
@@ -141,7 +143,7 @@ Le parsing se fait via split sur `---` + `serde_yaml` (simple, robuste, contrôl
 
 ### 3.5 Décisions techniques verrouillées (ne pas changer sans discussion explicite)
 
-- **Vector Store** : `lancedb` (crate Rust native, embeddé, fichiers locaux dans `.vector/`) → **toujours** derrière le port `VectorStore`.
+- **Vector Store** : `lancedb` (crate Rust native, embeddé, fichiers locaux dans `.orchestrateur/lancedb/`) → **toujours** derrière le port `VectorStore`.
 - **Embeddings** : `Ollama` (modèle type `nomic-embed-text`) via impl du port `EmbeddingProvider`. Hook prévu pour futur provider xAI si l’API embeddings apparaît.
 - **Grok (xAI)** : `reqwest` + `serde` vers l’API officielle `/chat/completions`. Gestion via variable d’environnement `XAI_API_KEY`. Fallback Ollama chat configurable.
 - **GUI / Peau** : **egui** recommandé et verrouillé pour la première implémentation (100% Rust, immediate mode, contrôle total, optionnel via crate séparée). Slint et Wails rejetés pour cette phase pour des raisons de pureté Rust et longévité.
@@ -154,7 +156,8 @@ Le parsing se fait via split sur `---` + `serde_yaml` (simple, robuste, contrôl
   workspace/
   ├── memories/
   │   └── <uuid-v7>.md
-  ├── .vector/          # données lancedb
+  ├── .orchestrateur/   # LanceDB (vector store local)
+  │   └── lancedb/
   ├── config/
   │   └── orchestrator.toml
   └── logs/

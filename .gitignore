@@ -11,8 +11,6 @@
 /memories/
 
 # Workspace runtime (données locales)
-workspace/.vector/**
-!workspace/.vector/.gitkeep
 workspace/memories/*.md
 workspace/logs/*.log
 workspace/config/orchestrator.toml

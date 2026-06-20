@@ -33,7 +33,7 @@ Tu as accès au **Prompt Maître Complet** du projet (fichier [`PROMPT_MAITRE.md
 
 Tu dois **toujours** te référer à :
 - L’identité et la philosophie (Cortex = Squelette prioritaire, Orchestrateur = Esprit, Peau = optionnelle)
-- L’architecture validée Phase 0 + compléments 3.7 (crates `cortex`, `orchestrator`, `infrastructure`, `cli`, `presentation-egui`)
+- L’architecture validée Phase 0 + compléments 3.7 (crates `cortex`, `orchestrator`, `infrastructure`, `cli`, `hud` ; TUI intégré au cœur via feature `tui`)
 - Les ports hexagonaux (`MemoryRepository`, `VectorStore`, `EmbeddingProvider`)
 - Les décisions verrouillées (LanceDB derrière abstraction, egui pour la peau optionnelle, Ollama fallback, xAI via Structured Outputs de préférence)
 - Le format Markdown canonique avec backlinks

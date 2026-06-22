@@ -193,13 +193,25 @@ impl AppState {
                 }
                 TuiAction::None
             }
-            Response::ChatReply { reply } => {
+            Response::ChatReply { reply, .. } => {
                 self.chat_reply = Some(reply);
                 self.status_message = "Réponse chat reçue".to_string();
                 TuiAction::None
             }
             Response::SkillList { skills } => {
                 self.status_message = format!("{} skill(s) disponibles", skills.len());
+                TuiAction::None
+            }
+            Response::MarketplaceList { entries, .. } => {
+                self.status_message = format!("Marketplace : {} entrée(s)", entries.len());
+                TuiAction::None
+            }
+            Response::HubIntegrityReport { report } => {
+                self.status_message = format!(
+                    "Hub : {} valide(s), {} invalide(s)",
+                    report.valid_count,
+                    report.invalid.len()
+                );
                 TuiAction::None
             }
             Response::Event(event) => self.apply_domain_event(&event),

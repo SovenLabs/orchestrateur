@@ -1,4 +1,3 @@
-use std::env;
 use std::sync::Arc;
 
 use orchestrator::{LlmProvider, OrchestratorConfig};
@@ -6,9 +5,9 @@ use reqwest::Client;
 use thiserror::Error;
 use tracing::warn;
 
-use crate::providers::UnavailableLlmProvider;
+use crate::providers::{resolve_llm_from_registry, UnavailableLlmProvider};
 
-use super::{ChainedLlmProvider, OllamaLlmProvider, XaiGrokProvider};
+use super::ChainedLlmProvider;
 
 /// Erreurs de construction des providers LLM.
 #[derive(Debug, Error)]
@@ -36,7 +35,7 @@ pub fn build_llm_provider(
         if providers.iter().any(|p| p.name() == name) {
             continue;
         }
-        match resolve_llm(name.as_str(), config, client) {
+        match resolve_llm_from_registry(name.as_str(), config, client) {
             Ok(provider) => providers.push(provider),
             Err(err) => {
                 warn!(provider = %name, error = %err, "LLM provider ignoré au démarrage");
@@ -59,39 +58,5 @@ pub fn build_llm_provider(
         Ok(providers.remove(0))
     } else {
         Ok(Arc::new(ChainedLlmProvider::new(providers)))
-    }
-}
-
-fn resolve_llm(
-    name: &str,
-    config: &OrchestratorConfig,
-    client: &Client,
-) -> Result<Arc<dyn LlmProvider>, LlmFactoryError> {
-    match name {
-        "xai" => {
-            let key = env::var(&config.xai.api_key_env).map_err(|_| {
-                LlmFactoryError::Build(format!(
-                    "variable d'environnement {} introuvable",
-                    config.xai.api_key_env
-                ))
-            })?;
-            Ok(Arc::new(XaiGrokProvider::new(
-                client.clone(),
-                key,
-                config.xai.model.clone(),
-                config.xai.timeout_secs,
-                config.xai.max_retries,
-            )))
-        }
-        "ollama" => Ok(Arc::new(OllamaLlmProvider::new(
-            client.clone(),
-            config.ollama.url.clone(),
-            config.ollama.chat_model.clone(),
-            config.ollama.timeout_secs,
-            config.ollama.max_retries,
-        ))),
-        other => Err(LlmFactoryError::Build(format!(
-            "LLM provider inconnu: {other}"
-        ))),
     }
 }

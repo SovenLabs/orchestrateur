@@ -24,6 +24,7 @@ fn chained_facade(xai: Arc<dyn orchestrator::LlmProvider>) -> OrchestratorFacade
         bundle.vector_store,
         bundle.embedding,
         llm,
+        bundle.session_repo,
         bundle.config,
         events,
     );
@@ -104,6 +105,7 @@ async fn intensity2_xai_unavailable_then_recovery() {
         bundle.vector_store,
         bundle.embedding,
         llm,
+        bundle.session_repo,
         bundle.config,
         Arc::new(orchestrator::NoopEventPublisher),
     ));

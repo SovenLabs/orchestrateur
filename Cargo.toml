@@ -4,22 +4,26 @@ members = [
     "crates/cortex",
     "crates/orchestrator",
     "crates/infrastructure",
+    "crates/mcp",
     "crates/cli",
     "crates/tui",
     "crates/hud",
     "crates/client",
+    "plugins/pong-native",
 ]
+
 default-members = [
     "crates/cortex",
     "crates/orchestrator",
     "crates/infrastructure",
+    "crates/mcp",
     "crates/cli",
     "crates/tui",
     "crates/client",
 ]
 
 [workspace.package]
-version = "0.6.0"
+version = "0.14.0"
 edition = "2021"
 authors = ["Sovën"]
 license = "MIT OR Apache-2.0"
@@ -35,10 +39,11 @@ cortex = { path = "crates/cortex" }
 orchestrator = { path = "crates/orchestrator" }
 orchestrator-client = { path = "crates/client" }
 infrastructure = { path = "crates/infrastructure" }
+mcp = { path = "crates/mcp" }
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 thiserror = "2"
-tokio = { version = "1", features = ["fs", "macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["fs", "macros", "rt-multi-thread", "net", "sync"] }
 toml = "0.8"
 tracing = "0.1"
 uuid = { version = "1", features = ["v7", "serde"] }
@@ -55,6 +60,8 @@ egui = "0.30"
 eframe = { version = "0.30", default-features = true }
 ratatui = "0.29"
 crossterm = "0.28"
-axum = "0.8"
+axum = { version = "0.8", features = ["ws"] }
+futures-util = "0.3"
 tower = "0.5"
 tower-http = { version = "0.6", features = ["trace"] }
+libloading = "0.8"

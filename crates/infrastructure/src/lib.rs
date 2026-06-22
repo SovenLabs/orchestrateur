@@ -14,6 +14,7 @@ mod http_retry;
 mod http_status;
 mod llm;
 mod memory_repository;
+mod session_store;
 mod providers;
 mod vector_store;
 mod wiring;
@@ -27,5 +28,6 @@ pub use llm::{
     build_llm_provider, ChainedLlmProvider, LlmFactoryError, OllamaLlmProvider, XaiGrokProvider,
 };
 pub use memory_repository::FileMemoryRepository;
+pub use session_store::SqliteSessionStore;
 pub use vector_store::{build_vector_store, LancedbVectorStore, VectorStoreFactoryError};
 pub use wiring::{build_app_dependencies, WiringError};

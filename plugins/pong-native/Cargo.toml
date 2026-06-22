@@ -1,0 +1,13 @@
+[package]
+name = "orchestrateur-plugin-pong-native"
+version = "0.1.0"
+edition = "2021"
+authors = ["Sovën"]
+license = "MIT OR Apache-2.0"
+description = "Plugin natif démo Orchestrateur — retourne pong-native"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+serde_json = { workspace = true }

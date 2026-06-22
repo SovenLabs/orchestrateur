@@ -75,6 +75,35 @@ pub struct SkillSummary {
     pub name: String,
     /// Description lisible.
     pub description: String,
+    /// Origine : `builtin` ou `hub`.
+    pub source: String,
+    /// Version optionnelle (plugins hub).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+}
+
+/// Entrée du catalogue marketplace exposée au bridge (Phase 14).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MarketplaceEntrySummary {
+    /// Identifiant stable.
+    pub id: String,
+    /// Nom affiché.
+    pub name: String,
+    /// Description.
+    pub description: String,
+    /// Version catalogue.
+    pub version: String,
+    /// Installable via sync.
+    pub enabled: bool,
+}
+
+/// Rapport d'intégrité hub pour le bridge (Phase 14).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HubIntegritySummary {
+    /// Manifestes valides.
+    pub valid_count: usize,
+    /// Chemins invalides avec message d'erreur.
+    pub invalid: Vec<(String, String)>,
 }
 
 /// Hub du graphe de connaissances (backlinks entrants).

@@ -3,6 +3,7 @@
 mod event_collector;
 mod hardcore_helpers;
 mod mocks;
+mod session_mock;
 mod scripted_providers;
 
 pub use event_collector::CollectingEventPublisher;
@@ -14,6 +15,7 @@ pub use mocks::{
     InMemoryEmbeddingProvider, InMemoryLlmProvider, InMemoryMemoryRepository, InMemoryVectorStore,
     MockBundle,
 };
+pub use session_mock::InMemorySessionRepository;
 pub use scripted_providers::{
     CountingEmbeddingProvider, FailNthVectorStore, InvalidJsonLlmProvider, ScriptedLlmProvider,
     StableOllamaLlmProvider,

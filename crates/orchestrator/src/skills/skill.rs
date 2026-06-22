@@ -11,7 +11,7 @@ pub(crate) fn map_orchestrator_error(err: &OrchestratorError) -> SkillError {
 use crate::bridge::BridgeSkillContext;
 
 /// Paramètres optionnels passés aux skills opérationnelles.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct SkillContext {
     /// Requête de recherche sémantique (`search`).
     pub query: Option<String>,
@@ -41,6 +41,30 @@ pub struct SkillOutput {
     pub message: String,
 }
 
+/// Origine d'une skill dans le registre.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SkillSource {
+    /// Skill compilée dans l'orchestrateur.
+    Builtin,
+    /// Plugin chargé depuis le hub (subprocess).
+    Hub,
+    /// Plugin bibliothèque native (Phase 12).
+    Native,
+}
+
+/// Métadonnées exposées par le registre.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SkillEntry {
+    /// Identifiant stable.
+    pub name: String,
+    /// Description lisible.
+    pub description: String,
+    /// Origine (`builtin` / `hub`).
+    pub source: SkillSource,
+    /// Version optionnelle (plugins hub).
+    pub version: Option<String>,
+}
+
 /// Contrat d'une capacité extensible de l'orchestrateur.
 ///
 /// `name` et `description` sont synchrones (métadonnées statiques).
@@ -48,10 +72,20 @@ pub struct SkillOutput {
 #[async_trait]
 pub trait Skill: Send + Sync {
     /// Identifiant unique de la skill.
-    fn name(&self) -> &'static str;
+    fn name(&self) -> &str;
 
     /// Description lisible pour l'utilisateur ou l'UI.
-    fn description(&self) -> &'static str;
+    fn description(&self) -> &str;
+
+    /// Origine de la skill (builtin par défaut).
+    fn source(&self) -> SkillSource {
+        SkillSource::Builtin
+    }
+
+    /// Version optionnelle (plugins hub).
+    fn version(&self) -> Option<&str> {
+        None
+    }
 
     /// Exécute la skill.
     async fn execute(&self, ctx: &SkillContext) -> Result<SkillOutput, SkillError>;

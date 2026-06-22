@@ -10,8 +10,11 @@ use anyhow::Context;
 use clap::{Parser, Subcommand};
 use infrastructure::bootstrap_workspace;
 use orchestrator::{
-    execute_command, BridgeSkillContext, Command, OrchestratorFacade, Response,
+    execute_command, BridgeSkillContext, Command, OrchestratorFacade, ProviderKind,
+    ProviderRegistry, Response, SkillsHub, SkillsMarketplace, ToolsetRegistry,
 };
+#[cfg(feature = "gateway")]
+use orchestrator::ChannelCatalog;
 
 use tracing_subscriber::EnvFilter;
 
@@ -20,7 +23,7 @@ use tracing_subscriber::EnvFilter;
 #[command(
     name = "orchestrateur",
     version,
-    about = "Orchestrateur v0.6.0 — CLI headless (TUI : orchestrateur-tui)"
+    about = "Orchestrateur v0.13.0 — CLI headless (TUI : orchestrateur-tui)"
 )]
 struct Cli {
     /// Racine du workspace (défaut: ./workspace).
@@ -101,6 +104,84 @@ enum Commands {
         /// Adresse de liaison.
         #[arg(long, default_value = "127.0.0.1")]
         bind: String,
+    },
+    /// Gateway WebSocket + canaux (feature `gateway`).
+    #[cfg(feature = "gateway")]
+    Gateway {
+        #[command(subcommand)]
+        command: GatewayCommands,
+    },
+    /// Catalogue des providers LLM / embeddings (Phase 9).
+    Providers {
+        #[command(subcommand)]
+        command: ProviderCommands,
+    },
+    /// Canaux gateway et toolsets agent (Phase 10).
+    #[cfg(feature = "gateway")]
+    Channels {
+        #[command(subcommand)]
+        command: ChannelCommands,
+    },
+    /// Toolsets agent (Phase 10).
+    Toolsets {
+        #[command(subcommand)]
+        command: ToolsetCommands,
+    },
+    /// Hub skills — plugins dynamiques (Phase 11).
+    SkillsHub {
+        #[command(subcommand)]
+        command: SkillsHubCommands,
+    },
+}
+
+#[cfg(feature = "gateway")]
+#[derive(Subcommand)]
+enum ChannelCommands {
+    /// Liste les canaux messaging enregistrés (≥ 15).
+    List,
+}
+
+#[derive(Subcommand)]
+enum ToolsetCommands {
+    /// Liste les groupes d'outils agent.
+    List,
+}
+
+#[derive(Subcommand)]
+enum SkillsHubCommands {
+    /// Liste les skills découvertes (filesystem + inline TOML).
+    List,
+    /// Affiche le répertoire hub configuré.
+    Path,
+    /// Liste le catalogue marketplace (local ou distant).
+    Marketplace,
+    /// Installe les skills du catalogue dans le hub local.
+    Sync,
+    /// Vérifie les empreintes BLAKE3 des manifestes hub.
+    Verify,
+}
+
+#[derive(Subcommand)]
+enum ProviderCommands {
+    /// Liste les providers enregistrés (`llm`, `embedding`, ou tous).
+    List {
+        /// Filtre : `llm`, `embedding`, ou absent pour tout.
+        #[arg(long)]
+        kind: Option<String>,
+    },
+}
+
+#[cfg(feature = "gateway")]
+#[derive(Subcommand)]
+enum GatewayCommands {
+    /// Démarre le gateway (WS :18789, webhook, canaux).
+    Run {
+        /// Port d'écoute (surcharge `orchestrator.toml`).
+        #[arg(long)]
+        port: Option<u16>,
+        /// Adresse de liaison (surcharge `orchestrator.toml`).
+        #[arg(long)]
+        bind: Option<String>,
     },
 }
 
@@ -214,6 +295,29 @@ async fn main() -> Result<()> {
         Commands::Import { source } => cmd_import(&facade, &source).await?,
         #[cfg(feature = "http")]
         Commands::Serve { port, bind } => run_http_server(facade, &bind, port).await?,
+        #[cfg(feature = "gateway")]
+        Commands::Gateway { command } => match command {
+            GatewayCommands::Run { port, bind } => {
+                run_gateway_server(facade, &cli.workspace, port, bind).await?
+            }
+        },
+        Commands::Providers { command } => match command {
+            ProviderCommands::List { kind } => cmd_providers_list(kind.as_deref())?,
+        },
+        #[cfg(feature = "gateway")]
+        Commands::Channels { command } => match command {
+            ChannelCommands::List => cmd_channels_list()?,
+        },
+        Commands::Toolsets { command } => match command {
+            ToolsetCommands::List => cmd_toolsets_list()?,
+        },
+        Commands::SkillsHub { command } => match command {
+            SkillsHubCommands::List => cmd_skills_hub_list(&facade)?,
+            SkillsHubCommands::Path => cmd_skills_hub_path(&facade)?,
+            SkillsHubCommands::Marketplace => cmd_skills_hub_marketplace(&facade).await?,
+            SkillsHubCommands::Sync => cmd_skills_hub_sync(&facade).await?,
+            SkillsHubCommands::Verify => cmd_skills_hub_verify(&facade)?,
+        },
     }
     Ok(())
 }
@@ -308,8 +412,25 @@ fn print_response(response: Response) -> Result<()> {
         Response::Success { message } => {
             println!("{message}");
         }
-        Response::ChatReply { reply } => {
+        Response::ChatReply {
+            reply,
+            tools_invoked,
+            auto_assimilated,
+            auto_executed_skills,
+        } => {
             println!("{reply}");
+            if !tools_invoked.is_empty() {
+                println!("# outils: {}", tools_invoked.join(", "));
+            }
+            if !auto_executed_skills.is_empty() {
+                println!(
+                    "# skills auto-exécutées: {}",
+                    auto_executed_skills.join(", ")
+                );
+            }
+            if let Some(summary) = auto_assimilated {
+                println!("# auto-assimilé: {summary}");
+            }
         }
         Response::SkillList { skills } => {
             if skills.is_empty() {
@@ -317,11 +438,44 @@ fn print_response(response: Response) -> Result<()> {
                 return Ok(());
             }
             for skill in skills {
-                println!("{} — {}", skill.name, skill.description);
+                let version = skill
+                    .version
+                    .as_deref()
+                    .map(|v| format!(" v{v}"))
+                    .unwrap_or_default();
+                println!(
+                    "{} [{}{}] — {}",
+                    skill.name, skill.source, version, skill.description
+                );
             }
         }
         Response::SkillResult { message } => {
             println!("{message}");
+        }
+        Response::MarketplaceList {
+            version,
+            catalog_hash,
+            entries,
+        } => {
+            let hash = catalog_hash.as_deref().unwrap_or("(non signé)");
+            println!("# Marketplace v{version} hash={hash} ({} entrées)", entries.len());
+            for entry in entries {
+                let state = if entry.enabled { "on" } else { "off" };
+                println!(
+                    "{:<16} {:<6} {} — {}",
+                    entry.id, state, entry.version, entry.description
+                );
+            }
+        }
+        Response::HubIntegrityReport { report } => {
+            println!(
+                "Hub intégrité : {} valide(s), {} invalide(s)",
+                report.valid_count,
+                report.invalid.len()
+            );
+            for (path, message) in &report.invalid {
+                println!("  ! {path}: {message}");
+            }
         }
         Response::Event(_) => {}
     }
@@ -403,6 +557,185 @@ async fn run_http_server(facade: OrchestratorFacade, bind: &str, port: u16) -> R
     axum::serve(listener, app)
         .await
         .context("serveur HTTP interrompu")?;
+    Ok(())
+}
+
+#[cfg(feature = "gateway")]
+fn cmd_channels_list() -> Result<()> {
+    let catalog = ChannelCatalog::new();
+    println!("# Canaux gateway ({})", catalog.count());
+    for channel in catalog.descriptors() {
+        let kind = if channel.dedicated { "dedicated" } else { "stub" };
+        println!(
+            "{:<14} {:<10} {:<28} env={}",
+            channel.id, kind, channel.display_name, channel.default_token_env
+        );
+    }
+    Ok(())
+}
+
+fn cmd_skills_hub_list(facade: &OrchestratorFacade) -> Result<()> {
+    let config = &facade.deps().config;
+    let entries = SkillsHub::discover(config).map_err(anyhow::Error::msg)?;
+    if entries.is_empty() {
+        println!("Aucune skill découverte dans le hub.");
+        return Ok(());
+    }
+    println!("# Skills hub ({})", entries.len());
+    for entry in entries {
+        let state = if entry.enabled { "on" } else { "off" };
+        println!(
+            "{:<16} {:<10} {:<10} {:<6} {} — {}",
+            entry.id,
+            entry.kind,
+            entry.origin,
+            state,
+            entry.version,
+            entry.description
+        );
+        println!("  path: {}", entry.path.display());
+    }
+    Ok(())
+}
+
+fn cmd_skills_hub_path(facade: &OrchestratorFacade) -> Result<()> {
+    let path = facade.deps().config.skills_hub_dir();
+    println!("{}", path.display());
+    Ok(())
+}
+
+async fn cmd_skills_hub_marketplace(facade: &OrchestratorFacade) -> Result<()> {
+    let config = &facade.deps().config;
+    let catalog = SkillsMarketplace::load_catalog_auto(config)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    println!("# Marketplace v{} ({} skills)", catalog.version, catalog.skills.len());
+    for entry in &catalog.skills {
+        let state = if entry.enabled { "on" } else { "off" };
+        println!(
+            "{:<16} {:<6} {} — {}",
+            entry.id, state, entry.version, entry.description
+        );
+    }
+    Ok(())
+}
+
+async fn cmd_skills_hub_sync(facade: &OrchestratorFacade) -> Result<()> {
+    let config = &facade.deps().config;
+    let catalog = SkillsMarketplace::load_catalog_auto(config)
+        .await
+        .map_err(anyhow::Error::msg)?;
+    let result = SkillsMarketplace::sync_to_hub(config, &catalog).map_err(anyhow::Error::msg)?;
+    println!(
+        "Sync terminé : {} installée(s), {} ignorée(s)",
+        result.installed.len(),
+        result.skipped.len()
+    );
+    for id in &result.installed {
+        println!("  + {id}");
+    }
+    Ok(())
+}
+
+fn cmd_skills_hub_verify(facade: &OrchestratorFacade) -> Result<()> {
+    let report = SkillsMarketplace::verify_hub_integrity(&facade.deps().config)
+        .map_err(anyhow::Error::msg)?;
+    println!(
+        "Vérification intégrité : {} valide(s), {} invalide(s)",
+        report.valid.len(),
+        report.invalid.len()
+    );
+    for path in &report.valid {
+        println!("  ok  {}", path.display());
+    }
+    for (path, err) in &report.invalid {
+        println!("  ERR {} — {err}", path.display());
+    }
+    if !report.invalid.is_empty() {
+        anyhow::bail!("manifestes invalides détectés");
+    }
+    Ok(())
+}
+
+fn cmd_toolsets_list() -> Result<()> {
+    let registry = ToolsetRegistry::new();
+    for toolset in registry.descriptors() {
+        let tools = if toolset.tools.is_empty() {
+            "(tous)".to_string()
+        } else {
+            toolset.tools.join(", ")
+        };
+        println!("{:<10} {:<22} [{tools}]", toolset.id, toolset.display_name);
+    }
+    Ok(())
+}
+
+fn cmd_providers_list(kind: Option<&str>) -> Result<()> {
+    let registry = ProviderRegistry::new();
+    match kind {
+        Some("llm") => print_provider_table(registry.llm_descriptors()),
+        Some("embedding") => print_provider_table(registry.embedding_descriptors()),
+        Some(other) => anyhow::bail!("kind inconnu: {other} (utiliser llm ou embedding)"),
+        None => {
+            println!("# LLM ({} providers)", registry.llm_descriptors().len());
+            print_provider_table(registry.llm_descriptors());
+            println!();
+            println!(
+                "# Embeddings ({} providers)",
+                registry.embedding_descriptors().len()
+            );
+            print_provider_table(registry.embedding_descriptors());
+        }
+    }
+    Ok(())
+}
+
+fn print_provider_table(descriptors: &[orchestrator::ProviderDescriptor]) {
+    for d in descriptors {
+        let kind = match d.kind {
+            ProviderKind::Llm => "llm",
+            ProviderKind::Embedding => "embedding",
+        };
+        println!(
+            "{:<14} {:<12} {:<24} model={} env={}",
+            d.id, kind, d.display_name, d.default_model, d.default_api_key_env
+        );
+    }
+}
+
+#[cfg(feature = "gateway")]
+async fn run_gateway_server(
+    facade: OrchestratorFacade,
+    workspace: &Path,
+    port: Option<u16>,
+    bind: Option<String>,
+) -> Result<()> {
+    use std::sync::Arc;
+
+    use orchestrator::{run_gateway, OrchestratorConfig};
+
+    let mut config = OrchestratorConfig::load_workspace(workspace)
+        .map_err(|e| anyhow::anyhow!("config: {e}"))?;
+    if let Some(p) = port {
+        config.gateway.port = p;
+    }
+    if let Some(b) = bind {
+        config.gateway.bind = b;
+    }
+    if !config.gateway.enabled {
+        anyhow::bail!("gateway désactivé dans orchestrator.toml ([gateway] enabled = false)");
+    }
+
+    tracing::info!(
+        bind = %config.gateway.bind,
+        port = config.gateway.port,
+        "démarrage gateway — définir {} pour l'authentification WS",
+        config.gateway.token_env
+    );
+
+    run_gateway(Arc::new(facade), &config)
+        .await
+        .map_err(|e| anyhow::anyhow!("gateway: {e}"))?;
     Ok(())
 }
 

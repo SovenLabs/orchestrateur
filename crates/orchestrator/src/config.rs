@@ -1,8 +1,12 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use cortex::{MemoryDraftValidatorConfig, SimilarityThresholds};
 use serde::Deserialize;
 use thiserror::Error;
+
+use crate::providers::ProviderProfileSection;
+use crate::providers::ProviderProfiles;
 
 /// Configuration des providers IA (primary + fallbacks ordonnés).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -237,6 +241,247 @@ impl SecurityConfig {
     }
 }
 
+/// Configuration d'un canal gateway.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GatewayChannelConfig {
+    /// Active le canal au démarrage du gateway.
+    pub enabled: bool,
+    /// Variable d'environnement du token / secret du canal.
+    pub token_env: String,
+    /// URL HTTP de polling entrant (canaux stub Phase 14).
+    pub poll_url: Option<String>,
+    /// Intervalle entre deux polls HTTP (secondes).
+    pub poll_interval_secs: u64,
+}
+
+impl GatewayChannelConfig {
+    /// Canal désactivé par défaut.
+    #[must_use]
+    pub fn disabled(token_env: impl Into<String>) -> Self {
+        Self {
+            enabled: false,
+            token_env: token_env.into(),
+            poll_url: None,
+            poll_interval_secs: 30,
+        }
+    }
+}
+
+/// Configuration du gateway WebSocket Phase 8.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GatewayConfig {
+    /// Active le gateway (sinon `gateway run` refuse de démarrer).
+    pub enabled: bool,
+    /// Adresse de liaison.
+    pub bind: String,
+    /// Port d'écoute (style OpenClaw : 18789).
+    pub port: u16,
+    /// Variable d'environnement du token d'authentification WS.
+    pub token_env: String,
+    /// Canal webhook HTTP entrant.
+    pub webhook: GatewayChannelConfig,
+    /// Canal Telegram (long-polling si token présent).
+    pub telegram: GatewayChannelConfig,
+    /// Canal Discord (webhook sortant si token présent).
+    pub discord: GatewayChannelConfig,
+    /// Canal Slack (stub API si token présent).
+    pub slack: GatewayChannelConfig,
+    /// Canaux additionnels Phase 10 (whatsapp, matrix, …).
+    pub extra_channels: HashMap<String, GatewayChannelConfig>,
+}
+
+impl Default for GatewayConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            bind: "127.0.0.1".into(),
+            port: 18_789,
+            token_env: "ORCHESTRATEUR_GATEWAY_TOKEN".into(),
+            webhook: GatewayChannelConfig {
+                enabled: true,
+                token_env: "ORCHESTRATEUR_WEBHOOK_SECRET".into(),
+                poll_url: None,
+                poll_interval_secs: 30,
+            },
+            telegram: GatewayChannelConfig {
+                enabled: true,
+                token_env: "TELEGRAM_BOT_TOKEN".into(),
+                poll_url: None,
+                poll_interval_secs: 30,
+            },
+            discord: GatewayChannelConfig {
+                enabled: true,
+                token_env: "DISCORD_BOT_TOKEN".into(),
+                poll_url: None,
+                poll_interval_secs: 30,
+            },
+            slack: GatewayChannelConfig {
+                enabled: true,
+                token_env: "SLACK_BOT_TOKEN".into(),
+                poll_url: None,
+                poll_interval_secs: 30,
+            },
+            extra_channels: HashMap::new(),
+        }
+    }
+}
+
+/// Configuration d'un serveur MCP (stdio).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct McpServerConfig {
+    /// Nom logique du serveur.
+    pub name: String,
+    /// Commande à exécuter.
+    pub command: String,
+    /// Arguments de la commande.
+    pub args: Vec<String>,
+}
+
+impl Default for McpServerConfig {
+    fn default() -> Self {
+        Self {
+            name: "default".into(),
+            command: String::new(),
+            args: Vec::new(),
+        }
+    }
+}
+
+/// Configuration agent Phase 10 (persistée TOML `[agent]`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentSettingsConfig {
+    /// Nombre maximal d'itérations outil par tour.
+    pub max_tool_iterations: usize,
+    /// Injecte le contexte graphe dans le prompt.
+    pub graph_context_enabled: bool,
+    /// Nombre de hubs dans le contexte graphe.
+    pub graph_hub_limit: usize,
+    /// Recherche mémoire proactive avant LLM.
+    pub proactive_memory_search: bool,
+    /// Limite résultats recherche proactive.
+    pub proactive_search_limit: usize,
+    /// Auto-assimilation systématique de chaque tour (différenciateur Phase 10).
+    pub auto_assimilate_turn: bool,
+    /// Historique maximal envoyé au LLM.
+    pub max_history_turns: usize,
+    /// Toolset actif (`agent`, `memory`, `full`, …).
+    pub active_toolset: String,
+    /// Outils agent `skill_list` / `skill_execute` (Phase 12).
+    pub skill_tools_enabled: bool,
+    /// Injecte le catalogue skills + suggestions dans le prompt agent (Phase 13).
+    pub skill_auto_suggest: bool,
+    /// Exécute automatiquement la skill la mieux notée avant le LLM (Phase 14).
+    pub skill_auto_execute: bool,
+    /// Score minimal pour déclencher l'auto-exécution (Phase 14).
+    pub skill_auto_execute_threshold: u32,
+}
+
+impl Default for AgentSettingsConfig {
+    fn default() -> Self {
+        Self {
+            max_tool_iterations: 3,
+            graph_context_enabled: true,
+            graph_hub_limit: 5,
+            proactive_memory_search: true,
+            proactive_search_limit: 5,
+            auto_assimilate_turn: true,
+            max_history_turns: 20,
+            active_toolset: "agent".into(),
+            skill_tools_enabled: true,
+            skill_auto_suggest: true,
+            skill_auto_execute: false,
+            skill_auto_execute_threshold: 10,
+        }
+    }
+}
+
+/// Entrée inline d'un plugin subprocess (Phase 11).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SkillsHubEntryConfig {
+    /// Identifiant stable de la skill.
+    pub id: String,
+    /// Description affichée.
+    pub description: String,
+    /// Active l'entrée au chargement.
+    pub enabled: bool,
+    /// Commande exécutable.
+    pub command: String,
+    /// Arguments de la commande.
+    pub args: Vec<String>,
+    /// Envoie le [`SkillContext`] en JSON sur stdin.
+    pub stdin_json: bool,
+    /// Timeout subprocess en secondes.
+    pub timeout_secs: u64,
+}
+
+impl Default for SkillsHubEntryConfig {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            description: String::new(),
+            enabled: true,
+            command: String::new(),
+            args: Vec::new(),
+            stdin_json: false,
+            timeout_secs: 30,
+        }
+    }
+}
+
+/// Configuration du hub de skills dynamiques (Phase 11).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SkillsHubConfig {
+    /// Active le scan et le chargement du hub.
+    pub enabled: bool,
+    /// Répertoire relatif au workspace (`skills/` par défaut).
+    pub directory: String,
+    /// Charge automatiquement les plugins au démarrage de la facade.
+    pub auto_load: bool,
+    /// Plugins déclarés inline dans `orchestrator.toml`.
+    pub entries: Vec<SkillsHubEntryConfig>,
+    /// Active le catalogue marketplace (Phase 13).
+    pub marketplace_enabled: bool,
+    /// Chemin relatif au workspace du `catalog.json` local.
+    pub marketplace_catalog: String,
+    /// URL catalogue distant optionnel (feature `skills-marketplace`).
+    pub marketplace_url: Option<String>,
+    /// Exige un `catalog_hash` BLAKE3 valide au chargement (Phase 14).
+    pub marketplace_require_signature: bool,
+}
+
+impl Default for SkillsHubConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            directory: "skills".into(),
+            auto_load: true,
+            entries: Vec::new(),
+            marketplace_enabled: true,
+            marketplace_catalog: "skills/marketplace/catalog.json".into(),
+            marketplace_url: None,
+            marketplace_require_signature: false,
+        }
+    }
+}
+
+/// Configuration client MCP Phase 9.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct McpConfig {
+    /// Active le client MCP et les outils `mcp_*`.
+    pub enabled: bool,
+    /// Serveurs MCP à connecter au démarrage.
+    pub servers: Vec<McpServerConfig>,
+}
+
+impl Default for McpConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            servers: Vec::new(),
+        }
+    }
+}
+
 /// Configuration applicative de l'orchestrateur.
 #[derive(Debug, Clone, PartialEq)]
 pub struct OrchestratorConfig {
@@ -256,6 +501,16 @@ pub struct OrchestratorConfig {
     pub ollama: OllamaConfig,
     /// Couche sécurité adversariale (validation des brouillons LLM).
     pub security: SecurityConfig,
+    /// Gateway WebSocket + canaux (Phase 8).
+    pub gateway: GatewayConfig,
+    /// Profils surchargeables par provider (Phase 9).
+    pub provider_profiles: ProviderProfiles,
+    /// Client MCP (Phase 9).
+    pub mcp: McpConfig,
+    /// Configuration agent (Phase 10).
+    pub agent: AgentSettingsConfig,
+    /// Hub skills + plugins dynamiques (Phase 11).
+    pub skills_hub: SkillsHubConfig,
 }
 
 impl Default for OrchestratorConfig {
@@ -270,6 +525,11 @@ impl Default for OrchestratorConfig {
             xai: XaiConfig::default(),
             ollama: OllamaConfig::default(),
             security: SecurityConfig::default(),
+            gateway: GatewayConfig::default(),
+            provider_profiles: ProviderProfiles::default(),
+            mcp: McpConfig::default(),
+            agent: AgentSettingsConfig::default(),
+            skills_hub: SkillsHubConfig::default(),
         }
     }
 }
@@ -285,6 +545,26 @@ impl OrchestratorConfig {
     #[must_use]
     pub fn settings_path(&self) -> PathBuf {
         self.workspace_root.join("config").join("orchestrator.toml")
+    }
+
+    /// Répertoire du hub de skills (`workspace/skills` par défaut).
+    #[must_use]
+    pub fn skills_hub_dir(&self) -> PathBuf {
+        self.workspace_root.join(&self.skills_hub.directory)
+    }
+
+    /// Chemin du catalogue marketplace local.
+    #[must_use]
+    pub fn marketplace_catalog_path(&self) -> PathBuf {
+        self.workspace_root.join(&self.skills_hub.marketplace_catalog)
+    }
+
+    /// Chemin de la base SQLite des sessions agent.
+    #[must_use]
+    pub fn sessions_db_path(&self) -> PathBuf {
+        self.workspace_root
+            .join(".orchestrateur")
+            .join("sessions.db")
     }
 
     /// Chemin résolu du vector store `LanceDB`.
@@ -422,6 +702,169 @@ impl OrchestratorConfig {
         if let Some(s) = settings.security {
             merge_security(&mut self.security, s);
         }
+        if let Some(g) = settings.gateway {
+            merge_gateway(&mut self.gateway, g);
+        }
+        if let Some(profiles) = settings.provider_profiles {
+            for (id, section) in profiles {
+                self.provider_profiles.merge_section(id, section);
+            }
+        }
+        if let Some(m) = settings.mcp {
+            merge_mcp(&mut self.mcp, m);
+        }
+        if let Some(a) = settings.agent {
+            merge_agent(&mut self.agent, a);
+        }
+        if let Some(h) = settings.skills_hub {
+            merge_skills_hub(&mut self.skills_hub, h);
+        }
+    }
+}
+
+fn merge_skills_hub(target: &mut SkillsHubConfig, section: SkillsHubSection) {
+    if let Some(v) = section.enabled {
+        target.enabled = v;
+    }
+    if let Some(v) = section.directory {
+        target.directory = v;
+    }
+    if let Some(v) = section.auto_load {
+        target.auto_load = v;
+    }
+    if let Some(entries) = section.entries {
+        target.entries = entries
+            .into_iter()
+            .map(|e| SkillsHubEntryConfig {
+                id: e.id.unwrap_or_default(),
+                description: e.description.unwrap_or_default(),
+                enabled: e.enabled.unwrap_or(true),
+                command: e.command.unwrap_or_default(),
+                args: e.args.unwrap_or_default(),
+                stdin_json: e.stdin_json.unwrap_or(false),
+                timeout_secs: e.timeout_secs.unwrap_or(30),
+            })
+            .filter(|e| !e.id.is_empty() && !e.command.is_empty())
+            .collect();
+    }
+    if let Some(v) = section.marketplace_enabled {
+        target.marketplace_enabled = v;
+    }
+    if let Some(v) = section.marketplace_catalog {
+        target.marketplace_catalog = v;
+    }
+    if let Some(v) = section.marketplace_url {
+        target.marketplace_url = Some(v);
+    }
+    if let Some(v) = section.marketplace_require_signature {
+        target.marketplace_require_signature = v;
+    }
+}
+
+fn merge_agent(target: &mut AgentSettingsConfig, section: AgentSection) {
+    if let Some(v) = section.max_tool_iterations {
+        target.max_tool_iterations = v;
+    }
+    if let Some(v) = section.graph_context_enabled {
+        target.graph_context_enabled = v;
+    }
+    if let Some(v) = section.graph_hub_limit {
+        target.graph_hub_limit = v;
+    }
+    if let Some(v) = section.proactive_memory_search {
+        target.proactive_memory_search = v;
+    }
+    if let Some(v) = section.proactive_search_limit {
+        target.proactive_search_limit = v;
+    }
+    if let Some(v) = section.auto_assimilate_turn {
+        target.auto_assimilate_turn = v;
+    }
+    if let Some(v) = section.max_history_turns {
+        target.max_history_turns = v;
+    }
+    if let Some(v) = section.active_toolset {
+        target.active_toolset = v;
+    }
+    if let Some(v) = section.skill_tools_enabled {
+        target.skill_tools_enabled = v;
+    }
+    if let Some(v) = section.skill_auto_suggest {
+        target.skill_auto_suggest = v;
+    }
+    if let Some(v) = section.skill_auto_execute {
+        target.skill_auto_execute = v;
+    }
+    if let Some(v) = section.skill_auto_execute_threshold {
+        target.skill_auto_execute_threshold = v;
+    }
+}
+
+fn merge_mcp(target: &mut McpConfig, section: McpSection) {
+    if let Some(v) = section.enabled {
+        target.enabled = v;
+    }
+    if let Some(servers) = section.servers {
+        target.servers = servers
+            .into_iter()
+            .map(|s| McpServerConfig {
+                name: s.name.unwrap_or_else(|| "default".into()),
+                command: s.command.unwrap_or_default(),
+                args: s.args.unwrap_or_default(),
+            })
+            .filter(|s| !s.command.is_empty())
+            .collect();
+    }
+}
+
+fn merge_gateway(target: &mut GatewayConfig, section: GatewaySection) {
+    if let Some(v) = section.enabled {
+        target.enabled = v;
+    }
+    if let Some(v) = section.bind {
+        target.bind = v;
+    }
+    if let Some(v) = section.port {
+        target.port = v;
+    }
+    if let Some(v) = section.token_env {
+        target.token_env = v;
+    }
+    if let Some(w) = section.webhook {
+        merge_gateway_channel(&mut target.webhook, w);
+    }
+    if let Some(t) = section.telegram {
+        merge_gateway_channel(&mut target.telegram, t);
+    }
+    if let Some(d) = section.discord {
+        merge_gateway_channel(&mut target.discord, d);
+    }
+    if let Some(s) = section.slack {
+        merge_gateway_channel(&mut target.slack, s);
+    }
+    if let Some(channels) = section.channels {
+        for (id, cfg) in channels {
+            let entry = target
+                .extra_channels
+                .entry(id)
+                .or_insert_with(|| GatewayChannelConfig::disabled(String::new()));
+            merge_gateway_channel(entry, cfg);
+        }
+    }
+}
+
+fn merge_gateway_channel(target: &mut GatewayChannelConfig, section: GatewayChannelSection) {
+    if let Some(v) = section.enabled {
+        target.enabled = v;
+    }
+    if let Some(v) = section.token_env {
+        target.token_env = v;
+    }
+    if let Some(v) = section.poll_url {
+        target.poll_url = if v.is_empty() { None } else { Some(v) };
+    }
+    if let Some(v) = section.poll_interval_secs {
+        target.poll_interval_secs = v.max(5);
     }
 }
 
@@ -532,6 +975,84 @@ struct SettingsToml {
     xai: Option<XaiSection>,
     ollama: Option<OllamaSection>,
     security: Option<SecuritySection>,
+    gateway: Option<GatewaySection>,
+    provider_profiles: Option<HashMap<String, ProviderProfileSection>>,
+    mcp: Option<McpSection>,
+    agent: Option<AgentSection>,
+    skills_hub: Option<SkillsHubSection>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SkillsHubSection {
+    enabled: Option<bool>,
+    directory: Option<String>,
+    auto_load: Option<bool>,
+    entries: Option<Vec<SkillsHubEntryToml>>,
+    marketplace_enabled: Option<bool>,
+    marketplace_catalog: Option<String>,
+    marketplace_url: Option<String>,
+    marketplace_require_signature: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SkillsHubEntryToml {
+    id: Option<String>,
+    description: Option<String>,
+    enabled: Option<bool>,
+    command: Option<String>,
+    args: Option<Vec<String>>,
+    stdin_json: Option<bool>,
+    timeout_secs: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AgentSection {
+    max_tool_iterations: Option<usize>,
+    graph_context_enabled: Option<bool>,
+    graph_hub_limit: Option<usize>,
+    proactive_memory_search: Option<bool>,
+    proactive_search_limit: Option<usize>,
+    auto_assimilate_turn: Option<bool>,
+    max_history_turns: Option<usize>,
+    active_toolset: Option<String>,
+    skill_tools_enabled: Option<bool>,
+    skill_auto_suggest: Option<bool>,
+    skill_auto_execute: Option<bool>,
+    skill_auto_execute_threshold: Option<u32>,
+}
+
+#[derive(Debug, Deserialize)]
+struct McpSection {
+    enabled: Option<bool>,
+    servers: Option<Vec<McpServerToml>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct McpServerToml {
+    name: Option<String>,
+    command: Option<String>,
+    args: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GatewaySection {
+    enabled: Option<bool>,
+    bind: Option<String>,
+    port: Option<u16>,
+    token_env: Option<String>,
+    webhook: Option<GatewayChannelSection>,
+    telegram: Option<GatewayChannelSection>,
+    discord: Option<GatewayChannelSection>,
+    slack: Option<GatewayChannelSection>,
+    channels: Option<HashMap<String, GatewayChannelSection>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GatewayChannelSection {
+    enabled: Option<bool>,
+    token_env: Option<String>,
+    poll_url: Option<String>,
+    poll_interval_secs: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -770,6 +1291,158 @@ detect_injection_patterns = false
         assert_eq!(cfg.security.max_content_length, 10_000);
         assert_eq!(cfg.security.max_backlinks, 5);
         assert!(!cfg.security.detect_injection_patterns);
+    }
+
+    #[test]
+    fn loads_provider_profiles_from_toml() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_dir = dir.path().join("config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        let toml_path = config_dir.join("orchestrator.toml");
+        let mut file = std::fs::File::create(&toml_path).unwrap();
+        writeln!(
+            file,
+            r#"
+[provider_profiles.openai]
+model = "gpt-4o-mini"
+api_key_env = "OPENAI_API_KEY"
+
+[provider_profiles.groq]
+enabled = false
+"#
+        )
+        .unwrap();
+
+        let cfg = OrchestratorConfig::load_workspace(dir.path()).unwrap();
+        let registry = crate::providers::ProviderRegistry::new();
+        let openai = registry.llm_descriptor("openai").unwrap();
+        let profile = cfg.provider_profiles.resolve("openai", openai);
+        assert_eq!(profile.model, "gpt-4o-mini");
+        let groq = registry.llm_descriptor("groq").unwrap();
+        let groq_profile = cfg.provider_profiles.resolve("groq", groq);
+        assert!(!groq_profile.enabled);
+    }
+
+    #[test]
+    fn agent_defaults_auto_assimilate_turn_true() {
+        let cfg = OrchestratorConfig::default();
+        assert!(cfg.agent.auto_assimilate_turn);
+        assert!(cfg.agent.skill_tools_enabled);
+        assert_eq!(cfg.agent.active_toolset, "agent");
+        assert_eq!(cfg.agent.max_tool_iterations, 3);
+    }
+
+    #[test]
+    fn loads_agent_and_extra_channels_from_toml() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_dir = dir.path().join("config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        let toml_path = config_dir.join("orchestrator.toml");
+        let mut file = std::fs::File::create(&toml_path).unwrap();
+        writeln!(
+            file,
+            r#"
+[agent]
+auto_assimilate_turn = false
+active_toolset = "research"
+max_tool_iterations = 5
+
+[gateway.channels.whatsapp]
+enabled = true
+token_env = "MY_WHATSAPP_TOKEN"
+
+[gateway.channels.matrix]
+enabled = false
+"#
+        )
+        .unwrap();
+
+        let cfg = OrchestratorConfig::load_workspace(dir.path()).unwrap();
+        assert!(!cfg.agent.auto_assimilate_turn);
+        assert_eq!(cfg.agent.active_toolset, "research");
+        assert_eq!(cfg.agent.max_tool_iterations, 5);
+
+        let whatsapp = cfg
+            .gateway
+            .extra_channels
+            .get("whatsapp")
+            .expect("whatsapp");
+        assert!(whatsapp.enabled);
+        assert_eq!(whatsapp.token_env, "MY_WHATSAPP_TOKEN");
+
+        let matrix = cfg.gateway.extra_channels.get("matrix").expect("matrix");
+        assert!(!matrix.enabled);
+    }
+
+    #[test]
+    fn loads_gateway_from_toml() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_dir = dir.path().join("config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        let toml_path = config_dir.join("orchestrator.toml");
+        let mut file = std::fs::File::create(&toml_path).unwrap();
+        writeln!(
+            file,
+            r#"
+[gateway]
+bind = "0.0.0.0"
+port = 19000
+token_env = "MY_GATEWAY_TOKEN"
+
+[gateway.telegram]
+enabled = false
+"#
+        )
+        .unwrap();
+
+        let cfg = OrchestratorConfig::load_workspace(dir.path()).unwrap();
+        assert_eq!(cfg.gateway.bind, "0.0.0.0");
+        assert_eq!(cfg.gateway.port, 19_000);
+        assert_eq!(cfg.gateway.token_env, "MY_GATEWAY_TOKEN");
+        assert!(!cfg.gateway.telegram.enabled);
+    }
+
+    #[test]
+    fn skills_hub_defaults_enabled() {
+        let cfg = OrchestratorConfig::default();
+        assert!(cfg.skills_hub.enabled);
+        assert!(cfg.skills_hub.auto_load);
+        assert_eq!(cfg.skills_hub.directory, "skills");
+    }
+
+    #[test]
+    fn loads_skills_hub_from_toml() {
+        let dir = tempfile::tempdir().unwrap();
+        let config_dir = dir.path().join("config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        let toml_path = config_dir.join("orchestrator.toml");
+        let mut file = std::fs::File::create(&toml_path).unwrap();
+        writeln!(
+            file,
+            r#"
+[skills_hub]
+enabled = true
+directory = "custom-skills"
+auto_load = false
+
+[[skills_hub.entries]]
+id = "inline-echo"
+description = "Echo inline"
+command = "echo"
+args = ["inline"]
+enabled = true
+stdin_json = false
+timeout_secs = 10
+"#
+        )
+        .unwrap();
+
+        let cfg = OrchestratorConfig::load_workspace(dir.path()).unwrap();
+        assert_eq!(cfg.skills_hub.directory, "custom-skills");
+        assert!(!cfg.skills_hub.auto_load);
+        assert_eq!(cfg.skills_hub.entries.len(), 1);
+        assert_eq!(cfg.skills_hub.entries[0].id, "inline-echo");
+        assert_eq!(cfg.skills_hub_dir(), dir.path().join("custom-skills"));
     }
 
     #[test]

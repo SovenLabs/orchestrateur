@@ -21,6 +21,7 @@ async fn intensity1_invalid_json_returns_structured_error() {
         bundle.vector_store,
         bundle.embedding,
         llm,
+        bundle.session_repo,
         bundle.config,
         events.clone(),
     );
@@ -50,6 +51,7 @@ async fn intensity1_llm_usage_emitted_on_success() {
         bundle.vector_store,
         bundle.embedding,
         bundle.llm,
+        bundle.session_repo,
         bundle.config,
         events.clone(),
     );
@@ -75,6 +77,7 @@ async fn intensity2_vector_store_failure_surfaces_as_cortex_error() {
         failing_store,
         bundle.embedding,
         bundle.llm,
+        bundle.session_repo,
         bundle.config,
         Arc::new(orchestrator::NoopEventPublisher),
     );

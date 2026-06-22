@@ -56,6 +56,150 @@ honeypot_count = 3
 enabled = true
 path = "logs/audit.jsonl"
 
+# Gateway WebSocket Phase 8 (orchestrateur gateway run)
+[gateway]
+enabled = true
+bind = "127.0.0.1"
+port = 18789
+token_env = "ORCHESTRATEUR_GATEWAY_TOKEN"
+
+[gateway.webhook]
+enabled = true
+token_env = "ORCHESTRATEUR_WEBHOOK_SECRET"
+
+[gateway.telegram]
+enabled = true
+token_env = "TELEGRAM_BOT_TOKEN"
+
+[gateway.discord]
+enabled = false
+token_env = "DISCORD_BOT_TOKEN"
+# Livraison sortante optionnelle : DISCORD_WEBHOOK_URL
+
+[gateway.slack]
+enabled = false
+token_env = "SLACK_BOT_TOKEN"
+# Livraison sortante : SLACK_CHANNEL_ID ou external_id dans le webhook
+
+# Provider registry Phase 9 — 12 LLM + 5 embeddings
+# orchestrateur providers list
+
+[provider_profiles.openai]
+model = "gpt-4o"
+api_key_env = "OPENAI_API_KEY"
+
+[provider_profiles.groq]
+model = "llama-3.3-70b-versatile"
+api_key_env = "GROQ_API_KEY"
+
+[provider_profiles.openrouter]
+model = "openai/gpt-4o"
+api_key_env = "OPENROUTER_API_KEY"
+
+# MCP client Phase 9 (stdio)
+[mcp]
+enabled = false
+
+# [[mcp.servers]]
+# name = "filesystem"
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-filesystem", "."]
+
+# Agent Phase 10 — toolsets + auto-assimilation systématique
+[agent]
+active_toolset = "agent"
+auto_assimilate_turn = true
+max_tool_iterations = 3
+graph_context_enabled = true
+graph_hub_limit = 5
+proactive_memory_search = true
+proactive_search_limit = 5
+max_history_turns = 20
+skill_tools_enabled = true
+skill_auto_suggest = true
+# Phase 14 — auto-exécution skill si score suggestion ≥ seuil
+skill_auto_execute = false
+skill_auto_execute_threshold = 10
+
+# Canaux additionnels Phase 10 (stubs — polling HTTP Phase 14)
+# orchestrateur channels list
+
+[gateway.channels.whatsapp]
+enabled = false
+token_env = "WHATSAPP_TOKEN"
+# poll_url = "http://127.0.0.1:8080/whatsapp/poll"
+# poll_interval_secs = 30
+
+[gateway.channels.signal]
+enabled = false
+token_env = "SIGNAL_CLI_TOKEN"
+
+[gateway.channels.matrix]
+enabled = false
+token_env = "MATRIX_ACCESS_TOKEN"
+
+[gateway.channels.teams]
+enabled = false
+token_env = "TEAMS_BOT_TOKEN"
+
+[gateway.channels.email]
+enabled = false
+token_env = "EMAIL_IMAP_PASSWORD"
+
+[gateway.channels.irc]
+enabled = false
+token_env = "IRC_NICKSERV_PASSWORD"
+
+[gateway.channels.google_chat]
+enabled = false
+token_env = "GOOGLE_CHAT_TOKEN"
+
+[gateway.channels.line]
+enabled = false
+token_env = "LINE_CHANNEL_TOKEN"
+
+[gateway.channels.mattermost]
+enabled = false
+token_env = "MATTERMOST_TOKEN"
+
+[gateway.channels.rocketchat]
+enabled = false
+token_env = "ROCKETCHAT_TOKEN"
+
+[gateway.channels.bluesky]
+enabled = false
+token_env = "BLUESKY_APP_PASSWORD"
+
+[gateway.channels.nostr]
+enabled = false
+token_env = "NOSTR_PRIVATE_KEY"
+
+[gateway.channels.twitch]
+enabled = false
+token_env = "TWITCH_BOT_TOKEN"
+
+# Skills hub Phase 11 — plugins dynamiques (subprocess)
+# orchestrateur skills-hub list
+# orchestrateur skills-hub path
+
+[skills_hub]
+enabled = true
+directory = "skills"
+auto_load = true
+marketplace_enabled = true
+marketplace_catalog = "skills/marketplace/catalog.json"
+# marketplace_url = "https://example.com/skills/catalog.json"
+# marketplace_require_signature = false
+
+# [[skills_hub.entries]]
+# id = "inline-echo"
+# description = "Echo inline depuis TOML"
+# command = "echo"
+# args = ["inline"]
+# enabled = false
+# stdin_json = false
+# timeout_secs = 10
+
 # Test E2E Ollama (optionnel, marqué #[ignore] par défaut) :
 #   cargo test -p infrastructure ollama_end_to_end_when_available -- --ignored
 # Prérequis : ollama serve + modèles embedding_model et chat_model tirés.

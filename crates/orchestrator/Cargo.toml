@@ -12,6 +12,9 @@ heavy-tests = []
 cli = []
 tui = ["dep:ratatui", "dep:crossterm"]
 http = ["dep:axum", "dep:tower-http"]
+gateway = ["dep:axum", "dep:tower-http", "dep:futures-util", "dep:reqwest"]
+plugins-native = ["dep:libloading"]
+skills-marketplace = ["dep:reqwest"]
 
 [dependencies]
 async-trait.workspace = true
@@ -22,13 +25,16 @@ flume.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 thiserror.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time", "net", "process", "io-util"] }
 toml.workspace = true
 tracing.workspace = true
 ratatui = { workspace = true, optional = true }
 crossterm = { workspace = true, optional = true }
 axum = { workspace = true, optional = true }
 tower-http = { workspace = true, optional = true }
+futures-util = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
+libloading = { workspace = true, optional = true }
 
 [dev-dependencies]
 infrastructure = { workspace = true }
@@ -36,6 +42,14 @@ reqwest = { workspace = true }
 serde_json = "1"
 tempfile = "3"
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+
+[[test]]
+name = "gateway_integration"
+required-features = ["gateway"]
+
+[[test]]
+name = "gateway_stub_inbound"
+required-features = ["gateway"]
 
 [lints.rust]
 unsafe_code = "forbid"

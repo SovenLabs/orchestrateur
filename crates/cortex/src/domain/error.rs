@@ -44,4 +44,12 @@ pub enum CortexError {
     /// Intégrité du graphe de connaissances compromise.
     #[error("graphe: {0}")]
     GraphError(String),
+
+    /// Clé de session agent invalide.
+    #[error("clé de session invalide: {0}")]
+    InvalidSessionKey(String),
+
+    /// Session introuvable.
+    #[error("session introuvable: {0}")]
+    SessionNotFound(String),
 }

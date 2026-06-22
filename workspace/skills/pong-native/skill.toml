@@ -1,0 +1,14 @@
+# Plugin natif Phase 12 — compiler d'abord :
+#   cargo build --release -p orchestrateur-plugin-pong-native
+# Puis pointer library vers la DLL produite (Windows) ou .so (Linux).
+
+[skill]
+id = "pong-native"
+name = "Pong Native"
+description = "Plugin natif démo — retourne pong-native"
+version = "0.1.0"
+kind = "native"
+enabled = false
+
+[native]
+library = "../../../target/release/orchestrateur_plugin_pong_native.dll"

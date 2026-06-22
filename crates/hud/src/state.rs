@@ -269,9 +269,23 @@ impl HudState {
                 self.clear_busy();
                 HudAction::None
             }
-            Response::ChatReply { reply } => self.apply_chat_reply(reply),
+            Response::ChatReply { reply, .. } => self.apply_chat_reply(reply),
             Response::SkillList { skills } => self.apply_skill_list(&skills),
             Response::SkillResult { message } => self.apply_skill_result(message),
+            Response::MarketplaceList { entries, .. } => {
+                self.status = format!("Marketplace : {} entrée(s)", entries.len());
+                self.clear_busy();
+                HudAction::None
+            }
+            Response::HubIntegrityReport { report } => {
+                self.status = format!(
+                    "Hub : {} valide(s), {} invalide(s)",
+                    report.valid_count,
+                    report.invalid.len()
+                );
+                self.clear_busy();
+                HudAction::None
+            }
         }
     }
 

@@ -1,16 +1,20 @@
 use std::sync::Arc;
 
-use cortex::{EmbeddingProvider, MemoryRepository, VectorStore};
+use cortex::{EmbeddingProvider, MemoryRepository, SessionRepository, VectorStore};
+use mcp::build_mcp_gateway;
+use orchestrator::mcp::McpGateway;
 use orchestrator::{
     build_security_context, AppDependencies, LlmProvider, OrchestratorConfig,
     SecurityBootstrapError,
 };
+use tracing::warn;
 use reqwest::Client;
 use thiserror::Error;
 
 use crate::embedding::{build_embedding_provider, EmbeddingFactoryError};
 use crate::llm::{build_llm_provider, LlmFactoryError};
 use crate::memory_repository::FileMemoryRepository;
+use crate::session_store::SqliteSessionStore;
 use crate::vector_store::{build_vector_store, VectorStoreFactoryError};
 
 /// Erreurs de composition des dépendances applicatives.
@@ -67,12 +71,31 @@ pub async fn build_app_dependencies(
     let embedding: Arc<dyn EmbeddingProvider> = build_embedding_provider(&config, &client)?;
     let llm: Arc<dyn LlmProvider> = build_llm_provider(&config, &client)?;
 
+    let mcp: Option<std::sync::Arc<dyn McpGateway>> = if config.mcp.enabled {
+        match build_mcp_gateway(&config.mcp).await {
+            Ok(gateway) => gateway,
+            Err(err) => {
+                warn!(%err, "MCP désactivé — aucun serveur n'a démarré");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    let session_repo: Arc<dyn SessionRepository> = Arc::new(
+        SqliteSessionStore::open(config.sessions_db_path())
+            .map_err(|e| WiringError::VectorStore(VectorStoreFactoryError::Build(e.to_string())))?,
+    );
+
     Ok(AppDependencies::new(
         memory_repo,
         vector_store,
         embedding,
         llm,
+        session_repo,
         config,
         security,
+        mcp,
     ))
 }

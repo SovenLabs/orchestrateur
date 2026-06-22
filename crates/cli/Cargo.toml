@@ -4,11 +4,12 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Orchestrateur — Binaire CLI headless (sans TUI) — v0.6.0"
+description = "Orchestrateur — Binaire CLI headless (sans TUI) — v0.13.0"
 
 [features]
-default = []
+default = ["gateway"]
 http = ["dep:axum", "dep:tower", "dep:tower-http"]
+gateway = ["orchestrator/gateway", "dep:axum", "dep:tower", "dep:tower-http"]
 
 [[bin]]
 name = "orchestrateur"
@@ -19,8 +20,8 @@ anyhow.workspace = true
 clap.workspace = true
 cortex.workspace = true
 infrastructure.workspace = true
-orchestrator.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+orchestrator = { workspace = true, features = ["gateway", "plugins-native", "skills-marketplace"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 serde = { workspace = true, features = ["derive"] }

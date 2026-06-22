@@ -1,6 +1,6 @@
 # Orchestrateur — Second cerveau local souverain
 
-**Version Cargo workspace : 0.5.0** · **Rust 1.80+** · **Juin 2026**
+**Version Cargo workspace : 0.13.0** · **Rust 1.80+** · **Juin 2026**
 
 > Documentation architecte : [`docs/prompt/PROMPT_MAITRE.md`](docs/prompt/PROMPT_MAITRE.md) · Archives phases : [`docs/`](docs/)
 
@@ -174,6 +174,18 @@ Exécutables produits :
 # CLI pur
 .\target\release\orchestrateur.exe list --workspace workspace
 .\target\release\orchestrateur.exe get <uuid> --workspace workspace
+
+# Gateway WebSocket Phase 8 (port 18789)
+$env:ORCHESTRATEUR_GATEWAY_TOKEN = "secret"
+.\target\release\orchestrateur.exe gateway run --workspace workspace
+
+# Catalogue canaux (18) et toolsets agent (Phase 10)
+.\target\release\orchestrateur.exe channels list
+.\target\release\orchestrateur.exe toolsets list
+
+# Hub skills + plugins dynamiques (Phase 11)
+.\target\release\orchestrateur.exe skills-hub list
+.\target\release\orchestrateur.exe skill run pong
 ```
 
 CLI sans TUI (binaire plus léger) :
@@ -211,6 +223,22 @@ $env:XAI_API_KEY = "sk-..."
 ```powershell
 cargo test -p cortex
 cargo test -p orchestrator
+cargo test -p orchestrator --features gateway
+cargo test -p mcp
+```
+
+Lister les providers, canaux et toolsets :
+
+```powershell
+orchestrateur providers list
+orchestrateur providers list --kind llm
+orchestrateur channels list
+orchestrateur toolsets list
+orchestrateur skills-hub list
+orchestrateur skills-hub marketplace
+orchestrateur skills-hub sync
+orchestrateur skills-hub verify
+orchestrateur toolsets list   # inclut toolset `skills`
 ```
 
 Les tests **sécurité**, **charge** et **intégration lourde** sont marqués `#[ignore]` — ils ne tournent pas par défaut.
@@ -267,6 +295,12 @@ Tags Git : `phase1-closed`, `phase2-closed`, `phase3-v0.1.0`, `phase4-v0.3.0`.
 | 4 | Bridge HUD, CLI enrichi, egui virtualisé |
 | 5 | TUI ratatui intégré au cœur, mode dégradé sans IA |
 | 6 | Skills opérationnelles, bridge chat/skills, HUD/TUI chat, packaging Windows |
+| 7–9 | Agent loop, gateway WS, provider registry (12 LLM + 5 embeddings), MCP stdio |
+| 10 | 18 canaux, 6 toolsets, auto-assimilation par tour, `[agent]` TOML |
+| 11 | Skills hub filesystem, plugins subprocess, `[skills_hub]` TOML |
+| 12 | Plugins natifs, inbound stub HTTP, outils agent `skill_*` |
+| 13 | Marketplace skills, intégrité BLAKE3, `skill_suggest` + auto-suggest |
+| 14 | Polling HTTP stub, catalogue signé BLAKE3, `skill_auto_execute`, bridge marketplace |
 
 **Packaging Windows** :
 ```powershell

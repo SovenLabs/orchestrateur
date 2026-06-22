@@ -62,4 +62,8 @@ pub enum Command {
         #[serde(default)]
         context: BridgeSkillContext,
     },
+    /// Liste le catalogue marketplace (Phase 14 — HUD).
+    SkillsMarketplaceList,
+    /// Vérifie l'intégrité BLAKE3 du hub skills (Phase 14 — HUD).
+    SkillsHubVerify,
 }

@@ -1,0 +1,15 @@
+# Plugin démo Phase 11 — retourne "pong"
+# Linux/macOS : remplacer command/args par `echo` / ["pong"]
+
+[skill]
+id = "pong"
+name = "Pong"
+description = "Plugin démo — retourne pong"
+version = "0.1.0"
+enabled = true
+
+[subprocess]
+command = "cmd"
+args = ["/c", "echo", "pong"]
+stdin_json = false
+timeout_secs = 5

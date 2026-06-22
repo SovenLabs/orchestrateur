@@ -14,7 +14,9 @@ cortex.workspace = true
 futures.workspace = true
 lancedb.workspace = true
 orchestrator.workspace = true
+mcp = { workspace = true }
 reqwest.workspace = true
+rusqlite = { version = "0.32", features = ["bundled"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true

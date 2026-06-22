@@ -13,6 +13,10 @@
 pub mod bridge;
 /// Configuration applicative (`OrchestratorConfig`).
 pub mod config;
+/// Port MCP (Phase 9).
+pub mod mcp;
+/// Registre typé des providers (Phase 9).
+pub mod providers;
 /// Injection des ports Cortex (`AppDependencies`).
 pub mod deps;
 /// Erreurs de la couche application.
@@ -34,6 +38,13 @@ pub mod skills;
 /// Interface terminal ratatui (feature `tui` uniquement).
 #[cfg(feature = "tui")]
 pub mod tui;
+/// Boucle agent Phase 7.
+pub mod agent;
+/// Registre d'outils agent Phase 7.
+pub mod tools;
+/// Gateway WebSocket + canaux (feature `gateway`).
+#[cfg(feature = "gateway")]
+pub mod gateway;
 /// Use cases applicatifs testables en mémoire.
 pub mod use_cases;
 
@@ -45,12 +56,19 @@ pub use bridge::{
     format_health_status, graph_from_response, graph_status_message, health_from_response,
     spawn_orchestrator_bridge, AppError, AuditUpdate, BridgeError, BridgeSearchHit, BridgeUiAction,
     ChannelHandle, Command, FanoutEventPublisher, BridgeSkillContext, GraphUpdate, HealthUpdate,
-    HubSummary, MemoryDetailView, MemorySummary, OrchestratorHandle, OrchestratorThread, Response,
-    SkillSummary,
+    HubIntegritySummary, HubSummary, MarketplaceEntrySummary, MemoryDetailView, MemorySummary,
+    OrchestratorHandle, OrchestratorThread, Response, SkillSummary,
 };
 pub use config::{
-    AuditConfig, BehavioralConfig, ConfigError, IntegrityConfig, OllamaConfig, OrchestratorConfig,
-    ProvidersConfig, SecurityConfig, VectorStoreConfig, XaiConfig,
+    AgentSettingsConfig, AuditConfig, BehavioralConfig, ConfigError, GatewayChannelConfig,
+    GatewayConfig, IntegrityConfig, McpConfig, McpServerConfig, OllamaConfig, OrchestratorConfig,
+    ProvidersConfig, SecurityConfig, SkillsHubConfig, SkillsHubEntryConfig, VectorStoreConfig,
+    XaiConfig,
+};
+pub use mcp::{McpError, McpGateway, McpToolInfo};
+pub use providers::{
+    ApiFamily, ProviderDescriptor, ProviderKind, ProviderProfile, ProviderProfiles,
+    ProviderRegistry, EMBEDDING_DESCRIPTORS, LLM_DESCRIPTORS,
 };
 pub use cortex::DomainEvent;
 pub use deps::AppDependencies;
@@ -64,10 +82,31 @@ pub use security::{
     IntegrityStatus, MemoryDraftValidator, SecurityBootstrapError, SecurityContext,
     SecurityGateError, SecurityProfile, ValidationError,
 };
-pub use skills::{NoopSkill, Skill, SkillContext, SkillOutput, SkillRegistry};
+pub use skills::{
+    best_skill_match, compute_integrity_hash, suggest_skills, HubError, IntegrityReport,
+    MarketplaceCatalog,
+    MarketplaceEntry, MarketplaceError, MarketplaceSyncResult, NoopSkill, Skill, SkillContext,
+    SkillEntry, SkillHubDescriptor, SkillManifest, SkillOutput, SkillPluginConfig, SkillRegistry,
+    SkillSource, SkillsHub, SkillsMarketplace, SubprocessPluginSkill, verify_integrity_hash,
+};
+#[cfg(feature = "plugins-native")]
+pub use skills::{NativePluginError, NativePluginSkill};
 #[cfg(feature = "tui")]
 pub use tui::TuiApp;
-pub use use_cases::DEFAULT_ASSIMILATION_SYSTEM_PROMPT;
+pub use agent::{
+    AgentConfig, AgentError, AgentLoop, AgentStreamEvent, AgentStreamSink, AgentTurnRequest,
+    AgentTurnResult,
+};
+#[cfg(feature = "gateway")]
+pub use gateway::{run_gateway, GatewayError, GatewayRunner};
+pub use tools::{
+    ToolError, ToolRegistry, ToolsetDescriptor, ToolsetRegistry, TOOLSET_DESCRIPTORS,
+};
+#[cfg(feature = "gateway")]
+pub use gateway::ChannelCatalog;
+pub use use_cases::{
+    AssimilateFromText, ListMemories, SearchMemories, DEFAULT_ASSIMILATION_SYSTEM_PROMPT,
+};
 
 /// Version du crate alignée sur le workspace.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

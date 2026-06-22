@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "id": "market-echo",
+      "name": "Market Echo",
+      "description": "Echo installé depuis le catalogue marketplace local",
+      "version": "0.1.0",
+      "enabled": true,
+      "manifest_toml": "[skill]\nid = \"market-echo\"\nname = \"Market Echo\"\ndescription = \"Echo marketplace\"\nversion = \"0.1.0\"\nenabled = true\n\n[subprocess]\ncommand = \"cmd\"\nargs = [\"/c\", \"echo\", \"market-echo\"]\nstdin_json = false\ntimeout_secs = 5\n"
+    }
+  ]
+}

@@ -19,6 +19,26 @@ fn wait_for_response(handle: &impl OrchestratorHandle, timeout: Duration) -> Opt
 }
 
 #[test]
+fn bridge_chat_uses_agent_loop() {
+    let deps = MockBundle::new().into_deps();
+    let (handle, thread) = spawn_orchestrator_bridge(deps).unwrap();
+
+    handle
+        .send_command(Command::Chat {
+            message: "Phase 7 agent".into(),
+        })
+        .unwrap();
+    let response = wait_for_response(&handle, Duration::from_secs(2));
+    drop(handle);
+    thread.join();
+
+    match response.expect("timeout chat agent") {
+        Response::ChatReply { reply, .. } => assert_eq!(reply, "Phase 7 agent"),
+        other => panic!("réponse inattendue: {other:?}"),
+    }
+}
+
+#[test]
 #[ignore = "intégration: bridge health check (thread spawn)"]
 fn bridge_health_check_roundtrip() {
     let deps = MockBundle::new().into_deps();
@@ -198,7 +218,7 @@ fn bridge_chat_roundtrip() {
     thread.join();
 
     match response {
-        Response::ChatReply { reply } => assert!(!reply.is_empty()),
+        Response::ChatReply { reply, .. } => assert!(!reply.is_empty()),
         other => panic!("réponse inattendue: {other:?}"),
     }
 }

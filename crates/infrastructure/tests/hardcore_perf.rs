@@ -34,11 +34,14 @@ async fn setup_lancedb_workspace() -> (tempfile::TempDir, AppDependencies) {
         Arc::new(FileMemoryRepository::new(cfg.memories_dir()));
     let llm = Arc::new(orchestrator::testing::InMemoryLlmProvider);
 
+    let session_repo: Arc<dyn cortex::SessionRepository> =
+        Arc::new(orchestrator::testing::InMemorySessionRepository::new());
     let deps = AppDependencies::for_tests(
         memory_repo,
         vector_store,
         embedding,
         llm,
+        session_repo,
         cfg,
         Arc::new(orchestrator::NoopEventPublisher),
     );
@@ -140,6 +143,7 @@ async fn intensity1_embed_batch_used_in_assimilation_corpus() {
         bundle.vector_store.clone(),
         counting.clone(),
         bundle.llm,
+        bundle.session_repo,
         bundle.config,
         Arc::new(orchestrator::NoopEventPublisher),
     );

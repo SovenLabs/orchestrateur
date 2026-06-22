@@ -4,7 +4,8 @@ use std::sync::{Arc, RwLock};
 use async_trait::async_trait;
 use cortex::{
     cosine_similarity, CortexError, Embedding, EmbeddingCapabilities, EmbeddingError,
-    EmbeddingProvider, Memory, MemoryId, MemoryRepository, SearchFilter, SearchHit, VectorStore,
+    EmbeddingProvider, Memory, MemoryId, MemoryRepository, SearchFilter, SearchHit, SessionRepository,
+    VectorStore,
 };
 
 use crate::llm::{LlmCapabilities, LlmError, LlmProvider};
@@ -13,6 +14,7 @@ use crate::memory_draft::MemoryDraft;
 use crate::config::OrchestratorConfig;
 use crate::deps::AppDependencies;
 use crate::events::NoopEventPublisher;
+use super::session_mock::InMemorySessionRepository;
 
 /// Bundle prêt à l'emploi : les trois mocks + configuration par défaut.
 pub struct MockBundle {
@@ -24,6 +26,8 @@ pub struct MockBundle {
     pub embedding: Arc<InMemoryEmbeddingProvider>,
     /// Mock LLM déterministe.
     pub llm: Arc<InMemoryLlmProvider>,
+    /// Mock sessions agent.
+    pub session_repo: Arc<InMemorySessionRepository>,
     /// Configuration de test.
     pub config: OrchestratorConfig,
 }
@@ -40,6 +44,7 @@ impl MockBundle {
             vector_store: Arc::new(InMemoryVectorStore::new()),
             embedding,
             llm,
+            session_repo: Arc::new(InMemorySessionRepository::new()),
             config,
         }
     }
@@ -52,6 +57,7 @@ impl MockBundle {
             self.vector_store,
             self.embedding,
             self.llm,
+            self.session_repo,
             self.config,
             Arc::new(NoopEventPublisher),
         )

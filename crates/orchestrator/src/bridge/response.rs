@@ -3,7 +3,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::security::AuditEvent;
 
-use super::types::{AppError, BridgeSearchHit, HubSummary, MemorySummary, SkillSummary};
+use super::types::{
+    AppError, BridgeSearchHit, HubIntegritySummary, HubSummary, MarketplaceEntrySummary,
+    MemorySummary, SkillSummary,
+};
 
 /// Réponse produite par le thread orchestrateur vers la couche présentation.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -69,10 +72,19 @@ pub enum Response {
         /// Chaîne BLAKE3 intacte sur le fichier complet.
         chain_intact: bool,
     },
-    /// Réponse du provider LLM (chat libre).
+    /// Réponse du provider LLM (chat libre / agent).
     ChatReply {
         /// Texte généré.
         reply: String,
+        /// Outils invoqués pendant le tour (Phase 10).
+        #[serde(default)]
+        tools_invoked: Vec<String>,
+        /// Résumé auto-assimilé en Cortex (si activé).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        auto_assimilated: Option<String>,
+        /// Skills auto-exécutées avant le LLM (Phase 14).
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        auto_executed_skills: Vec<String>,
     },
     /// Catalogue des skills disponibles.
     SkillList {
@@ -83,5 +95,20 @@ pub enum Response {
     SkillResult {
         /// Message ou payload textuel.
         message: String,
+    },
+    /// Catalogue marketplace (Phase 14).
+    MarketplaceList {
+        /// Version du format catalogue.
+        version: u32,
+        /// Empreinte BLAKE3 optionnelle.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        catalog_hash: Option<String>,
+        /// Entrées du catalogue.
+        entries: Vec<MarketplaceEntrySummary>,
+    },
+    /// Rapport de vérification d'intégrité du hub (Phase 14).
+    HubIntegrityReport {
+        /// Détail des manifestes valides / invalides.
+        report: HubIntegritySummary,
     },
 }

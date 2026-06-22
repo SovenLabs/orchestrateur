@@ -22,13 +22,13 @@ pub mod ports;
 pub mod services;
 
 pub use domain::{
-    Backlink, BacklinkDraft, BacklinkDraftKind, BacklinkKind, CortexError, DomainEvent,
-    KnowledgeGraph, KnowledgeGraphValidated, Memory, MemoryAssimilated, MemoryDraft, MemoryId,
-    Tag,
+    Backlink, BacklinkDraft, BacklinkDraftKind, BacklinkKind, ConversationTurn, CortexError,
+    DomainEvent, KnowledgeGraph, KnowledgeGraphValidated, Memory, MemoryAssimilated, MemoryDraft,
+    MemoryId, Session, SessionKey, Tag, TurnRole,
 };
 pub use ports::{
     Embedding, EmbeddingCapabilities, EmbeddingError, EmbeddingProvider, MemoryRepository,
-    SearchFilter, SearchHit, VectorStore,
+    SearchFilter, SearchHit, SessionRepository, VectorStore,
 };
 pub use services::{
     cosine_similarity, find_injection_pattern, parse_memory_markdown, serialize_memory,

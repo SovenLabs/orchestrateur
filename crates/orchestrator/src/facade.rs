@@ -1,11 +1,15 @@
-use cortex::{Memory, MemoryId, SearchFilter, SearchHit};
+use cortex::{Memory, MemoryId, SearchFilter, SearchHit, SessionKey};
+use crate::agent::{
+    AgentConfig, AgentError, AgentLoop, AgentStreamSink, AgentTurnRequest, AgentTurnResult,
+};
 
 use crate::deps::AppDependencies;
 use crate::error::{OrchestratorError, SkillError};
 use crate::llm::ChatMessage;
 use crate::memory_draft::MemoryDraft;
-use crate::skills::{SkillContext, SkillOutput, SkillRegistry};
+use crate::skills::{SkillContext, SkillEntry, SkillOutput, SkillRegistry};
 use std::path::Path;
+use std::sync::Arc;
 
 use crate::use_cases::{
     AssimilateFromDraft, AssimilateFromText, AssimilationResult, GetMemory, ImportMemories,
@@ -17,21 +21,24 @@ use crate::use_cases::{
 /// Ne contient aucune logique métier : délègue aux use cases.
 pub struct OrchestratorFacade {
     deps: AppDependencies,
-    skills: SkillRegistry,
+    skills: Arc<SkillRegistry>,
 }
 
 impl OrchestratorFacade {
     /// Construit la facade avec dépendances injectées et registre de skills par défaut.
     #[must_use]
     pub fn new(deps: AppDependencies) -> Self {
-        let skills = SkillRegistry::with_operational_skills(deps.clone());
+        let skills = Arc::new(SkillRegistry::with_operational_skills_and_hub(deps.clone()));
         Self { deps, skills }
     }
 
     /// Construit la facade avec un registre de skills personnalisé.
     #[must_use]
     pub fn with_skills(deps: AppDependencies, skills: SkillRegistry) -> Self {
-        Self { deps, skills }
+        Self {
+            deps,
+            skills: Arc::new(skills),
+        }
     }
 
     /// Accès en lecture aux dépendances (tests / composition).
@@ -44,6 +51,12 @@ impl OrchestratorFacade {
     #[must_use]
     pub fn skills(&self) -> &SkillRegistry {
         &self.skills
+    }
+
+    /// Accès partagé au registre (outils agent / gateway).
+    #[must_use]
+    pub fn skills_registry(&self) -> Arc<SkillRegistry> {
+        Arc::clone(&self.skills)
     }
 
     /// Liste toutes les mémoires.
@@ -117,13 +130,77 @@ impl OrchestratorFacade {
             .await
     }
 
-    /// Liste les skills enregistrées (nom, description).
+    /// Liste les skills enregistrées (métadonnées complètes).
     #[must_use]
-    pub fn list_skills(&self) -> Vec<(&'static str, &'static str)> {
+    pub fn list_skills(&self) -> Vec<SkillEntry> {
         self.skills.list()
     }
 
-    /// Chat libre avec le provider LLM configuré.
+    /// Tour agent complet Phase 7 — contexte graphe + outils mémoire + session.
+    ///
+    /// # Errors
+    ///
+    /// Propage [`AgentError`] si la boucle agent échoue.
+    pub async fn agent_turn(
+        &self,
+        session_key: SessionKey,
+        message: &str,
+    ) -> Result<AgentTurnResult, AgentError> {
+        let config = AgentConfig::from_settings(&self.deps.config.agent);
+        let agent = AgentLoop::new(self.deps.clone(), config, Some(Arc::clone(&self.skills)));
+        agent
+            .run_turn(AgentTurnRequest {
+                session_key,
+                message: message.to_string(),
+            })
+            .await
+    }
+
+    /// Tour agent avec configuration personnalisée.
+    ///
+    /// # Errors
+    ///
+    /// Propage [`AgentError`] si la boucle agent échoue.
+    pub async fn agent_turn_with_config(
+        &self,
+        session_key: SessionKey,
+        message: &str,
+        config: AgentConfig,
+    ) -> Result<AgentTurnResult, AgentError> {
+        let agent = AgentLoop::new(self.deps.clone(), config, Some(Arc::clone(&self.skills)));
+        agent
+            .run_turn(AgentTurnRequest {
+                session_key,
+                message: message.to_string(),
+            })
+            .await
+    }
+
+    /// Tour agent avec streaming d'événements (gateway Phase 8).
+    ///
+    /// # Errors
+    ///
+    /// Propage [`AgentError`] si la boucle agent échoue.
+    pub async fn agent_turn_with_stream(
+        &self,
+        session_key: SessionKey,
+        message: &str,
+        stream: AgentStreamSink,
+    ) -> Result<AgentTurnResult, AgentError> {
+        let config = AgentConfig::from_settings(&self.deps.config.agent);
+        let agent = AgentLoop::new(self.deps.clone(), config, Some(Arc::clone(&self.skills)));
+        agent
+            .run_turn_with_stream(
+                AgentTurnRequest {
+                    session_key,
+                    message: message.to_string(),
+                },
+                stream,
+            )
+            .await
+    }
+
+    /// Chat libre avec le provider LLM configuré (sans boucle agent).
     ///
     /// # Errors
     ///
@@ -224,7 +301,7 @@ mod tests {
     async fn facade_lists_and_executes_noop_skill() {
         let f = facade();
         let skills = f.list_skills();
-        assert!(skills.iter().any(|(n, _)| *n == "noop"));
+        assert!(skills.iter().any(|entry| entry.name == "noop"));
         let out = f
             .execute_skill("noop", &SkillContext::default())
             .await
@@ -233,12 +310,23 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn facade_agent_turn_returns_reply() {
+        let f = facade();
+        let result = f
+            .agent_turn(SessionKey::default_chat(), "Salut agent")
+            .await
+            .unwrap();
+        assert_eq!(result.reply, "Salut agent");
+        assert_eq!(result.session_key, SessionKey::default_chat());
+    }
+
+    #[tokio::test]
     async fn facade_executes_operational_skills() {
         let f = facade();
         let skills = f.list_skills();
-        assert!(skills.iter().any(|(n, _)| *n == "list_memories"));
-        assert!(skills.iter().any(|(n, _)| *n == "search"));
-        assert!(skills.iter().any(|(n, _)| *n == "assimilate"));
+        assert!(skills.iter().any(|entry| entry.name == "list_memories"));
+        assert!(skills.iter().any(|entry| entry.name == "search"));
+        assert!(skills.iter().any(|entry| entry.name == "assimilate"));
 
         let mem = Memory::new("Skill", "contenu skill").unwrap();
         f.save_memory(&mem).await.unwrap();

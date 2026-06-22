@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
-use cortex::{EmbeddingProvider, MemoryRepository, VectorStore};
+use cortex::{EmbeddingProvider, MemoryRepository, SessionRepository, VectorStore};
 
 use crate::config::OrchestratorConfig;
 use crate::events::{EventPublisher, TracingEventPublisher};
 use crate::llm::LlmProvider;
+use crate::mcp::McpGateway;
 use crate::security::{build_test_security_context, SecurityContext};
 
 /// Injection des ports Cortex — seul point de couplage vers l'infrastructure future.
@@ -18,12 +19,16 @@ pub struct AppDependencies {
     pub embedding: Arc<dyn EmbeddingProvider>,
     /// Génération LLM (Structured Outputs, chat).
     pub llm: Arc<dyn LlmProvider>,
+    /// Sessions de conversation agent (Phase 7).
+    pub session_repo: Arc<dyn SessionRepository>,
     /// Configuration applicative.
     pub config: OrchestratorConfig,
     /// Publication des événements de domaine.
     pub events: Arc<dyn EventPublisher>,
     /// Contexte de sécurité (couches 2–4).
     pub security: Arc<SecurityContext>,
+    /// Gateway MCP optionnel (Phase 9).
+    pub mcp: Option<Arc<dyn McpGateway>>,
 }
 
 impl AppDependencies {
@@ -34,17 +39,21 @@ impl AppDependencies {
         vector_store: Arc<dyn VectorStore>,
         embedding: Arc<dyn EmbeddingProvider>,
         llm: Arc<dyn LlmProvider>,
+        session_repo: Arc<dyn SessionRepository>,
         config: OrchestratorConfig,
         security: Arc<SecurityContext>,
+        mcp: Option<Arc<dyn McpGateway>>,
     ) -> Self {
         Self::with_events(
             memory_repo,
             vector_store,
             embedding,
             llm,
+            session_repo,
             config,
             Arc::new(TracingEventPublisher),
             security,
+            mcp,
         )
     }
 
@@ -55,18 +64,22 @@ impl AppDependencies {
         vector_store: Arc<dyn VectorStore>,
         embedding: Arc<dyn EmbeddingProvider>,
         llm: Arc<dyn LlmProvider>,
+        session_repo: Arc<dyn SessionRepository>,
         config: OrchestratorConfig,
         events: Arc<dyn EventPublisher>,
         security: Arc<SecurityContext>,
+        mcp: Option<Arc<dyn McpGateway>>,
     ) -> Self {
         Self {
             memory_repo,
             vector_store,
             embedding,
             llm,
+            session_repo,
             config,
             events,
             security,
+            mcp,
         }
     }
 
@@ -77,6 +90,7 @@ impl AppDependencies {
         vector_store: Arc<dyn VectorStore>,
         embedding: Arc<dyn EmbeddingProvider>,
         llm: Arc<dyn LlmProvider>,
+        session_repo: Arc<dyn SessionRepository>,
         config: OrchestratorConfig,
         events: Arc<dyn EventPublisher>,
     ) -> Self {
@@ -86,9 +100,11 @@ impl AppDependencies {
             vector_store,
             embedding,
             llm,
+            session_repo,
             config,
             events,
             security,
+            None,
         )
     }
 }

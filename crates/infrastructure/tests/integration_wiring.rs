@@ -58,11 +58,14 @@ async fn lancedb_store_with_file_repo_smoke() {
     let memory_repo: Arc<dyn cortex::MemoryRepository> =
         Arc::new(FileMemoryRepository::new(cfg.memories_dir()));
 
+    let session_repo: Arc<dyn cortex::SessionRepository> =
+        Arc::new(orchestrator::testing::InMemorySessionRepository::new());
     let deps = AppDependencies::for_tests(
         memory_repo,
         vector_store,
         embedding,
         llm,
+        session_repo,
         cfg,
         Arc::new(orchestrator::NoopEventPublisher),
     );
@@ -100,6 +103,7 @@ async fn memory_mode_deps_via_mocks() {
         Arc::new(InMemoryVectorStore::new()),
         bundle.embedding,
         bundle.llm,
+        bundle.session_repo,
         bundle.config,
         Arc::new(orchestrator::NoopEventPublisher),
     );

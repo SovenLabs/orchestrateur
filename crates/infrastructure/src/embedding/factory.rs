@@ -6,9 +6,9 @@ use reqwest::Client;
 use thiserror::Error;
 use tracing::warn;
 
-use crate::providers::UnavailableEmbeddingProvider;
+use crate::providers::{resolve_embedding_from_registry, UnavailableEmbeddingProvider};
 
-use super::{ChainedEmbeddingProvider, OllamaEmbeddingProvider};
+use super::ChainedEmbeddingProvider;
 
 /// Erreurs de construction des providers d'embeddings.
 #[derive(Debug, Error)]
@@ -36,7 +36,7 @@ pub fn build_embedding_provider(
         if providers.iter().any(|p| p.name() == name) {
             continue;
         }
-        match resolve_embedding(name.as_str(), config, client) {
+        match resolve_embedding_from_registry(name.as_str(), config, client) {
             Ok(provider) => providers.push(provider),
             Err(err) => {
                 warn!(provider = %name, error = %err, "embedding provider ignoré au démarrage");
@@ -59,25 +59,5 @@ pub fn build_embedding_provider(
         Ok(providers.remove(0))
     } else {
         Ok(Arc::new(ChainedEmbeddingProvider::new(providers)))
-    }
-}
-
-fn resolve_embedding(
-    name: &str,
-    config: &OrchestratorConfig,
-    client: &Client,
-) -> Result<Arc<dyn EmbeddingProvider>, EmbeddingFactoryError> {
-    match name {
-        "ollama" => Ok(Arc::new(OllamaEmbeddingProvider::new(
-            client.clone(),
-            config.ollama.url.clone(),
-            config.ollama.embedding_model.clone(),
-            config.ollama.timeout_secs,
-            config.ollama.max_retries,
-            Some(config.vector_store.embedding_dimension),
-        ))),
-        other => Err(EmbeddingFactoryError::Build(format!(
-            "embedding provider inconnu: {other}"
-        ))),
     }
 }

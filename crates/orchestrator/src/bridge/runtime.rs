@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 
-use cortex::{KnowledgeGraph, MemoryId, SearchFilter};
+use cortex::{KnowledgeGraph, MemoryId, SearchFilter, SessionKey};
 use flume::{Receiver, Sender};
 use tracing::error;
 
@@ -10,6 +10,7 @@ use crate::deps::AppDependencies;
 use crate::error::SkillError;
 use crate::facade::OrchestratorFacade;
 use crate::health::probe_services;
+use crate::skills::marketplace::SkillsMarketplace;
 use crate::skills::SkillContext;
 use crate::VERSION;
 
@@ -18,7 +19,10 @@ use super::error::BridgeError;
 use super::events::FanoutEventPublisher;
 use super::handle::ChannelHandle;
 use super::response::Response;
-use super::types::{AppError, HubSummary, MemorySummary, SkillSummary};
+use super::types::{
+    AppError, HubIntegritySummary, HubSummary, MarketplaceEntrySummary, MemorySummary,
+    SkillSummary,
+};
 
 /// Capacité des canaux commandes/réponses (back-pressure léger).
 const CMD_CHANNEL_CAPACITY: usize = 64;
@@ -165,6 +169,8 @@ pub async fn execute_command(facade: &OrchestratorFacade, cmd: Command) -> Respo
         Command::ExecuteSkill { name, context } => {
             execute_skill(facade, &name, context.into()).await
         }
+        Command::SkillsMarketplaceList => execute_marketplace_list(facade).await,
+        Command::SkillsHubVerify => execute_hub_verify(facade),
     }
 }
 
@@ -237,9 +243,20 @@ async fn execute_chat(facade: &OrchestratorFacade, message: &str) -> Response {
             message: "chat indisponible — provider LLM hors ligne".to_string(),
         });
     }
-    match facade.chat(message).await {
-        Ok(reply) => Response::ChatReply { reply },
-        Err(err) => Response::Error(AppError::from_orchestrator(&err)),
+    match facade
+        .agent_turn(SessionKey::default_chat(), message)
+        .await
+    {
+        Ok(result) => Response::ChatReply {
+            reply: result.reply,
+            tools_invoked: result.tools_invoked,
+            auto_assimilated: result.auto_assimilated,
+            auto_executed_skills: result.auto_executed_skills,
+        },
+        Err(err) => Response::Error(AppError {
+            kind: "agent".to_string(),
+            message: err.to_string(),
+        }),
     }
 }
 
@@ -247,9 +264,15 @@ fn execute_list_skills(facade: &OrchestratorFacade) -> Response {
     let skills = facade
         .list_skills()
         .into_iter()
-        .map(|(name, description)| SkillSummary {
-            name: name.to_string(),
-            description: description.to_string(),
+        .map(|entry| SkillSummary {
+            name: entry.name,
+            description: entry.description,
+            source: match entry.source {
+                crate::skills::SkillSource::Builtin => "builtin".into(),
+                crate::skills::SkillSource::Hub => "hub".into(),
+                crate::skills::SkillSource::Native => "native".into(),
+            },
+            version: entry.version,
         })
         .collect();
     Response::SkillList { skills }
@@ -267,6 +290,53 @@ async fn execute_skill(facade: &OrchestratorFacade, name: &str, ctx: SkillContex
         Err(SkillError::ExecutionFailed(message)) => Response::Error(AppError {
             kind: "skill".to_string(),
             message,
+        }),
+    }
+}
+
+async fn execute_marketplace_list(facade: &OrchestratorFacade) -> Response {
+    let config = &facade.deps().config;
+    match SkillsMarketplace::load_catalog_auto(config).await {
+        Ok(catalog) => {
+            let entries = catalog
+                .skills
+                .iter()
+                .map(|entry| MarketplaceEntrySummary {
+                    id: entry.id.clone(),
+                    name: entry.name.clone(),
+                    description: entry.description.clone(),
+                    version: entry.version.clone(),
+                    enabled: entry.enabled,
+                })
+                .collect();
+            Response::MarketplaceList {
+                version: catalog.version,
+                catalog_hash: catalog.catalog_hash,
+                entries,
+            }
+        }
+        Err(err) => Response::Error(AppError {
+            kind: "marketplace".to_string(),
+            message: err.to_string(),
+        }),
+    }
+}
+
+fn execute_hub_verify(facade: &OrchestratorFacade) -> Response {
+    match SkillsMarketplace::verify_hub_integrity(&facade.deps().config) {
+        Ok(report) => Response::HubIntegrityReport {
+            report: HubIntegritySummary {
+                valid_count: report.valid.len(),
+                invalid: report
+                    .invalid
+                    .into_iter()
+                    .map(|(path, message)| (path.display().to_string(), message))
+                    .collect(),
+            },
+        },
+        Err(err) => Response::Error(AppError {
+            kind: "marketplace".to_string(),
+            message: err.to_string(),
         }),
     }
 }
@@ -368,6 +438,55 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn dispatch_marketplace_list_reads_catalog() {
+        use crate::skills::marketplace::{MarketplaceCatalog, MarketplaceEntry};
+
+        let dir = tempfile::tempdir().unwrap();
+        let catalog = MarketplaceCatalog {
+            version: 1,
+            catalog_hash: None,
+            skills: vec![MarketplaceEntry {
+                id: "bridge-demo".into(),
+                name: "Bridge Demo".into(),
+                description: "Test bridge".into(),
+                version: "0.1.0".into(),
+                enabled: true,
+                manifest_toml: "[skill]\nid=\"bridge-demo\"".into(),
+            }],
+        };
+        std::fs::write(
+            dir.path().join("catalog.json"),
+            serde_json::to_string(&catalog).unwrap(),
+        )
+        .unwrap();
+        let mut bundle = MockBundle::new();
+        bundle.config.workspace_root = dir.path().to_path_buf();
+        bundle.config.skills_hub.marketplace_catalog = "catalog.json".into();
+        let facade = OrchestratorFacade::new(bundle.into_deps());
+        let response = execute_command(&facade, Command::SkillsMarketplaceList).await;
+        match response {
+            Response::MarketplaceList { version, entries, .. } => {
+                assert_eq!(version, 1);
+                assert_eq!(entries.len(), 1);
+                assert_eq!(entries[0].id, "bridge-demo");
+            }
+            other => panic!("réponse inattendue: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn dispatch_hub_verify_returns_report() {
+        let facade = OrchestratorFacade::new(MockBundle::new().into_deps());
+        let response = execute_command(&facade, Command::SkillsHubVerify).await;
+        match response {
+            Response::HubIntegrityReport { report } => {
+                assert_eq!(report.invalid.len(), 0);
+            }
+            other => panic!("réponse inattendue: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
     async fn dispatch_chat_returns_reply() {
         let facade = OrchestratorFacade::new(MockBundle::new().into_deps());
         let response = execute_command(
@@ -378,7 +497,7 @@ mod tests {
         )
         .await;
         match response {
-            Response::ChatReply { reply } => assert!(!reply.is_empty()),
+            Response::ChatReply { reply, .. } => assert!(!reply.is_empty()),
             other => panic!("réponse inattendue: {other:?}"),
         }
     }

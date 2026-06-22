@@ -15,7 +15,8 @@ func _ready() -> void:
 	if not environment:
 		environment = Environment.new()
 		_configure_environment(environment)
-	_apply_glow(_target_intensity, _target_bloom)
+	environment.glow_intensity = _target_intensity
+	environment.glow_bloom = _target_bloom
 
 
 func set_activity(intensity: float, stress: float = 0.0) -> void:
@@ -48,10 +49,10 @@ func _configure_environment(env: Environment) -> void:
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	env.glow_hdr_threshold = 0.85
 	env.glow_hdr_scale = 2.0
-	env.glow_levels/1 = true
-	env.glow_levels/2 = true
-	env.glow_levels/3 = true
-	env.glow_levels/4 = false
+	env.set("glow_levels/1", true)
+	env.set("glow_levels/2", true)
+	env.set("glow_levels/3", true)
+	env.set("glow_levels/4", false)
 	env.adjustment_enabled = true
 	env.adjustment_brightness = 1.0
 	env.adjustment_contrast = 1.05

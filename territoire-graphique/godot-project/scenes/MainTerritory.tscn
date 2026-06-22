@@ -1,0 +1,24 @@
+[gd_scene load_steps=4 format=3 uid="uid://main_territory"]
+
+[ext_resource type="PackedScene" uid="uid://brain_sphere" path="res://scenes/BrainSphere.tscn" id="1"]
+[ext_resource type="PackedScene" uid="uid://monitoring_panel" path="res://scenes/MonitoringPanel.tscn" id="2"]
+
+[node name="MainTerritory" type="Node3D"]
+
+[node name="BrainSphere" parent="." instance=ExtResource("1")]
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 4, 5)
+current = true
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, -0.433013, 0.25, 0.25, 0.75, 0.612372, -0.433013, -0.5, 0.75, 0, 6, 4)
+
+[node name="MonitoringPanel" parent="." instance=ExtResource("2")]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -340.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 200.0

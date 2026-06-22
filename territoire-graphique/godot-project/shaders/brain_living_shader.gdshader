@@ -3,6 +3,8 @@ render_mode unshaded, cull_disabled;
 
 uniform float time : hint_range(0.0, 100000.0) = 0.0;
 uniform float activity : hint_range(0.0, 1.0) = 0.35;
+uniform float stress : hint_range(0.0, 1.0) = 0.0;
+uniform float swirl : hint_range(0.0, 1.0) = 0.0;
 
 // v2 — déformation organique triple + fresnel + double bruit pixels
 void vertex() {
@@ -11,7 +13,8 @@ void vertex() {
 	float n2 = sin(p.z * 5.5 + time * 1.4 + activity * 3.5) * sin(p.x * 3.2 + activity * 2.0);
 	float n3 = cos(p.y * 6.2 + time * 0.55 + activity * 1.8) * cos(p.z * 2.8 + time);
 	float organic = (n1 + n2 + n3) / 3.0;
-	VERTEX += NORMAL * organic * activity * 0.12;
+	float swirl_warp = swirl * sin(time * 4.5 + p.y * 8.0) * 0.04;
+	VERTEX += NORMAL * (organic * activity * 0.12 + swirl_warp);
 }
 
 void fragment() {
@@ -24,8 +27,10 @@ void fragment() {
 	vec3 cold = vec3(0.03, 0.08, 0.38);
 	vec3 warm = vec3(0.28, 0.62, 1.0);
 	vec3 hot = vec3(0.55, 0.88, 1.0);
+	vec3 error_col = vec3(0.85, 0.18, 0.12);
 	vec3 base = mix(cold, warm, activity);
 	base = mix(base, hot, activity * activity * pulse);
+	base = mix(base, error_col, stress * 0.7);
 
 	vec3 edge = vec3(0.25, 0.55, 1.0) * fresnel * (0.65 + activity * 0.9);
 	vec3 glow = base + edge + vec3(pixels * 0.28 * activity);

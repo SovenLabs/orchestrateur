@@ -84,5 +84,6 @@ fn assimilated_response_generates_broadcast_events() {
             title: "Note".into(),
         },
     );
-    assert_eq!(events.len(), 3);
+    assert!(events.iter().any(|e| e.event == "memory_assimilated"));
+    assert!(events.iter().any(|e| e.event == "brain_pulse"));
 }

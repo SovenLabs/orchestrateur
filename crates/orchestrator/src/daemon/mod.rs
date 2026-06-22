@@ -11,4 +11,7 @@ mod server;
 pub use error::DaemonError;
 pub use hub::{TerritoryHub, WindowKind};
 pub use protocol::{ClientInfo, DaemonClientMessage, DaemonServerMessage, TerritoryBroadcast};
-pub use server::{build_router, run_daemon, serve, DaemonState, HealthResponse};
+pub use server::{
+    build_router, run_daemon, run_daemon_with_domain_events, serve, serve_with_domain_events,
+    DaemonState, HealthResponse,
+};

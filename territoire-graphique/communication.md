@@ -128,7 +128,9 @@ Exemples de commandes (`command` field) :
 }
 ```
 
-Événements : `memories_changed`, `graph_changed`, `brain_pulse`, `chat_reply`.
+Événements : `memories_changed`, `graph_changed`, `brain_pulse`, `chat_reply`, `memory_assimilated`, `tool_call`, `vector_search`, `system_error`, `degraded_mode`.
+
+Topic générique `visual` reçoit tous les effets boule (fenêtre principale).
 
 ### `result`
 

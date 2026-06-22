@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
+use cortex::DomainEvent;
 use serde_json::{json, Value};
 use tokio::sync::mpsc;
 use uuid::Uuid;
@@ -97,10 +98,12 @@ impl TerritoryHub {
             if exclude_session == Some(id.as_str()) {
                 continue;
             }
-            if !client.subscriptions.contains(&event.event) {
+            if !client.subscriptions.contains(&event.event)
+                && !client.subscriptions.contains("visual")
+            {
                 continue;
             }
-            if event.event == "brain_pulse" && client.window_kind != WindowKind::Main {
+            if Self::is_brain_only(&event.event) && client.window_kind != WindowKind::Main {
                 continue;
             }
             let _ = client.outbound.send(DaemonServerMessage::Broadcast {
@@ -109,6 +112,63 @@ impl TerritoryHub {
                 source_session_id: event.source_session_id.clone(),
                 payload: event.payload.clone(),
             });
+        }
+    }
+
+    /// Diffuse à tous les clients (événements domaine Cortex).
+    pub fn broadcast_all(&self, event: TerritoryBroadcast) {
+        self.broadcast(event, None);
+    }
+
+    fn is_brain_only(event: &str) -> bool {
+        matches!(
+            event,
+            "brain_pulse"
+                | "memory_assimilated"
+                | "tool_call"
+                | "vector_search"
+                | "system_error"
+        )
+    }
+
+    /// Mappe un [`DomainEvent`] Cortex vers des broadcasts territoriaux.
+    #[must_use]
+    pub fn events_from_domain_event(event: &DomainEvent) -> Vec<TerritoryBroadcast> {
+        let source = "cortex".to_string();
+        match event {
+            DomainEvent::MemoryAssimilated(payload) => vec![
+                TerritoryBroadcast {
+                    event: "memory_assimilated".into(),
+                    source_session_id: source.clone(),
+                    payload: json!({
+                        "memory_id": payload.memory_id.to_string(),
+                        "backlink_count": payload.backlink_count,
+                    }),
+                },
+                TerritoryBroadcast {
+                    event: "memories_changed".into(),
+                    source_session_id: source.clone(),
+                    payload: json!({}),
+                },
+                TerritoryBroadcast {
+                    event: "graph_changed".into(),
+                    source_session_id: source.clone(),
+                    payload: json!({}),
+                },
+                TerritoryBroadcast {
+                    event: "brain_pulse".into(),
+                    source_session_id: source,
+                    payload: json!({"boost": 0.75, "duration": 0.85, "kind": "assimilation"}),
+                },
+            ],
+            DomainEvent::KnowledgeGraphValidated(payload) => vec![TerritoryBroadcast {
+                event: "graph_changed".into(),
+                source_session_id: source,
+                payload: json!({
+                    "node_count": payload.node_count,
+                    "edge_count": payload.edge_count,
+                }),
+            }],
         }
     }
 
@@ -121,7 +181,15 @@ impl TerritoryHub {
     ) -> Vec<TerritoryBroadcast> {
         let mut events = Vec::new();
         match response {
-            Response::Assimilated { .. } => {
+            Response::Assimilated { memory_id, title } => {
+                events.push(TerritoryBroadcast {
+                    event: "memory_assimilated".into(),
+                    source_session_id: source_session_id.into(),
+                    payload: json!({
+                        "memory_id": memory_id.to_string(),
+                        "title": title,
+                    }),
+                });
                 events.push(TerritoryBroadcast {
                     event: "memories_changed".into(),
                     source_session_id: source_session_id.into(),
@@ -135,12 +203,14 @@ impl TerritoryHub {
                 events.push(TerritoryBroadcast {
                     event: "brain_pulse".into(),
                     source_session_id: source_session_id.into(),
-                    payload: json!({"boost": 0.45, "duration": 0.5}),
+                    payload: json!({"boost": 0.75, "duration": 0.85, "kind": "assimilation"}),
                 });
             }
             Response::ChatReply {
                 reply,
+                tools_invoked,
                 auto_assimilated,
+                auto_executed_skills,
                 ..
             } => {
                 events.push(TerritoryBroadcast {
@@ -152,11 +222,27 @@ impl TerritoryHub {
                         "auto_assimilated": auto_assimilated.is_some(),
                     }),
                 });
-                events.push(TerritoryBroadcast {
-                    event: "brain_pulse".into(),
-                    source_session_id: source_session_id.into(),
-                    payload: json!({"boost": 0.5, "duration": 0.6}),
-                });
+                if !tools_invoked.is_empty() {
+                    events.push(TerritoryBroadcast {
+                        event: "tool_call".into(),
+                        source_session_id: source_session_id.into(),
+                        payload: json!({
+                            "tools": tools_invoked,
+                            "skills": auto_executed_skills,
+                        }),
+                    });
+                    events.push(TerritoryBroadcast {
+                        event: "brain_pulse".into(),
+                        source_session_id: source_session_id.into(),
+                        payload: json!({"boost": 0.55, "duration": 0.45, "kind": "tool_call"}),
+                    });
+                } else {
+                    events.push(TerritoryBroadcast {
+                        event: "brain_pulse".into(),
+                        source_session_id: source_session_id.into(),
+                        payload: json!({"boost": 0.5, "duration": 0.6, "kind": "chat"}),
+                    });
+                }
                 if auto_assimilated.is_some() {
                     events.push(TerritoryBroadcast {
                         event: "memories_changed".into(),
@@ -169,6 +255,63 @@ impl TerritoryHub {
                         payload: json!({}),
                     });
                 }
+            }
+            Response::SearchResults { items, .. } => {
+                events.push(TerritoryBroadcast {
+                    event: "vector_search".into(),
+                    source_session_id: source_session_id.into(),
+                    payload: json!({
+                        "hit_count": items.len(),
+                        "request_id": request_id,
+                    }),
+                });
+                events.push(TerritoryBroadcast {
+                    event: "brain_pulse".into(),
+                    source_session_id: source_session_id.into(),
+                    payload: json!({"boost": 0.35, "duration": 0.4, "kind": "search"}),
+                });
+            }
+            Response::SkillResult { message } => {
+                events.push(TerritoryBroadcast {
+                    event: "tool_call".into(),
+                    source_session_id: source_session_id.into(),
+                    payload: json!({
+                        "tools": ["skill"],
+                        "message": message,
+                    }),
+                });
+            }
+            Response::Error(err) => {
+                let degraded = err.kind == "degraded";
+                events.push(TerritoryBroadcast {
+                    event: if degraded {
+                        "degraded_mode".into()
+                    } else {
+                        "system_error".into()
+                    },
+                    source_session_id: source_session_id.into(),
+                    payload: json!({
+                        "kind": err.kind,
+                        "message": err.message,
+                    }),
+                });
+                if degraded {
+                    events.push(TerritoryBroadcast {
+                        event: "brain_pulse".into(),
+                        source_session_id: source_session_id.into(),
+                        payload: json!({"boost": 0.2, "duration": 0.3, "kind": "degraded"}),
+                    });
+                }
+            }
+            Response::GraphSummary { node_count, edge_count, .. } => {
+                events.push(TerritoryBroadcast {
+                    event: "graph_changed".into(),
+                    source_session_id: source_session_id.into(),
+                    payload: json!({
+                        "node_count": node_count,
+                        "edge_count": edge_count,
+                    }),
+                });
             }
             _ => {}
         }
@@ -184,10 +327,16 @@ pub fn default_subscriptions(kind: WindowKind, panels: &[String]) -> HashSet<Str
 
     match kind {
         WindowKind::Main => {
+            subs.insert("visual".into());
             subs.insert("memories".into());
             subs.insert("graph".into());
             subs.insert("chat".into());
             subs.insert("brain_pulse".into());
+            subs.insert("memory_assimilated".into());
+            subs.insert("tool_call".into());
+            subs.insert("vector_search".into());
+            subs.insert("system_error".into());
+            subs.insert("degraded_mode".into());
         }
         WindowKind::Extension => {
             for panel in panels {
@@ -195,9 +344,11 @@ pub fn default_subscriptions(kind: WindowKind, panels: &[String]) -> HashSet<Str
                     "chat" => {
                         subs.insert("chat".into());
                         subs.insert("memories".into());
+                        subs.insert("visual".into());
                     }
                     "memory" | "memories" => {
                         subs.insert("memories".into());
+                        subs.insert("memory_assimilated".into());
                     }
                     "graph" => {
                         subs.insert("graph".into());
@@ -205,6 +356,8 @@ pub fn default_subscriptions(kind: WindowKind, panels: &[String]) -> HashSet<Str
                     }
                     "monitoring" => {
                         subs.insert("activity".into());
+                        subs.insert("degraded_mode".into());
+                        subs.insert("system_error".into());
                     }
                     _ => {}
                 }
@@ -242,6 +395,7 @@ pub fn resolve_subscriptions(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cortex::MemoryId;
 
     #[test]
     fn extension_graph_subscriptions_include_memories() {
@@ -255,9 +409,7 @@ mod tests {
     }
 
     #[test]
-    fn assimilated_emits_memories_and_graph_events() {
-        use cortex::MemoryId;
-
+    fn assimilated_emits_memory_assimilated_event() {
         let events = TerritoryHub::events_from_response(
             "sess-1",
             "req-9",
@@ -267,9 +419,41 @@ mod tests {
             },
         );
         let kinds: Vec<_> = events.iter().map(|e| e.event.as_str()).collect();
-        assert!(kinds.contains(&"memories_changed"));
-        assert!(kinds.contains(&"graph_changed"));
+        assert!(kinds.contains(&"memory_assimilated"));
         assert!(kinds.contains(&"brain_pulse"));
+    }
+
+    #[test]
+    fn chat_with_tools_emits_tool_call() {
+        let events = TerritoryHub::events_from_response(
+            "sess-1",
+            "req-1",
+            &Response::ChatReply {
+                reply: "ok".into(),
+                tools_invoked: vec!["search".into()],
+                auto_assimilated: None,
+                auto_executed_skills: vec![],
+            },
+        );
+        assert!(events.iter().any(|e| e.event == "tool_call"));
+    }
+
+    #[test]
+    fn search_emits_vector_search() {
+        use crate::bridge::BridgeSearchHit;
+
+        let events = TerritoryHub::events_from_response(
+            "sess-1",
+            "req-2",
+            &Response::SearchResults {
+                items: vec![BridgeSearchHit {
+                    memory_id: MemoryId::new(),
+                    score: 0.9,
+                    snippet: Some("extrait".into()),
+                }],
+            },
+        );
+        assert!(events.iter().any(|e| e.event == "vector_search"));
     }
 
     #[test]

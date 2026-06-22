@@ -23,7 +23,7 @@ use tracing_subscriber::EnvFilter;
 #[command(
     name = "orchestrateur",
     version,
-    about = "Orchestrateur v0.19.0 — CLI headless + daemon Territoire Graphique"
+    about = "Orchestrateur v0.20.0 — CLI headless + daemon Territoire Graphique"
 )]
 struct Cli {
     /// Racine du workspace (défaut: ./workspace).
@@ -319,7 +319,7 @@ async fn main() -> Result<()> {
         #[cfg(feature = "websocket-server")]
         Commands::Daemon { command } => match command {
             DaemonCommands::Run { port, bind } => {
-                run_daemon_server(facade, &cli.workspace, port, bind).await?
+                run_daemon_server(&cli.workspace, port, bind).await?
             }
         },
         #[cfg(feature = "gateway")]
@@ -732,14 +732,24 @@ fn print_provider_table(descriptors: &[orchestrator::ProviderDescriptor]) {
 
 #[cfg(feature = "websocket-server")]
 async fn run_daemon_server(
-    facade: OrchestratorFacade,
     workspace: &Path,
     port: Option<u16>,
     bind: Option<String>,
 ) -> Result<()> {
     use std::sync::Arc;
 
-    use orchestrator::{run_daemon, OrchestratorConfig};
+    use orchestrator::{
+        run_daemon_with_domain_events, EventPublisher, FanoutEventPublisher, OrchestratorConfig,
+    };
+
+    let mut deps = bootstrap_workspace(workspace)
+        .await
+        .map_err(|e| anyhow::anyhow!("bootstrap: {e}"))?;
+    let fanout = FanoutEventPublisher::new();
+    let domain_rx = fanout.subscribe();
+    let events: Arc<dyn EventPublisher> = Arc::new(fanout);
+    deps.events = events;
+    let facade = Arc::new(OrchestratorFacade::new(deps));
 
     let mut config = OrchestratorConfig::load_workspace(workspace)
         .map_err(|e| anyhow::anyhow!("config: {e}"))?;
@@ -760,7 +770,7 @@ async fn run_daemon_server(
         config.daemon.token_env
     );
 
-    run_daemon(Arc::new(facade), &config.daemon)
+    run_daemon_with_domain_events(facade, &config.daemon, Some(domain_rx))
         .await
         .map_err(|e| anyhow::anyhow!("daemon: {e}"))?;
     Ok(())

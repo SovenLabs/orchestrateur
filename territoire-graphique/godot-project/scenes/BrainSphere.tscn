@@ -8,6 +8,8 @@ render_priority = 0
 shader = ExtResource("2_shader")
 shader_parameter/time = 0.0
 shader_parameter/activity = 0.35
+shader_parameter/stress = 0.0
+shader_parameter/swirl = 0.0
 
 [sub_resource type="SphereMesh" id="SphereMesh_brain"]
 radius = 1.0

@@ -16,6 +16,8 @@ use tokio::sync::mpsc;
 use tracing::{info, warn};
 use uuid::Uuid;
 
+use cortex::DomainEvent;
+
 use crate::bridge::execute_command;
 use crate::config::DaemonConfig;
 use crate::facade::OrchestratorFacade;
@@ -67,16 +69,41 @@ pub async fn serve(
     facade: Arc<OrchestratorFacade>,
     config: &DaemonConfig,
 ) -> Result<(), DaemonError> {
+    serve_with_domain_events(facade, config, None).await
+}
+
+/// Démarre le daemon avec abonnement optionnel aux [`DomainEvent`] Cortex (Phase 19).
+///
+/// # Errors
+///
+/// Propage [`DaemonError`] si le bind ou le serveur échoue.
+pub async fn serve_with_domain_events(
+    facade: Arc<OrchestratorFacade>,
+    config: &DaemonConfig,
+    domain_events: Option<flume::Receiver<DomainEvent>>,
+) -> Result<(), DaemonError> {
     if !config.enabled {
         return Err(DaemonError::Config(
             "daemon désactivé — activez [daemon] enabled = true".into(),
         ));
     }
 
+    let hub = TerritoryHub::new();
+    if let Some(rx) = domain_events {
+        let hub_clone = hub.clone();
+        tokio::spawn(async move {
+            while let Ok(event) = rx.recv_async().await {
+                for broadcast in TerritoryHub::events_from_domain_event(&event) {
+                    hub_clone.broadcast_all(broadcast);
+                }
+            }
+        });
+    }
+
     let state = Arc::new(DaemonState {
         facade,
         config: config.clone(),
-        hub: TerritoryHub::new(),
+        hub,
     });
     let app = build_router(state);
 
@@ -301,7 +328,20 @@ pub async fn run_daemon(
     facade: Arc<OrchestratorFacade>,
     config: &DaemonConfig,
 ) -> Result<(), DaemonError> {
-    serve(facade, config).await
+    run_daemon_with_domain_events(facade, config, None).await
+}
+
+/// Point d'entrée daemon avec fan-out des événements domaine.
+///
+/// # Errors
+///
+/// Propage [`DaemonError`] si le daemon ne peut pas démarrer.
+pub async fn run_daemon_with_domain_events(
+    facade: Arc<OrchestratorFacade>,
+    config: &DaemonConfig,
+    domain_events: Option<flume::Receiver<DomainEvent>>,
+) -> Result<(), DaemonError> {
+    serve_with_domain_events(facade, config, domain_events).await
 }
 
 #[cfg(test)]

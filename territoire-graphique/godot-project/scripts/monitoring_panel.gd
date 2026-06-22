@@ -28,4 +28,17 @@ func update_activity(intensity: float) -> void:
 
 func set_connection_status(connected: bool, detail: String) -> void:
 	_status.text = ("● " if connected else "○ ") + detail
-	_status.modulate = Color(0.4, 0.9, 0.5) if connected else Color(0.9, 0.5, 0.4)
+	_apply_status_color(connected, false)
+
+
+func set_degraded_mode(active: bool) -> void:
+	_apply_status_color(not active, active)
+
+
+func _apply_status_color(connected: bool, degraded: bool) -> void:
+	if degraded:
+		_status.modulate = Color(0.95, 0.55, 0.25)
+	elif connected:
+		_status.modulate = Color(0.4, 0.9, 0.5)
+	else:
+		_status.modulate = Color(0.9, 0.5, 0.4)

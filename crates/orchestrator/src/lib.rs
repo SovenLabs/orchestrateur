@@ -93,7 +93,7 @@ pub use skills::{
 #[cfg(feature = "plugins-native")]
 pub use skills::{NativePluginError, NativePluginSkill};
 #[cfg(feature = "websocket-server")]
-pub use daemon::{run_daemon, DaemonError};
+pub use daemon::{run_daemon, run_daemon_with_domain_events, DaemonError};
 pub use agent::{
     AgentConfig, AgentError, AgentLoop, AgentStreamEvent, AgentStreamSink, AgentTurnRequest,
     AgentTurnResult,

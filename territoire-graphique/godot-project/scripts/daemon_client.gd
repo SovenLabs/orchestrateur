@@ -6,6 +6,7 @@ signal activity_changed(intensity: float)
 signal connection_state_changed(connected: bool, detail: String)
 signal command_completed(request_id: String, response: Dictionary)
 signal brain_pulse_requested(boost: float, duration: float)
+signal visual_event(effect: Dictionary)
 signal broadcast_received(event: String, payload: Dictionary, source_session_id: String)
 
 const WS_URL := "ws://127.0.0.1:28790/ws"
@@ -129,7 +130,12 @@ func _process(delta: float) -> void:
 
 	if _use_fallback:
 		_poll_http_health()
-		activity_changed.emit(ActivityMapper.fallback_idle(_fallback_elapsed))
+		var idle := ActivityMapper.fallback_idle(_fallback_elapsed)
+		activity_changed.emit(idle)
+		if is_main_window():
+			var effect := VisualEventMapper.idle_breathing(_fallback_elapsed, false)
+			if not effect.is_empty():
+				_emit_visual_event(effect)
 		_reconnect_timer -= delta
 		if _reconnect_timer <= 0.0:
 			_peer = WebSocketPeer.new()
@@ -177,7 +183,11 @@ func _send_connect() -> void:
 
 func _default_subscriptions() -> Array:
 	if _window_kind == "main":
-		return ["activity", "memories", "graph", "chat", "brain_pulse"]
+		return [
+			"activity", "visual", "memories", "graph", "chat", "brain_pulse",
+			"memory_assimilated", "tool_call", "vector_search",
+			"system_error", "degraded_mode",
+		]
 	var subs: Array = ["activity"]
 	for panel_id in _panels:
 		match str(panel_id):
@@ -242,8 +252,9 @@ func _handle_broadcast(data: Dictionary) -> void:
 	if source == session_id:
 		return
 	broadcast_received.emit(event, payload, source)
+	_route_visual_event(event, payload)
 	match event:
-		"memories_changed":
+		"memories_changed", "memory_assimilated":
 			if _window_kind == "main" or "memory" in _panels:
 				execute_list()
 		"graph_changed":
@@ -257,6 +268,9 @@ func _handle_broadcast(data: Dictionary) -> void:
 				)
 		"chat_reply":
 			pass
+		"degraded_mode", "system_error":
+			if monitoring_panel_visible():
+				connection_state_changed.emit(false, str(payload.get("message", "Mode dégradé")))
 
 
 func _dispatch_result(data: Dictionary) -> void:
@@ -266,18 +280,25 @@ func _dispatch_result(data: Dictionary) -> void:
 
 	if kind == "Health":
 		var payload: Dictionary = response.get("payload", {})
+		var status := str(payload.get("status", "unknown"))
 		var intensity := ActivityMapper.clamp_intensity(
 			ActivityMapper.from_health(
-				str(payload.get("status", "unknown")),
+				status,
 				bool(payload.get("llm_available", false)),
 				bool(payload.get("embedding_available", false)),
 			)
 		)
 		activity_changed.emit(intensity)
+		if is_main_window() and status == "degraded":
+			_emit_visual_event(VisualEventMapper.from_backend_event("degraded_mode", payload))
 
 	if kind == "ChatReply":
+		var tools: Array = response.get("payload", {}).get("tools_invoked", [])
 		if is_main_window():
-			brain_pulse_requested.emit(0.5, 0.6)
+			if tools.size() > 0:
+				_route_visual_event("tool_call", {"tools": tools})
+			else:
+				_route_visual_event("brain_pulse", {"boost": 0.5, "duration": 0.6, "kind": "chat"})
 		if response.get("payload", {}).get("auto_assimilated"):
 			if _window_kind == "main" or "memory" in _panels:
 				execute_list()
@@ -286,13 +307,43 @@ func _dispatch_result(data: Dictionary) -> void:
 
 	if kind == "Assimilated":
 		if is_main_window():
-			brain_pulse_requested.emit(0.45, 0.5)
+			_route_visual_event("memory_assimilated", response.get("payload", {}))
 		if _window_kind == "main" or "memory" in _panels:
 			execute_list()
 		if _window_kind == "main" or "graph" in _panels:
 			execute_graph()
 
+	if kind == "SearchResults":
+		if is_main_window():
+			_route_visual_event("vector_search", {
+				"hit_count": response.get("payload", {}).get("items", []).size(),
+			})
+
+	if kind == "Error":
+		if is_main_window():
+			_route_visual_event(
+				"degraded_mode" if str(response.get("payload", {}).get("kind", "")) == "degraded" else "system_error",
+				response.get("payload", {}),
+			)
+
 	command_completed.emit(rid, response)
+
+
+func _route_visual_event(event: String, payload: Dictionary) -> void:
+	if not is_main_window():
+		return
+	var effect := VisualEventMapper.from_backend_event(event, payload)
+	_emit_visual_event(effect)
+
+
+func _emit_visual_event(effect: Dictionary) -> void:
+	if effect.is_empty():
+		return
+	visual_event.emit(effect)
+
+
+func monitoring_panel_visible() -> bool:
+	return _window_kind == "main" or "monitoring" in _panels
 
 
 func _poll_http_health() -> void:

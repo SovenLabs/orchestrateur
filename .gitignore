@@ -19,3 +19,8 @@ workspace/config/orchestrator.toml
 # LanceDB local (généré au premier run)
 workspace/.orchestrateur/**
 !workspace/.orchestrateur/.gitkeep
+
+# Godot — cache éditeur (ne pas versionner)
+territoire-graphique/godot-project/.godot/
+**/*.gdshader.uid
+**/*.gd.uid

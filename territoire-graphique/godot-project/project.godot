@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Territoire Graphique"
-config/description="Client visuel Orchestrateur — Boule de Pixels Vivante"
+config/description="Client visuel Orchestrateur — Boule de Pixels Vivante. Doc Godot stable: res://docs/GODOT_STABLE_REFERENCE.md"
 run/main_scene="res://scenes/MainTerritory.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"

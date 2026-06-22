@@ -1,45 +1,46 @@
-//! GDExtension Rust — Territoire Graphique (Phase 15+).
-//!
-//! Ce crate sera branché sur godot-rust pour la Boule de Pixels et les shaders.
-//! En Phase 14 bis, il expose uniquement les types de protocole partagés.
+use godot::prelude::*;
+use tokio::runtime::Runtime;
+use tokio_tungstenite::tungstenite::protocol::Message;
+use futures_util::{StreamExt, SinkExt};
+use std::sync::{Arc, Mutex};
 
-#![forbid(unsafe_code)]
+struct OrchestrateurGodotExtension;
 
-/// Version alignée sur le workspace Orchestrateur.
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+#[gdextension]
+unsafe impl ExtensionLibrary for OrchestrateurGodotExtension {}
 
-/// URL WebSocket par défaut du daemon local.
-pub const DEFAULT_DAEMON_WS_URL: &str = "ws://127.0.0.1:28790/ws";
-
-/// Enveloppe JSON client → daemon (miroir de `DaemonClientMessage`).
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum ClientEnvelope {
-    /// Handshake avec token.
-    Connect {
-        /// Token Bearer.
-        token: String,
-    },
-    /// Commande bridge sérialisée (JSON opaque en Phase 14 bis).
-    Execute {
-        /// Identifiant de corrélation.
-        request_id: String,
-        /// Corps JSON de la commande bridge.
-        command: serde_json::Value,
-    },
-    /// Keepalive.
-    Ping {
-        /// Nonce.
-        nonce: u64,
-    },
+#[derive(GodotClass)]
+#[class(base=RefCounted)]
+pub struct BrainBridge {
+    base: Base<RefCounted>,
+    runtime: Arc<Mutex<Option<Runtime>>>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[godot_api]
+impl IRefCounted for BrainBridge {
+    fn init(base: Base<RefCounted>) -> Self {
+        Self {
+            base,
+            runtime: Arc::new(Mutex::new(None)),
+        }
+    }
+}
 
-    #[test]
-    fn default_ws_url_is_localhost() {
-        assert!(DEFAULT_DAEMON_WS_URL.contains("28790"));
+#[godot_api]
+impl BrainBridge {
+    #[func]
+    fn get_brain_activity(&self) -> Dictionary {
+        let mut dict = Dictionary::new();
+        dict.insert("intensity", 0.85);
+        dict.insert("pulse_speed", 1.4);
+        dict.insert("particle_count", 65);
+        dict
+    }
+
+    #[func]
+    fn start_websocket_server(&self) {
+        // TODO: Lancer un serveur WebSocket sur le port 28790
+        // Pour l'instant en simulation
+        godot_print!("WebSocket server would start on port 28790");
     }
 }

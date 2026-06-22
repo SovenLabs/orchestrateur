@@ -21,11 +21,7 @@ func apply_to(node: Node) -> void:
 	if node is Control:
 		var ctrl := node as Control
 		if ctrl is PanelContainer:
-			var style := StyleBoxFlat.new()
-			style.bg_color = PANEL_BG
-			style.set_corner_radius_all(6)
-			style.set_content_margin_all(4)
-			ctrl.add_theme_stylebox_override("panel", style)
+			MainScene.apply_space_panel_style(ctrl as PanelContainer)
 
 
 func _apply_root_theme(root: Node) -> void:

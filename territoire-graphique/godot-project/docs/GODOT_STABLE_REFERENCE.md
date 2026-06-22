@@ -99,6 +99,7 @@ window/stretch/aspect="expand"
 
 | Module | Fichiers | Classes doc stable |
 |--------|----------|-------------------|
+| Scène principale | `main_scene.gd` | `MainScene`, `Environment`, starfield |
 | Client WS | `daemon_client.gd` | `WebSocketPeer`, `HTTPRequest` |
 | Layout | `dock_layout.gd` | `Control`, `SplitContainer`, `Viewport` |
 | Boule Phase 20 | `brain_sphere.gd`, `brain_*.gdshader` | `GPUParticles3D`, `ShaderMaterial` |

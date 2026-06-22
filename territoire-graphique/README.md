@@ -1,39 +1,40 @@
-# Territoire Graphique
+# Territoire Graphique — Phase 15 PoC
 
-Couche de présentation visuelle disruptive pour **Orchestrateur** — client Godot 4 connecté au daemon Rust via WebSocket local (Option B).
+Client Godot 4 **Boule de Pixels Vivante** connecté au daemon Rust via WebSocket (Option B).
 
-## Structure
-
-```
-territoire-graphique/
-├── communication.md          # Protocole WS Command/Response
-├── godot-project/            # Projet Godot 4 (Phase 15+)
-│   └── project.godot
-└── rust-gdextension/         # GDExtension Rust (Phase 15+)
-    └── src/lib.rs
-```
-
-## Démarrage (Phase 14 bis)
-
-1. Lancer le daemon Rust :
+## Lancement rapide
 
 ```powershell
-$env:ORCHESTRATEUR_DAEMON_TOKEN = "secret"
+# 1. Daemon
+$env:ORCHESTRATEUR_DAEMON_TOKEN = "dev"
 .\target\release\orchestrateur.exe daemon run --workspace workspace
+
+# 2. Godot 4.3+ — ouvrir godot-project/ et Play (F5)
 ```
 
-2. Ouvrir `godot-project/` dans Godot 4 (Phase 15 : connexion WS basique).
+## Contenu Phase 15
 
-## Architecture
+| Composant | Chemin |
+|-----------|--------|
+| Shader vivant | `godot-project/shaders/brain_living_shader.gdshader` |
+| Boule 3D | `godot-project/scenes/brain_sphere.tscn` |
+| WebSocket client | `godot-project/scripts/daemon_client.gd` |
+| Monitoring | `godot-project/scenes/monitoring_panel.tscn` |
+| Protocole | [`communication.md`](communication.md) |
+| Archive phase | [`../docs/Phase_15_Territoire_Graphique_PoC.md`](../docs/Phase_15_Territoire_Graphique_PoC.md) |
 
-```mermaid
-flowchart LR
-    GODOT["Godot 4<br/>territoire-graphique"]
-    WS["WebSocket :28790<br/>Command / Response"]
-    DAEMON["orchestrateur daemon<br/>Rust"]
-    CORE["Cortex + Agent<br/>Rust"]
+## Token
 
-    GODOT --> WS --> DAEMON --> CORE
+Par défaut le client utilise le token `dev`. En production, définir la même valeur des deux côtés :
+
+```powershell
+$env:ORCHESTRATEUR_DAEMON_TOKEN = "votre-secret"
 ```
 
-Le client Godot est **remplaçable** (Bevy, autre moteur) sans toucher au cœur IA Rust.
+## GDExtension (optionnel)
+
+```powershell
+cargo build -p territoire-gdextension --release
+```
+
+Puis activer `territoire_gdextension.gdextension` dans le projet Godot.

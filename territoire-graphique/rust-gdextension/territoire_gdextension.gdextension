@@ -1,0 +1,16 @@
+[configuration]
+
+entry_symbol = "gdext_rust_init"
+compatibility_minimum = "4.3"
+reloadable = true
+
+[libraries]
+
+windows.debug.x86_64 = "res://../target/debug/territoire_gdextension.dll"
+windows.release.x86_64 = "res://../target/release/territoire_gdextension.dll"
+linux.debug.x86_64 = "res://../target/debug/libterritoire_gdextension.so"
+linux.release.x86_64 = "res://../target/release/libterritoire_gdextension.so"
+macos.debug.arm64 = "res://../target/debug/libterritoire_gdextension.dylib"
+macos.release.arm64 = "res://../target/release/libterritoire_gdextension.dylib"
+macos.debug.x86_64 = "res://../target/debug/libterritoire_gdextension.dylib"
+macos.release.x86_64 = "res://../target/release/libterritoire_gdextension.dylib"

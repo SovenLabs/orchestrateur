@@ -1,0 +1,45 @@
+[gd_scene load_steps=6 format=3 uid="uid://brain_sphere_p15"]
+
+[ext_resource type="Script" path="res://scripts/brain_sphere.gd" id="1_script"]
+[ext_resource type="Shader" path="res://shaders/brain_living_shader.gdshader" id="2_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_brain"]
+render_priority = 0
+shader = ExtResource("2_shader")
+shader_parameter/time = 0.0
+shader_parameter/activity = 0.35
+
+[sub_resource type="SphereMesh" id="SphereMesh_brain"]
+radius = 1.0
+height = 2.0
+radial_segments = 64
+rings = 32
+
+[sub_resource type="SphereMesh" id="SphereMesh_particle"]
+radius = 0.04
+height = 0.08
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_orb"]
+emission_shape = 1
+emission_sphere_radius = 1.15
+direction = Vector3(0, 1, 0)
+spread = 180.0
+initial_velocity_min = 0.3
+initial_velocity_max = 1.0
+gravity = Vector3(0, 0, 0)
+scale_min = 0.02
+scale_max = 0.06
+
+[node name="BrainSphere" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("SphereMesh_brain")
+material_override = SubResource("ShaderMaterial_brain")
+
+[node name="Particles" type="GPUParticles3D" parent="."]
+amount = 80
+lifetime = 2.0
+explosiveness = 0.1
+process_material = SubResource("ParticleProcessMaterial_orb")
+draw_pass_1 = SubResource("SphereMesh_particle")

@@ -1,9 +1,13 @@
-//! GDExtension Rust — Territoire Graphique (Phase 15+).
+//! GDExtension Rust — Territoire Graphique (Phase 15).
 //!
-//! Ce crate sera branché sur godot-rust pour la Boule de Pixels et les shaders.
-//! En Phase 14 bis, il expose uniquement les types de protocole partagés.
+//! Fallback natif optionnel : compilez et chargez via `territoire_gdextension.gdextension`.
+//! Le client Godot utilise WebSocket en priorité (Option B).
 
 #![forbid(unsafe_code)]
+
+mod activity;
+
+pub use activity::map_health_to_activity;
 
 /// Version alignée sur le workspace Orchestrateur.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -20,7 +24,7 @@ pub enum ClientEnvelope {
         /// Token Bearer.
         token: String,
     },
-    /// Commande bridge sérialisée (JSON opaque en Phase 14 bis).
+    /// Commande bridge sérialisée.
     Execute {
         /// Identifiant de corrélation.
         request_id: String,

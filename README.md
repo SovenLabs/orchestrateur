@@ -1,6 +1,6 @@
 # Orchestrateur — Second cerveau local souverain
 
-**Version Cargo workspace : 0.15.0** · **Rust 1.80+** · **Juin 2026**
+**Version Cargo workspace : 0.16.0** · **Rust 1.80+** · **Juin 2026**
 
 > Documentation architecte : [`docs/prompt/PROMPT_MAITRE.md`](docs/prompt/PROMPT_MAITRE.md) · Archives phases : [`docs/`](docs/)
 
@@ -319,6 +319,7 @@ Tags Git : `phase1-closed`, `phase2-closed`, `phase3-v0.1.0`, `phase4-v0.3.0`.
 | 13 | Marketplace skills, intégrité BLAKE3, `skill_suggest` + auto-suggest |
 | 14 | Polling HTTP stub, catalogue signé BLAKE3, `skill_auto_execute`, bridge marketplace |
 | 14 bis | Suppression egui/ratatui, daemon WS :28790, `territoire-graphique/` Godot |
+| 15 | Boule de Pixels Vivante Godot, shader, particules, monitoring, client WS |
 
 **Packaging Windows** :
 ```powershell

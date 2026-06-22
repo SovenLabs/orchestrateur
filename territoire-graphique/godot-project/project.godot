@@ -1,5 +1,5 @@
 ; Engine configuration file.
-; Godot 4.x — Territoire Graphique (Phase 15+)
+; Godot 4.x — Territoire Graphique Phase 15 PoC
 
 config_version=5
 
@@ -11,6 +11,10 @@ run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+DaemonClient="*res://scripts/daemon_client.gd"
+
 [display]
 
 window/size/viewport_width=1280
@@ -20,3 +24,4 @@ window/stretch/mode="canvas_items"
 [rendering]
 
 renderer/rendering_method="forward_plus"
+environment/defaults/default_clear_color=Color(0.02, 0.03, 0.08, 1)

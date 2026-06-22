@@ -17,17 +17,18 @@ script = ExtResource("1_main")
 [node name="TerritoryManager" type="Node" parent="."]
 script = ExtResource("2_manager")
 brain_sphere = NodePath("../BrainSphere")
-monitoring_panel = NodePath("../UI/DockRoot/HSplit/RightSplit/MonitoringPanel")
-chat_panel = NodePath("../UI/DockRoot/HSplit/RightSplit/ChatPanel")
-memory_list_panel = NodePath("../UI/DockRoot/HSplit/LeftSplit/MemoryListPanel")
-graph_panel = NodePath("../UI/DockRoot/HSplit/LeftSplit/GraphPanel")
+monitoring_panel = NodePath("../UI/DockRoot/LayoutHost/RightColumn/RightSplit/MonitoringPanel")
+chat_panel = NodePath("../UI/DockRoot/LayoutHost/RightColumn/RightSplit/ChatPanel")
+memory_list_panel = NodePath("../UI/DockRoot/LayoutHost/LeftColumn/LeftSplit/MemoryListPanel")
+graph_panel = NodePath("../UI/DockRoot/LayoutHost/LeftColumn/LeftSplit/GraphPanel")
 dock_layout = NodePath("../DockLayout")
 
 [node name="DockLayout" type="Node" parent="."]
 script = ExtResource("3_layout")
-h_split = NodePath("../UI/DockRoot/HSplit")
-left_v = NodePath("../UI/DockRoot/HSplit/LeftSplit")
-right_v = NodePath("../UI/DockRoot/HSplit/RightSplit")
+left_column = NodePath("../UI/DockRoot/LayoutHost/LeftColumn")
+right_column = NodePath("../UI/DockRoot/LayoutHost/RightColumn")
+left_v = NodePath("../UI/DockRoot/LayoutHost/LeftColumn/LeftSplit")
+right_v = NodePath("../UI/DockRoot/LayoutHost/RightColumn/RightSplit")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 script = ExtResource("10_postfx")
@@ -56,49 +57,66 @@ theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 8
 
-[node name="HSplit" type="HSplitContainer" parent="UI/DockRoot"]
-unique_name_in_owner = true
+[node name="LayoutHost" type="Control" parent="UI/DockRoot"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-split_offset = 300
-
-[node name="LeftSplit" type="VSplitContainer" parent="UI/DockRoot/HSplit"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(260, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-split_offset = 220
-
-[node name="MemoryListPanel" parent="UI/DockRoot/HSplit/LeftSplit" instance=ExtResource("5_memory")]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="GraphPanel" parent="UI/DockRoot/HSplit/LeftSplit" instance=ExtResource("6_graph")]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="CenterSpacer" type="Control" parent="UI/DockRoot/HSplit"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 2.0
 mouse_filter = 2
 
-[node name="RightSplit" type="VSplitContainer" parent="UI/DockRoot/HSplit"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(280, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-split_offset = 280
+[node name="LeftColumn" type="Control" parent="UI/DockRoot/LayoutHost"]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 340.0
+grow_vertical = 2
+mouse_filter = 2
 
-[node name="ChatPanel" parent="UI/DockRoot/HSplit/RightSplit" instance=ExtResource("7_chat")]
+[node name="LeftSplit" type="VSplitContainer" parent="UI/DockRoot/LayoutHost/LeftColumn"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+split_offset = 500
+
+[node name="MemoryListPanel" parent="UI/DockRoot/LayoutHost/LeftColumn/LeftSplit" instance=ExtResource("5_memory")]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="MonitoringPanel" parent="UI/DockRoot/HSplit/RightSplit" instance=ExtResource("8_monitor")]
+[node name="GraphPanel" parent="UI/DockRoot/LayoutHost/LeftColumn/LeftSplit" instance=ExtResource("6_graph")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="RightColumn" type="Control" parent="UI/DockRoot/LayoutHost"]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -380.0
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="RightSplit" type="VSplitContainer" parent="UI/DockRoot/LayoutHost/RightColumn"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+split_offset = 540
+
+[node name="ChatPanel" parent="UI/DockRoot/LayoutHost/RightColumn/RightSplit" instance=ExtResource("7_chat")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MonitoringPanel" parent="UI/DockRoot/LayoutHost/RightColumn/RightSplit" instance=ExtResource("8_monitor")]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3

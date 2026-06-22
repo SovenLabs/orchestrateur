@@ -35,8 +35,8 @@ func open_extension(panel_id: String) -> void:
 
 	var win := Window.new()
 	win.title = "Territoire — %s" % PanelRegistry.title_for(panel_id)
-	win.size = Vector2i(720, 560)
-	win.min_size = Vector2i(420, 320)
+	win.size = Vector2i(960, 720)
+	win.min_size = Vector2i(480, 360)
 	win.close_requested.connect(_on_extension_close_requested.bind(panel_id))
 
 	var content: Control = packed.instantiate()

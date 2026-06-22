@@ -8,6 +8,7 @@ enum ParticleMode { IDLE, ASSIMILATION, TOOL_CALL }
 @export var particle_activity_threshold := 0.12
 @export var smooth_speed := 5.0
 
+const MIN_GPU_AMOUNT := 1
 const MIN_PARTICLES := 6
 const MAX_IDLE_PARTICLES := 120
 const MAX_ASSIM_PARTICLES := 140
@@ -269,7 +270,7 @@ func _update_idle_particles(t: float, budget: int) -> void:
 	var always_on := _display_intensity >= particle_activity_threshold or _degraded
 	_particles_idle.emitting = always_on or _particle_mode == ParticleMode.IDLE
 	if not _particles_idle.emitting:
-		_particles_idle.amount = 0
+		_particles_idle.amount = MIN_GPU_AMOUNT
 		_particles_idle.speed_scale = 0.0
 		return
 
@@ -278,7 +279,7 @@ func _update_idle_particles(t: float, budget: int) -> void:
 		amount = int(amount * 0.4)
 	if _pulse_remaining > 0.0:
 		amount = int(amount * 1.15)
-	_particles_idle.amount = mini(amount, budget)
+	_particles_idle.amount = maxi(MIN_GPU_AMOUNT, mini(amount, budget))
 
 	if _idle_process:
 		_idle_process.emission_sphere_radius = lerpf(1.05, 1.45, t)
@@ -300,13 +301,14 @@ func _update_assimilation_particles(t: float, budget: int) -> void:
 	var active := _particle_mode == ParticleMode.ASSIMILATION or _swirl_timer > 0.0
 	_particles_assim.emitting = active
 	if not active:
-		_particles_assim.amount = 0
+		_particles_assim.amount = MIN_GPU_AMOUNT
+		_particles_assim.speed_scale = 0.0
 		return
 
 	var amount := int(lerpf(30.0, float(MAX_ASSIM_PARTICLES), t))
 	if _pulse_remaining > 0.0:
 		amount = int(amount * 1.3)
-	_particles_assim.amount = mini(amount, budget)
+	_particles_assim.amount = maxi(MIN_GPU_AMOUNT, mini(amount, budget))
 
 	if _assim_process:
 		_assim_process.emission_sphere_radius = lerpf(1.4, 1.85, t)

@@ -132,6 +132,10 @@ Exemples de commandes (`command` field) :
 
 Topic générique `visual` reçoit tous les effets boule (fenêtre principale).
 
+### Mapping visuel Godot (Phase 20)
+
+Le client route les broadcasts vers l'autoload **`VisualEventMapper`** (`/root/VisualEventMapper`), qui traduit les événements en effets shader/particules (throttle 30 Hz). La latence WS est mesurée via `ping`/`pong` et affichée dans le panneau Monitoring.
+
 ### `result`
 
 ```json

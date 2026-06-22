@@ -6,8 +6,8 @@ signal activity_changed(intensity: float)
 signal connection_state_changed(connected: bool, detail: String)
 signal command_completed(request_id: String, response: Dictionary)
 signal brain_pulse_requested(boost: float, duration: float)
-signal visual_event(effect: Dictionary)
 signal broadcast_received(event: String, payload: Dictionary, source_session_id: String)
+signal latency_updated(rtt_ms: float)
 
 const WS_URL := "ws://127.0.0.1:28790/ws"
 const HEALTH_URL := "http://127.0.0.1:28790/health"
@@ -35,6 +35,8 @@ var _reconnect_timer := 0.0
 var _window_kind := "main"
 var _panels: Array = []
 var _ping_nonce := 0
+var _ping_sent_at := 0.0
+var _last_rtt_ms := -1.0
 
 
 func _ready() -> void:
@@ -133,9 +135,8 @@ func _process(delta: float) -> void:
 		var idle := ActivityMapper.fallback_idle(_fallback_elapsed)
 		activity_changed.emit(idle)
 		if is_main_window():
-			var effect := VisualEventMapper.idle_breathing(_fallback_elapsed, false)
-			if not effect.is_empty():
-				_emit_visual_event(effect)
+			VisualEventMapper.emit_idle_breathing(_fallback_elapsed, false)
+			VisualEventMapper.set_degraded_mode(true)
 		_reconnect_timer -= delta
 		if _reconnect_timer <= 0.0:
 			_peer = WebSocketPeer.new()
@@ -206,6 +207,7 @@ func _default_subscriptions() -> Array:
 
 func _send_ping() -> void:
 	_ping_nonce += 1
+	_ping_sent_at = Time.get_ticks_msec()
 	_peer.send_text(JSON.stringify({"type": "ping", "nonce": _ping_nonce}))
 
 
@@ -226,13 +228,17 @@ func _handle_packet(text: String) -> void:
 				true,
 				"Connecté v%s · %s" % [data.get("version", "?"), session_id.substr(0, 8)]
 			)
+			VisualEventMapper.set_degraded_mode(false)
 			_bootstrap_data()
 		"result":
 			_dispatch_result(data)
 		"broadcast":
 			_handle_broadcast(data)
 		"pong":
-			pass
+			if _ping_sent_at > 0.0:
+				_last_rtt_ms = (Time.get_ticks_msec() - _ping_sent_at)
+				latency_updated.emit(_last_rtt_ms)
+				_ping_sent_at = 0.0
 		"error":
 			push_warning("Daemon: %s" % data.get("message", "erreur"))
 
@@ -289,14 +295,22 @@ func _dispatch_result(data: Dictionary) -> void:
 			)
 		)
 		activity_changed.emit(intensity)
-		if is_main_window() and status == "degraded":
-			_emit_visual_event(VisualEventMapper.from_backend_event("degraded_mode", payload))
+		if is_main_window():
+			VisualEventMapper.map_backend_event(
+				"agent_activity",
+				{"level": intensity * 3.0},
+			)
+			if status == "degraded":
+				VisualEventMapper.map_backend_event("degraded_mode", payload)
 
 	if kind == "ChatReply":
 		var tools: Array = response.get("payload", {}).get("tools_invoked", [])
 		if is_main_window():
 			if tools.size() > 0:
-				_route_visual_event("tool_call", {"tools": tools})
+				_route_visual_event("tool_call", {
+					"tools": tools,
+					"tool_name": str(tools[0]),
+				})
 			else:
 				_route_visual_event("brain_pulse", {"boost": 0.5, "duration": 0.6, "kind": "chat"})
 		if response.get("payload", {}).get("auto_assimilated"):
@@ -332,14 +346,11 @@ func _dispatch_result(data: Dictionary) -> void:
 func _route_visual_event(event: String, payload: Dictionary) -> void:
 	if not is_main_window():
 		return
-	var effect := VisualEventMapper.from_backend_event(event, payload)
-	_emit_visual_event(effect)
+	VisualEventMapper.map_backend_event(event, payload)
 
 
-func _emit_visual_event(effect: Dictionary) -> void:
-	if effect.is_empty():
-		return
-	visual_event.emit(effect)
+func get_latency_ms() -> float:
+	return _last_rtt_ms
 
 
 func monitoring_panel_visible() -> bool:

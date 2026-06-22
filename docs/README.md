@@ -1,6 +1,6 @@
 # Documentation Orchestrateur
 
-Index des documents du projet **Orchestrateur** (workspace Cargo **0.20.0**).
+Index des documents du projet **Orchestrateur** (workspace Cargo **0.21.0**).
 
 **Mantra :** Cortex first, agent second, gateway third. Voir [`RAPPORT_PHASES_7-14.md`](RAPPORT_PHASES_7-14.md).
 
@@ -33,5 +33,6 @@ Index des documents du projet **Orchestrateur** (workspace Cargo **0.20.0**).
 | 17 | [`Phase_17_Territoire_Graphique.md`](Phase_17_Territoire_Graphique.md) | `phase17-v0.18.0` |
 | 18 | [`Phase_18_Multi_fenetrage.md`](Phase_18_Multi_fenetrage.md) | `phase18-v0.19.0` |
 | 19 | [`Phase_19_Integration_Reelle.md`](Phase_19_Integration_Reelle.md) | `phase19-v0.20.0` |
+| 20 | [`Phase_20_Polish_Final.md`](Phase_20_Polish_Final.md) | `phase20-v0.21.0` |
 
 Point d’entrée utilisateur : [`../README.md`](../README.md).

@@ -23,6 +23,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 TerritoryTheme="*res://scripts/territory_theme.gd"
+VisualEventMapper="*res://scripts/visual_event_mapper.gd"
 WindowManager="*res://scripts/window_manager.gd"
 
 [display]

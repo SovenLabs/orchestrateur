@@ -1,5 +1,5 @@
 extends Node
-## Gestionnaire multi-fenêtrage — une Boule, extensions détachables.
+## Gestionnaire multi-fenêtrage — une Boule, extensions détachables (Phase 20).
 
 const EXTENSION_SCENE_PATH := "res://scenes/ExtensionTerritory.tscn"
 
@@ -15,6 +15,7 @@ func register_main(root: Node) -> void:
 	main_window = win
 	if win:
 		win.title = "Territoire Graphique — Cortex"
+		win.close_requested.connect(_on_main_close_requested)
 
 
 func open_extension(panel_id: String) -> void:
@@ -44,6 +45,7 @@ func open_extension(panel_id: String) -> void:
 	win.add_child(content)
 	get_tree().root.add_child(win)
 	TerritoryTheme.apply_to(content)
+	win.tree_exited.connect(_on_extension_tree_exited.bind(panel_id))
 	win.show()
 	_extensions[panel_id] = win
 
@@ -52,8 +54,32 @@ func is_extension_open(panel_id: String) -> bool:
 	return _extensions.has(panel_id) and is_instance_valid(_extensions[panel_id])
 
 
+func close_all_extensions() -> void:
+	for panel_id in _extensions.keys():
+		_close_extension(str(panel_id))
+
+
 func _on_extension_close_requested(panel_id: String) -> void:
+	_close_extension(panel_id)
+
+
+func _close_extension(panel_id: String) -> void:
 	var win: Window = _extensions.get(panel_id)
 	if win and is_instance_valid(win):
+		var content := win.get_child(0)
+		if content and content.has_method("cleanup"):
+			content.cleanup()
+		win.hide()
 		win.queue_free()
 	_extensions.erase(panel_id)
+
+
+func _on_extension_tree_exited(panel_id: String) -> void:
+	_extensions.erase(panel_id)
+
+
+func _on_main_close_requested() -> void:
+	close_all_extensions()
+	if main_window and is_instance_valid(main_window):
+		main_window.queue_free()
+	main_window = null

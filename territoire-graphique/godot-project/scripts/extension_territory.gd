@@ -38,3 +38,8 @@ func _mount() -> void:
 
 	if _daemon:
 		_daemon.configure_window("extension", [panel_id])
+
+
+func cleanup() -> void:
+	if _daemon and is_instance_valid(_daemon):
+		_daemon.queue_free()

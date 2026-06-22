@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://brain_sphere_p17"]
+[gd_scene load_steps=10 format=3 uid="uid://brain_sphere_p17"]
 
 [ext_resource type="Script" path="res://scripts/brain_sphere.gd" id="1_script"]
 [ext_resource type="Shader" path="res://shaders/brain_living_shader.gdshader" id="2_shader"]
@@ -10,6 +10,8 @@ shader_parameter/time = 0.0
 shader_parameter/activity = 0.35
 shader_parameter/stress = 0.0
 shader_parameter/swirl = 0.0
+shader_parameter/living = 1.0
+shader_parameter/refraction_strength = 0.04
 
 [sub_resource type="SphereMesh" id="SphereMesh_brain"]
 radius = 1.0
@@ -21,16 +23,40 @@ rings = 32
 radius = 0.04
 height = 0.08
 
-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_orb"]
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_idle"]
 emission_shape = 1
 emission_sphere_radius = 1.15
 direction = Vector3(0, 1, 0)
 spread = 180.0
-initial_velocity_min = 0.3
-initial_velocity_max = 1.0
+initial_velocity_min = 0.15
+initial_velocity_max = 0.6
+gravity = Vector3(0, 0, 0)
+scale_min = 0.015
+scale_max = 0.05
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_assim"]
+emission_shape = 1
+emission_sphere_radius = 1.55
+direction = Vector3(0, 0, -1)
+spread = 35.0
+initial_velocity_min = 0.05
+initial_velocity_max = 0.4
+radial_accel_min = -4.0
+radial_accel_max = -2.5
 gravity = Vector3(0, 0, 0)
 scale_min = 0.02
-scale_max = 0.06
+scale_max = 0.055
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_tool"]
+emission_shape = 1
+emission_sphere_radius = 1.0
+direction = Vector3(0, 1, 0)
+spread = 180.0
+initial_velocity_min = 2.0
+initial_velocity_max = 5.0
+gravity = Vector3(0, -0.5, 0)
+scale_min = 0.025
+scale_max = 0.08
 
 [node name="BrainSphere" type="Node3D"]
 script = ExtResource("1_script")
@@ -39,9 +65,26 @@ script = ExtResource("1_script")
 mesh = SubResource("SphereMesh_brain")
 material_override = SubResource("ShaderMaterial_brain")
 
-[node name="Particles" type="GPUParticles3D" parent="."]
+[node name="ParticlesIdle" type="GPUParticles3D" parent="."]
+amount = 60
+lifetime = 2.5
+explosiveness = 0.05
+process_material = SubResource("ParticleProcessMaterial_idle")
+draw_pass_1 = SubResource("SphereMesh_particle")
+
+[node name="ParticlesAssimilation" type="GPUParticles3D" parent="."]
+emitting = false
 amount = 80
-lifetime = 2.0
-explosiveness = 0.1
-process_material = SubResource("ParticleProcessMaterial_orb")
+lifetime = 1.4
+explosiveness = 0.0
+process_material = SubResource("ParticleProcessMaterial_assim")
+draw_pass_1 = SubResource("SphereMesh_particle")
+
+[node name="ParticlesTool" type="GPUParticles3D" parent="."]
+emitting = false
+amount = 50
+lifetime = 0.45
+one_shot = true
+explosiveness = 1.0
+process_material = SubResource("ParticleProcessMaterial_tool")
 draw_pass_1 = SubResource("SphereMesh_particle")

@@ -267,6 +267,30 @@ impl GatewayChannelConfig {
     }
 }
 
+/// Configuration du daemon WebSocket local (Territoire Graphique — Option B).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DaemonConfig {
+    /// Active le daemon (`daemon run` refuse si false).
+    pub enabled: bool,
+    /// Adresse de liaison.
+    pub bind: String,
+    /// Port d'écoute du daemon local (défaut 28790).
+    pub port: u16,
+    /// Variable d'environnement du token d'authentification WS.
+    pub token_env: String,
+}
+
+impl Default for DaemonConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            bind: "127.0.0.1".into(),
+            port: 28_790,
+            token_env: "ORCHESTRATEUR_DAEMON_TOKEN".into(),
+        }
+    }
+}
+
 /// Configuration du gateway WebSocket Phase 8.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GatewayConfig {
@@ -501,6 +525,8 @@ pub struct OrchestratorConfig {
     pub ollama: OllamaConfig,
     /// Couche sécurité adversariale (validation des brouillons LLM).
     pub security: SecurityConfig,
+    /// Daemon WebSocket local pour clients visuels (Phase 14 bis).
+    pub daemon: DaemonConfig,
     /// Gateway WebSocket + canaux (Phase 8).
     pub gateway: GatewayConfig,
     /// Profils surchargeables par provider (Phase 9).
@@ -525,6 +551,7 @@ impl Default for OrchestratorConfig {
             xai: XaiConfig::default(),
             ollama: OllamaConfig::default(),
             security: SecurityConfig::default(),
+            daemon: DaemonConfig::default(),
             gateway: GatewayConfig::default(),
             provider_profiles: ProviderProfiles::default(),
             mcp: McpConfig::default(),
@@ -702,6 +729,9 @@ impl OrchestratorConfig {
         if let Some(s) = settings.security {
             merge_security(&mut self.security, s);
         }
+        if let Some(d) = settings.daemon {
+            merge_daemon(&mut self.daemon, d);
+        }
         if let Some(g) = settings.gateway {
             merge_gateway(&mut self.gateway, g);
         }
@@ -814,6 +844,21 @@ fn merge_mcp(target: &mut McpConfig, section: McpSection) {
             })
             .filter(|s| !s.command.is_empty())
             .collect();
+    }
+}
+
+fn merge_daemon(target: &mut DaemonConfig, section: DaemonSection) {
+    if let Some(v) = section.enabled {
+        target.enabled = v;
+    }
+    if let Some(v) = section.bind {
+        target.bind = v;
+    }
+    if let Some(v) = section.port {
+        target.port = v;
+    }
+    if let Some(v) = section.token_env {
+        target.token_env = v;
     }
 }
 
@@ -975,6 +1020,7 @@ struct SettingsToml {
     xai: Option<XaiSection>,
     ollama: Option<OllamaSection>,
     security: Option<SecuritySection>,
+    daemon: Option<DaemonSection>,
     gateway: Option<GatewaySection>,
     provider_profiles: Option<HashMap<String, ProviderProfileSection>>,
     mcp: Option<McpSection>,
@@ -1033,6 +1079,14 @@ struct McpServerToml {
     name: Option<String>,
     command: Option<String>,
     args: Option<Vec<String>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct DaemonSection {
+    enabled: Option<bool>,
+    bind: Option<String>,
+    port: Option<u16>,
+    token_env: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

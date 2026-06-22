@@ -55,7 +55,7 @@ pub fn spawn_orchestrator_bridge(
     Ok((handle, OrchestratorThread { join: Some(join) }))
 }
 
-/// Thread orchestrateur joignable proprement à la fermeture du HUD.
+/// Thread orchestrateur joignable proprement à la fermeture du client bridge.
 pub struct OrchestratorThread {
     join: Option<JoinHandle<()>>,
 }

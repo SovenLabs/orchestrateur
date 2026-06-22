@@ -1,4 +1,4 @@
-//! CLI Orchestrateur — headless (sans TUI). Interface terminal : voir `orchestrateur-tui`.
+//! CLI Orchestrateur — headless. Daemon WS pour clients visuels Territoire Graphique.
 
 #[cfg(feature = "http")]
 use std::sync::Arc;
@@ -23,7 +23,7 @@ use tracing_subscriber::EnvFilter;
 #[command(
     name = "orchestrateur",
     version,
-    about = "Orchestrateur v0.13.0 — CLI headless (TUI : orchestrateur-tui)"
+    about = "Orchestrateur v0.15.0 — CLI headless + daemon Territoire Graphique"
 )]
 struct Cli {
     /// Racine du workspace (défaut: ./workspace).
@@ -105,7 +105,13 @@ enum Commands {
         #[arg(long, default_value = "127.0.0.1")]
         bind: String,
     },
-    /// Gateway WebSocket + canaux (feature `gateway`).
+    /// Daemon WebSocket local pour clients visuels (Territoire Graphique).
+    #[cfg(feature = "websocket-server")]
+    Daemon {
+        #[command(subcommand)]
+        command: DaemonCommands,
+    },
+    /// Gateway WebSocket + canaux messaging (feature `gateway`).
     #[cfg(feature = "gateway")]
     Gateway {
         #[command(subcommand)]
@@ -169,6 +175,20 @@ enum ProviderCommands {
         /// Filtre : `llm`, `embedding`, ou absent pour tout.
         #[arg(long)]
         kind: Option<String>,
+    },
+}
+
+#[cfg(feature = "websocket-server")]
+#[derive(Subcommand)]
+enum DaemonCommands {
+    /// Démarre le daemon bridge WS (port 28790 par défaut).
+    Run {
+        /// Port d'écoute (surcharge `orchestrator.toml`).
+        #[arg(long)]
+        port: Option<u16>,
+        /// Adresse de liaison (surcharge `orchestrator.toml`).
+        #[arg(long)]
+        bind: Option<String>,
     },
 }
 
@@ -296,6 +316,12 @@ async fn main() -> Result<()> {
         Commands::Import { source } => cmd_import(&facade, &source).await?,
         #[cfg(feature = "http")]
         Commands::Serve { port, bind } => run_http_server(facade, &bind, port).await?,
+        #[cfg(feature = "websocket-server")]
+        Commands::Daemon { command } => match command {
+            DaemonCommands::Run { port, bind } => {
+                run_daemon_server(facade, &cli.workspace, port, bind).await?
+            }
+        },
         #[cfg(feature = "gateway")]
         Commands::Gateway { command } => match command {
             GatewayCommands::Run { port, bind } => {
@@ -702,6 +728,42 @@ fn print_provider_table(descriptors: &[orchestrator::ProviderDescriptor]) {
             d.id, kind, d.display_name, d.default_model, d.default_api_key_env
         );
     }
+}
+
+#[cfg(feature = "websocket-server")]
+async fn run_daemon_server(
+    facade: OrchestratorFacade,
+    workspace: &Path,
+    port: Option<u16>,
+    bind: Option<String>,
+) -> Result<()> {
+    use std::sync::Arc;
+
+    use orchestrator::{run_daemon, OrchestratorConfig};
+
+    let mut config = OrchestratorConfig::load_workspace(workspace)
+        .map_err(|e| anyhow::anyhow!("config: {e}"))?;
+    if let Some(p) = port {
+        config.daemon.port = p;
+    }
+    if let Some(b) = bind {
+        config.daemon.bind = b;
+    }
+    if !config.daemon.enabled {
+        anyhow::bail!("daemon désactivé dans orchestrator.toml ([daemon] enabled = false)");
+    }
+
+    tracing::info!(
+        bind = %config.daemon.bind,
+        port = config.daemon.port,
+        "démarrage daemon — définir {} pour l'authentification WS",
+        config.daemon.token_env
+    );
+
+    run_daemon(Arc::new(facade), &config.daemon)
+        .await
+        .map_err(|e| anyhow::anyhow!("daemon: {e}"))?;
+    Ok(())
 }
 
 #[cfg(feature = "gateway")]

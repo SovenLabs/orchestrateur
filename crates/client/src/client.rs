@@ -39,7 +39,7 @@ impl OrchestratorClient {
         })
     }
 
-    /// Handle clonable pour envoi/polling (TUI, HUD).
+    /// Handle clonable pour envoi/polling (clients bridge embarqués).
     #[must_use]
     pub fn handle(&self) -> &ChannelHandle {
         &self.handle
@@ -51,7 +51,7 @@ impl OrchestratorClient {
         self.handle.subscribe_events()
     }
 
-    /// Extrait le thread orchestrateur (usage unique à l'arrêt de la peau).
+    /// Extrait le thread orchestrateur (usage unique à l'arrêt du client).
     pub fn take_thread(&mut self) -> Option<OrchestratorThread> {
         self.thread.take()
     }

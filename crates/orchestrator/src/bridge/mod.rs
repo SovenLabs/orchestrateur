@@ -1,14 +1,13 @@
-//! Bridge de communication Peau ↔ Orchestrateur (HUD egui, TUI ratatui, CLI).
+//! Bridge de communication client visuel ↔ Orchestrateur (daemon WS, CLI).
 //!
 //! Contrat découplé : la présentation envoie des [`Command`] et reçoit des [`Response`]
-//! via le trait [`OrchestratorHandle`], sans accès direct aux ports Cortex.
+//! via le trait [`OrchestratorHandle`] ou le daemon WebSocket, sans accès direct aux ports Cortex.
 //!
 //! # Architecture
 //!
 //! ```text
-//! HUD (egui) ──Command──► flume ──► thread Tokio ──► OrchestratorFacade
-//!              ◄──Response── flume ◄──
-//!              ◄──DomainEvent── FanoutEventPublisher
+//! Client (Godot) ──JSON/WS──► daemon ──► OrchestratorFacade
+//! CLI headless   ──execute_command──► OrchestratorFacade
 //! ```
 //!
 //! # Exemple

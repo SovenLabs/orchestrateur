@@ -26,6 +26,8 @@ jobs:
         run: cargo clippy -p cortex -- -D warnings
       - name: clippy orchestrator
         run: cargo clippy -p orchestrator -- -D warnings
+      - name: cargo test daemon (websocket-server)
+        run: cargo test -p orchestrator --features websocket-server daemon_integration
 
   test-heavy:
     name: Tests sécurité et charge

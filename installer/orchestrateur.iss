@@ -6,19 +6,17 @@
 #endif
 
 #ifndef MyAppVersion
-  #define MyAppVersion "0.6.0"
+  #define MyAppVersion "0.15.0"
 #endif
 
 #ifndef MyAppVersionFull
-  #define MyAppVersionFull "0.6.0.0"
+  #define MyAppVersionFull "0.15.0.0"
 #endif
 
 #define MyAppName "Orchestrateur"
 #define MyAppPublisher "Sovën"
 #define MyAppURL "https://github.com/SovenLabs/orchestrateur"
 #define MyAppExeCLI "orchestrateur.exe"
-#define MyAppExeTUI "orchestrateur-tui.exe"
-#define MyAppExeHUD "orchestrateur-hud.exe"
 
 [Setup]
 AppId={{8F2A1B3C-4D5E-6F70-8A9B-0C1D2E3F4A5B}
@@ -36,7 +34,7 @@ InfoBeforeFile={#StagingRoot}\INSTALL.txt
 OutputDir=..\dist
 OutputBaseFilename=Orchestrateur-v{#MyAppVersion}-Setup-win64
 SetupIconFile={#StagingRoot}\app.ico
-UninstallDisplayIcon={app}\{#MyAppExeHUD}
+UninstallDisplayIcon={app}\{#MyAppExeCLI}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
@@ -57,23 +55,21 @@ Name: "desktopicon"; Description: "Créer un raccourci sur le Bureau"; GroupDesc
 
 [Files]
 Source: "{#StagingRoot}\orchestrateur.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#StagingRoot}\orchestrateur-tui.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#StagingRoot}\orchestrateur-hud.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StagingRoot}\workspace\*"; DestDir: "{app}\workspace"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#StagingRoot}\README.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#StagingRoot}\communication.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StagingRoot}\INSTALL.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StagingRoot}\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StagingRoot}\app.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Orchestrateur (interface graphique)"; Filename: "{app}\{#MyAppExeHUD}"; Parameters: "--workspace ""{code:GetWorkspaceRoot}"""; WorkingDir: "{app}"
-Name: "{group}\Orchestrateur (terminal / TUI)"; Filename: "{app}\{#MyAppExeTUI}"; Parameters: "--workspace ""{code:GetWorkspaceRoot}"""; WorkingDir: "{app}"
+Name: "{group}\Orchestrateur (daemon)"; Filename: "{app}\{#MyAppExeCLI}"; Parameters: "daemon run --workspace ""{code:GetWorkspaceRoot}"""; WorkingDir: "{app}"
 Name: "{group}\Orchestrateur (CLI)"; Filename: "{app}\{#MyAppExeCLI}"; Parameters: "--help"; WorkingDir: "{app}"
 Name: "{group}\Désinstaller {#MyAppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\Orchestrateur"; Filename: "{app}\{#MyAppExeHUD}"; Parameters: "--workspace ""{code:GetWorkspaceRoot}"""; Tasks: desktopicon; WorkingDir: "{app}"
+Name: "{autodesktop}\Orchestrateur"; Filename: "{app}\{#MyAppExeCLI}"; Parameters: "daemon run --workspace ""{code:GetWorkspaceRoot}"""; Tasks: desktopicon; WorkingDir: "{app}"
 
 [Run]
-Filename: "{app}\{#MyAppExeHUD}"; Description: "Lancer {#MyAppName} (HUD)"; Flags: postinstall nowait skipifsilent; Parameters: "--workspace ""{code:GetWorkspaceRoot}"""
+Filename: "{app}\{#MyAppExeCLI}"; Description: "Lancer le daemon {#MyAppName}"; Flags: postinstall nowait skipifsilent; Parameters: "daemon run --workspace ""{code:GetWorkspaceRoot}"""
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{userappdata}\Orchestrateur"

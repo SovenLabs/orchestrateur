@@ -16,11 +16,7 @@ if (-not $StagingDir) {
 }
 
 $CliExe = Join-Path $Root "target\release\orchestrateur.exe"
-$TuiExe = Join-Path $Root "target\release\orchestrateur-tui.exe"
-$HudExe = Join-Path $Root "target\release\orchestrateur-hud.exe"
 if (-not (Test-Path $CliExe)) { throw "Missing binary: $CliExe (run cargo build --release first)" }
-if (-not (Test-Path $TuiExe)) { throw "Missing binary: $TuiExe (run cargo build --release first)" }
-if (-not (Test-Path $HudExe)) { throw "Missing binary: $HudExe (run cargo build --release first)" }
 
 Write-Host "Staging v$Version -> $StagingDir"
 if (Test-Path $StagingDir) { Remove-Item -Recurse -Force $StagingDir }
@@ -31,25 +27,23 @@ New-Item -ItemType Directory -Path (Join-Path $WsDir "memories") -Force | Out-Nu
 New-Item -ItemType Directory -Path (Join-Path $WsDir "logs") -Force | Out-Null
 
 Copy-Item $CliExe $StagingDir
-Copy-Item $TuiExe $StagingDir
-Copy-Item $HudExe $StagingDir
 Copy-Item "workspace\config\orchestrator.toml.example" (Join-Path $WsDir "orchestrator.toml.example")
 Copy-Item "README.md" $StagingDir
+Copy-Item "territoire-graphique\communication.md" $StagingDir
 
 @"
 Orchestrateur v$Version - Windows package
 
 Installed binaries (Program Files):
-  orchestrateur.exe      CLI headless
-  orchestrateur-tui.exe  interface terminal (ratatui)
-  orchestrateur-hud.exe  interface graphique (egui)
+  orchestrateur.exe      CLI headless + daemon Territoire Graphique
 
 User workspace (memories, LanceDB, config):
   %APPDATA%\Orchestrateur\workspace
 
 First run:
   1. Edit orchestrator.toml in %APPDATA%\Orchestrateur\workspace\config\
-  2. Launch Orchestrateur from Start menu
+  2. Start daemon: orchestrateur.exe daemon run --workspace <path>
+  3. Launch Territoire Graphique (Godot) — Phase 15+
 
 Providers: Ollama (local), xAI via XAI_API_KEY
 
@@ -79,4 +73,4 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 $IconPath = Join-Path $StagingDir "app.ico"
 & (Join-Path $PSScriptRoot "generate-app-icon.ps1") -OutputPath $IconPath
 
-Write-Host "Staging OK: $StagingDir"
+Write-Host "Staging complete: $StagingDir"

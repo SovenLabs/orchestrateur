@@ -1,4 +1,4 @@
-//! État UI partagé HUD / TUI — sans dépendance egui ni ratatui.
+//! Helpers d'état client bridge — sans dépendance graphique.
 
 use cortex::Memory;
 

@@ -2,9 +2,9 @@ use serde::{Deserialize, Serialize};
 
 use super::types::BridgeSkillContext;
 
-/// Commande envoyée par la couche présentation (HUD, CLI, TUI) vers l'orchestrateur.
+/// Commande envoyée par la couche présentation (daemon WS, CLI) vers l'orchestrateur.
 ///
-/// Le HUD n'accède jamais aux ports Cortex : tout transite par ce contrat sérialisable.
+/// Les clients visuels n'accèdent jamais aux ports Cortex : tout transite par ce contrat sérialisable.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "command", content = "payload")]
 pub enum Command {
@@ -62,8 +62,8 @@ pub enum Command {
         #[serde(default)]
         context: BridgeSkillContext,
     },
-    /// Liste le catalogue marketplace (Phase 14 — HUD).
+    /// Liste le catalogue marketplace (Phase 14).
     SkillsMarketplaceList,
-    /// Vérifie l'intégrité BLAKE3 du hub skills (Phase 14 — HUD).
+    /// Vérifie l'intégrité BLAKE3 du hub skills (Phase 14).
     SkillsHubVerify,
 }

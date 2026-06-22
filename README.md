@@ -1,6 +1,6 @@
 # Orchestrateur — Second cerveau local souverain
 
-**Version Cargo workspace : 0.14.0** · **Rust 1.80+** · **Juin 2026**
+**Version Cargo workspace : 0.15.0** · **Rust 1.80+** · **Juin 2026**
 
 > Documentation architecte : [`docs/prompt/PROMPT_MAITRE.md`](docs/prompt/PROMPT_MAITRE.md) · Archives phases : [`docs/`](docs/)
 
@@ -19,7 +19,8 @@ Le projet s’appelle **Orchestrateur**. Il est conçu pour durer **7 à 10 ans*
 | **1** | **Cortex** | Le **Squelette** — mémoires Markdown, graphe, LanceDB, ports hexagonaux |
 | **2** | **Agent** | L’**Esprit** — LLM + outils mémoire natifs, au service du Cortex |
 | **3** | **Gateway** | **Canal d’entrée optionnel** — WS, webhooks, messagerie (pas le cœur du produit) |
-| — | **Peau** | HUD / TUI / CLI — remplaçable, bridge uniquement |
+| — | **Territoire Graphique** | Godot 4 + daemon WS — client visuel remplaçable |
+| — | **CLI** | Headless, scripts, `daemon run` |
 
 Le **cerveau et l’IA sont fusionnés** : l’agent n’est pas un chatbot autonome, c’est l’opérateur du Cortex. Chaque tour peut assimiler, rechercher et enrichir le graphe — pas seulement répondre.
 
@@ -47,10 +48,11 @@ Ces capacités définissent Orchestrateur — pas la liste des canaux messaging 
 Orchestre/
 ├── crates/
 │   ├── cortex/           # Domaine + ports (MemoryRepository, VectorStore, EmbeddingProvider)
-│   ├── orchestrator/     # Application (facade, use cases, bridge, security, tui/)
+│   ├── orchestrator/     # Application (facade, bridge, daemon WS, gateway)
 │   ├── infrastructure/   # Adapters (LanceDB, Ollama, xAI, filesystem)
-│   ├── cli/              # Binaire orchestrateur.exe (CLI + TUI)
-│   └── hud/              # Binaire orchestrateur-hud.exe (egui)
+│   ├── cli/              # Binaire orchestrateur.exe (CLI + daemon)
+│   └── client/           # Client bridge embarqué
+├── territoire-graphique/ # Client Godot 4 (Phase 15+)
 ├── workspace/            # Données utilisateur (hors code source)
 │   ├── config/
 │   ├── memories/
@@ -67,12 +69,12 @@ Orchestre/
 | Crate | Responsabilité | Règle |
 |-------|----------------|-------|
 | `cortex` | Entités, value objects, ports, services purs | Zéro dépendance infra / orchestrator |
-| `orchestrator` | Use cases, facade, bridge HUD/TUI, TUI (feature `tui`) | Ne connaît que les ports Cortex |
+| `orchestrator` | Use cases, facade, bridge, daemon WS (`websocket-server`) | Ne connaît que les ports Cortex |
 | `infrastructure` | Implémentations concrètes des ports | Injectée au démarrage des binaires |
 | `cli` | Point d’entrée cœur (terminal) | CLI pur ou TUI selon contexte |
-| `hud` | Peau graphique egui | Consomme uniquement le bridge |
+| `territoire-graphique` | Rendu visuel Godot 4 | Client WS — remplaçable |
 
-Le **TUI** (ratatui) vit dans `orchestrator/src/tui/`, compilé via la feature `tui` du binaire `orchestrateur` — **pas** dans `hud/`.
+Voir [`territoire-graphique/communication.md`](territoire-graphique/communication.md) pour le protocole WS Option B (daemon port 28790).
 
 ---
 
@@ -164,37 +166,33 @@ Pas de binaire précompilé pour l’instant — `install.sh` affiche les instru
 
 ```powershell
 cargo build -p orchestrateur-cli
-cargo build -p orchestrateur-hud
+cargo build -p territoire-gdextension
 ```
 
 ### Build release (distribution)
 
 ```powershell
-cargo build --release -p orchestrateur-cli
-cargo build --release -p orchestrateur-hud
+cargo build --release -p orchestrateur-cli --features gateway,websocket-server
 ```
 
-Exécutables produits :
+Exécutable produit :
 
 | Fichier | Rôle |
 |---------|------|
-| `target\release\orchestrateur.exe` | Cœur — CLI, TUI (défaut si terminal interactif) |
-| `target\release\orchestrateur-hud.exe` | Peau graphique egui |
+| `target\release\orchestrateur.exe` | CLI headless + daemon WS + gateway |
 
 ### Lancement (exemples)
 
 ```powershell
-# HUD graphique
-.\target\release\orchestrateur-hud.exe --workspace workspace
-
-# TUI (terminal interactif, sans argument)
-.\target\release\orchestrateur.exe --workspace workspace
+# Daemon Territoire Graphique (port 28790 — client Godot)
+$env:ORCHESTRATEUR_DAEMON_TOKEN = "secret"
+.\target\release\orchestrateur.exe daemon run --workspace workspace
 
 # CLI pur
 .\target\release\orchestrateur.exe list --workspace workspace
 .\target\release\orchestrateur.exe get <uuid> --workspace workspace
 
-# Gateway WebSocket Phase 8 (port 28789 — optionnel, canal d'entrée)
+# Gateway WebSocket (port 28789 — canaux messaging, optionnel)
 $env:ORCHESTRATEUR_GATEWAY_TOKEN = "secret"
 .\target\release\orchestrateur.exe gateway run --workspace workspace
 
@@ -222,8 +220,8 @@ L’application **démarre toujours** même si xAI/Ollama sont absents ou hors l
 | Composant | Comportement si indisponible |
 |-----------|------------------------------|
 | Liste / détail / filtre mémoires | ✅ Fonctionne (filesystem + LanceDB) |
-| Recherche sémantique | ⚠ Désactivée — barre rouge (HUD) ou message (TUI) |
-| Assimilation LLM | ⚠ Désactivée — bouton grisé |
+| Recherche sémantique | ⚠ Désactivée — erreur bridge / daemon |
+| Assimilation LLM | ⚠ Désactivée — erreur bridge / daemon |
 
 Le health check bridge remonte `status: degraded` avec `llm_available` et `embedding_available`.
 
@@ -243,6 +241,7 @@ $env:XAI_API_KEY = "sk-..."
 cargo test -p cortex
 cargo test -p orchestrator
 cargo test -p orchestrator --features gateway
+cargo test -p orchestrator --features websocket-server
 cargo test -p mcp
 ```
 
@@ -281,7 +280,7 @@ cargo test -p orchestrator --features heavy-tests
 ```powershell
 cargo test -p cortex --test adversarial_validation -- --ignored
 cargo test -p cortex --test scalability -- --ignored
-cargo test -p orchestrator --features tui
+
 cargo test -p infrastructure
 ```
 
@@ -319,6 +318,7 @@ Tags Git : `phase1-closed`, `phase2-closed`, `phase3-v0.1.0`, `phase4-v0.3.0`.
 | 12 | Plugins natifs, inbound stub HTTP, outils agent `skill_*` |
 | 13 | Marketplace skills, intégrité BLAKE3, `skill_suggest` + auto-suggest |
 | 14 | Polling HTTP stub, catalogue signé BLAKE3, `skill_auto_execute`, bridge marketplace |
+| 14 bis | Suppression egui/ratatui, daemon WS :28790, `territoire-graphique/` Godot |
 
 **Packaging Windows** :
 ```powershell

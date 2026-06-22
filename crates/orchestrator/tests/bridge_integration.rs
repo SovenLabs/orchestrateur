@@ -1,4 +1,4 @@
-//! Tests d'intégration du bridge HUD ↔ orchestrateur.
+//! Tests d'intégration du bridge client ↔ orchestrateur.
 
 use std::time::Duration;
 

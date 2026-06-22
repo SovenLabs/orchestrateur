@@ -8,7 +8,7 @@ use tokio::time::timeout;
 use crate::deps::AppDependencies;
 use crate::llm::{ChatMessage, LlmProvider};
 
-/// Résultat des sondes exposé au HUD / TUI via [`crate::bridge::Response::Health`].
+/// Résultat des sondes exposé aux clients via [`crate::bridge::Response::Health`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ServiceProbe {
     /// Provider LLM joignable (ou mock in-memory en tests).

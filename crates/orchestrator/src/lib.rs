@@ -9,7 +9,7 @@
 #![warn(missing_docs, rust_2018_idioms)]
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 
-/// Contrat HUD ↔ orchestrateur (`Command`, `Response`, `OrchestratorHandle`).
+/// Contrat client visuel ↔ orchestrateur (`Command`, `Response`, `OrchestratorHandle`).
 pub mod bridge;
 /// Configuration applicative (`OrchestratorConfig`).
 pub mod config;
@@ -35,9 +35,9 @@ pub mod memory_draft;
 pub mod security;
 /// Squelette Skills (trait, registre, noop).
 pub mod skills;
-/// Interface terminal ratatui (feature `tui` uniquement).
-#[cfg(feature = "tui")]
-pub mod tui;
+/// Daemon WebSocket local pour clients visuels (feature `websocket-server`).
+#[cfg(feature = "websocket-server")]
+pub mod daemon;
 /// Boucle agent Phase 7.
 pub mod agent;
 /// Registre d'outils agent Phase 7.
@@ -60,8 +60,9 @@ pub use bridge::{
     OrchestratorHandle, OrchestratorThread, Response, SkillSummary,
 };
 pub use config::{
-    AgentSettingsConfig, AuditConfig, BehavioralConfig, ConfigError, GatewayChannelConfig,
-    GatewayConfig, IntegrityConfig, McpConfig, McpServerConfig, OllamaConfig, OrchestratorConfig,
+    AgentSettingsConfig, AuditConfig, BehavioralConfig, ConfigError, DaemonConfig,
+    GatewayChannelConfig, GatewayConfig, IntegrityConfig, McpConfig, McpServerConfig, OllamaConfig,
+    OrchestratorConfig,
     ProvidersConfig, SecurityConfig, SkillsHubConfig, SkillsHubEntryConfig, VectorStoreConfig,
     XaiConfig,
 };
@@ -91,8 +92,8 @@ pub use skills::{
 };
 #[cfg(feature = "plugins-native")]
 pub use skills::{NativePluginError, NativePluginSkill};
-#[cfg(feature = "tui")]
-pub use tui::TuiApp;
+#[cfg(feature = "websocket-server")]
+pub use daemon::{run_daemon, DaemonError};
 pub use agent::{
     AgentConfig, AgentError, AgentLoop, AgentStreamEvent, AgentStreamSink, AgentTurnRequest,
     AgentTurnResult,

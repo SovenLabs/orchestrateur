@@ -6,7 +6,7 @@ use super::error::BridgeError;
 use super::events::FanoutEventPublisher;
 use super::response::Response;
 
-/// Contrat d'inversion de dépendance entre présentation (HUD) et orchestrateur.
+/// Contrat d'inversion de dépendance entre présentation (daemon, CLI) et orchestrateur.
 ///
 /// Implémentations : [`ChannelHandle`] (production), mocks de test.
 pub trait OrchestratorHandle: Send + Sync + Clone {
@@ -28,7 +28,7 @@ pub trait OrchestratorHandle: Send + Sync + Clone {
     fn subscribe_events(&self) -> Receiver<DomainEvent>;
 }
 
-/// Handle local basé sur des canaux `flume` — utilisé par le HUD egui.
+/// Handle local basé sur des canaux `flume` — utilisé par les clients bridge embarqués.
 #[derive(Clone)]
 pub struct ChannelHandle {
     cmd_tx: Sender<Command>,

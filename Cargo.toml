@@ -6,10 +6,9 @@ members = [
     "crates/infrastructure",
     "crates/mcp",
     "crates/cli",
-    "crates/tui",
-    "crates/hud",
     "crates/client",
     "plugins/pong-native",
+    "territoire-graphique/rust-gdextension",
 ]
 
 default-members = [
@@ -18,17 +17,16 @@ default-members = [
     "crates/infrastructure",
     "crates/mcp",
     "crates/cli",
-    "crates/tui",
     "crates/client",
 ]
 
 [workspace.package]
-version = "0.14.0"
+version = "0.15.0"
 edition = "2021"
 authors = ["Sovën"]
 license = "MIT OR Apache-2.0"
 rust-version = "1.80"
-description = "Orchestrateur — Second cerveau local souverain (Cortex + Esprit + Peau)"
+description = "Orchestrateur — Second cerveau local souverain (Cortex + Esprit + Territoire Graphique)"
 
 [workspace.dependencies]
 anyhow = "1"
@@ -56,10 +54,6 @@ futures = "0.3"
 clap = { version = "4", features = ["derive"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 flume = "0.11"
-egui = "0.30"
-eframe = { version = "0.30", default-features = true }
-ratatui = "0.29"
-crossterm = "0.28"
 axum = { version = "0.8", features = ["ws"] }
 futures-util = "0.3"
 tower = "0.5"

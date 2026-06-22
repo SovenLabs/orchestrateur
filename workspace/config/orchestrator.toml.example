@@ -56,7 +56,14 @@ honeypot_count = 3
 enabled = true
 path = "logs/audit.jsonl"
 
-# Gateway WebSocket Phase 8 (orchestrateur gateway run)
+# Daemon WebSocket local — Territoire Graphique (orchestrateur daemon run)
+[daemon]
+enabled = true
+bind = "127.0.0.1"
+port = 28790
+token_env = "ORCHESTRATEUR_DAEMON_TOKEN"
+
+# Gateway WebSocket Phase 8 — canaux messaging (orchestrateur gateway run)
 [gateway]
 enabled = true
 bind = "127.0.0.1"

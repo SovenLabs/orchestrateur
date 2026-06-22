@@ -1,4 +1,4 @@
-//! Interprétation mutualisée des réponses Bridge pour TUI et HUD.
+//! Interprétation mutualisée des réponses Bridge pour clients visuels.
 
 use cortex::DomainEvent;
 

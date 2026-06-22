@@ -21,7 +21,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.16.0"
+version = "0.17.0"
 edition = "2021"
 authors = ["Sovën"]
 license = "MIT OR Apache-2.0"
@@ -56,6 +56,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 flume = "0.11"
 axum = { version = "0.8", features = ["ws"] }
 futures-util = "0.3"
+tokio-tungstenite = "0.26"
 tower = "0.5"
 tower-http = { version = "0.6", features = ["trace"] }
 libloading = "0.8"

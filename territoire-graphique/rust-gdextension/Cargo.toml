@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "GDExtension Rust pour Territoire Graphique (Phase 15+)"
+description = "GDExtension Rust pour Territoire Graphique (Phase 16+)"
 
 [lib]
 crate-type = ["cdylib"]
@@ -12,6 +12,10 @@ crate-type = ["cdylib"]
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net", "sync"] }
+tokio-tungstenite = { workspace = true }
+futures-util = { workspace = true }
 
 [lints.rust]
 unsafe_code = "forbid"

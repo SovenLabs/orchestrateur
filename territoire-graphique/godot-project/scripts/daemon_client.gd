@@ -130,10 +130,12 @@ func _parse_health_result(data: Dictionary) -> void:
 	if response.get("response") != "Health":
 		return
 	var payload: Dictionary = response.get("payload", {})
-	var intensity := ActivityMapper.from_health(
-		str(payload.get("status", "unknown")),
-		bool(payload.get("llm_available", false)),
-		bool(payload.get("embedding_available", false)),
+	var intensity := ActivityMapper.clamp_intensity(
+		ActivityMapper.from_health(
+			str(payload.get("status", "unknown")),
+			bool(payload.get("llm_available", false)),
+			bool(payload.get("embedding_available", false)),
+		)
 	)
 	activity_changed.emit(intensity)
 
@@ -155,6 +157,6 @@ func _on_http_health(_result: int, _code: int, _headers: PackedStringArray, body
 	if typeof(data) != TYPE_DICTIONARY:
 		return
 	# HTTP health ne donne pas llm/embedding — intensité modérée si daemon répond.
-	var intensity := 0.45 if data.get("status") == "ok" else 0.3
-	activity_changed.emit(intensity)
+	var raw := 0.45 if data.get("status") == "ok" else 0.3
+	activity_changed.emit(ActivityMapper.clamp_intensity(raw))
 	connection_state_changed.emit(true, "HTTP health (fallback)")

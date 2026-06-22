@@ -1,0 +1,15 @@
+78098b89c88a74ebe8c20117b8754620
+::res://::1782127076
+icon.svg::CompressedTexture2D::1962792646363592307::1782126588::1782127077::1::::<><><>0<>0<>518a5abbbdbad1b488121a9f5f0b47b8<>res://.godot/imported/icon.svg-218a8f2b3041327d8a5756f3a245f83b.ctex::
+main.tscn::PackedScene::-1::1782126935::0::1::::<><><>0<>0<><>::res://scripts/main.gd<>res://scenes/brain_sphere.tscn<>res://scenes/monitoring_panel.tscn
+::res://scenes/::1782126935
+brain_sphere.tscn::PackedScene::-1::1782126951::0::1::::<><><>0<>0<><>::res://scripts/brain_sphere.gd<>res://shaders/brain_living_shader.gdshader
+monitoring_panel.tscn::PackedScene::-1::1782126935::0::1::::<><><>0<>0<><>::res://scripts/monitoring_panel.gd
+::res://scripts/::1782126927
+activity_mapper.gd::GDScript::3949786219219778937::1782126927::0::1::::ActivityMapper<>RefCounted<><>0<>0<><>::
+brain_sphere.gd::GDScript::7117124801629459529::1782126927::0::1::::<>Node3D<><>0<>0<><>::
+daemon_client.gd::GDScript::3450831194989979502::1782126951::0::1::::<>Node<><>0<>0<><>::
+main.gd::GDScript::7615742440688239097::1782126927::0::1::::<>Node3D<><>0<>0<><>::
+monitoring_panel.gd::GDScript::3666217891166766831::1782126927::0::1::::<>PanelContainer<><>0<>0<><>::
+::res://shaders/::1782126927
+brain_living_shader.gdshader::Shader::957081955693389303::1782126927::0::1::::<><><>0<>0<><>::

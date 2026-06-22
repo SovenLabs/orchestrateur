@@ -16,6 +16,10 @@ static func from_health(status: String, llm_available: bool, embedding_available
 	return clampf(base, 0.0, 1.0)
 
 
+static func clamp_intensity(value: float) -> float:
+	return clampf(value, 0.0, 1.0)
+
+
 static func fallback_idle(elapsed: float) -> float:
 	# Pulsation douce quand le daemon est hors ligne (mode dev).
-	return 0.2 + 0.1 * sin(elapsed * 1.5)
+	return clamp_intensity(0.2 + 0.1 * sin(elapsed * 1.5))

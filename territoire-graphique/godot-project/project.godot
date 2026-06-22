@@ -1,14 +1,23 @@
 ; Engine configuration file.
-; Godot 4.x — Territoire Graphique Phase 15 PoC
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
 config/name="Territoire Graphique"
 config/description="Client visuel Orchestrateur — Boule de Pixels Vivante"
 run/main_scene="res://main.tscn"
-config/features=PackedStringArray("4.3", "Forward Plus")
+config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
@@ -23,5 +32,4 @@ window/stretch/mode="canvas_items"
 
 [rendering]
 
-renderer/rendering_method="forward_plus"
 environment/defaults/default_clear_color=Color(0.02, 0.03, 0.08, 1)

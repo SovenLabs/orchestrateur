@@ -1,23 +1,24 @@
 extends PanelContainer
-## Panneau Monitoring dockable — intensité temps réel.
+## Panneau Monitoring v2 — barre lissée + statut connexion.
 
 @onready var _bar: ProgressBar = %ActivityBar
 @onready var _label: Label = %ActivityLabel
 @onready var _status: Label = %StatusLabel
 
+var _display_value := 0.0
 
-func _ready() -> void:
-	if DaemonClient:
-		DaemonClient.activity_changed.connect(update_activity)
-		DaemonClient.connection_state_changed.connect(_on_connection_changed)
+
+func _process(delta: float) -> void:
+	if _bar:
+		_bar.value = lerpf(_bar.value, _display_value, delta * 8.0)
 
 
 func update_activity(intensity: float) -> void:
-	var pct := int(clampf(intensity, 0.0, 1.0) * 100.0)
-	_bar.value = pct
+	_display_value = ActivityMapper.clamp_intensity(intensity) * 100.0
+	var pct := int(_display_value)
 	_label.text = "Activité : %d %%" % pct
 
 
-func _on_connection_changed(connected: bool, detail: String) -> void:
+func set_connection_status(connected: bool, detail: String) -> void:
 	_status.text = ("● " if connected else "○ ") + detail
 	_status.modulate = Color(0.4, 0.9, 0.5) if connected else Color(0.9, 0.5, 0.4)

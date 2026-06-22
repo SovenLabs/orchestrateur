@@ -20,7 +20,6 @@ const PARTICLE_SHADER := preload("res://shaders/brain_particle.gdshader")
 @onready var _particles_idle: GPUParticles3D = $ParticlesIdle
 @onready var _particles_assim: GPUParticles3D = $ParticlesAssimilation
 @onready var _particles_tool: GPUParticles3D = $ParticlesTool
-@onready var _attractor: GPUParticlesAttractor3D = $AssimAttractor
 
 var activity_intensity := 0.35
 var _target_intensity := 0.35
@@ -68,7 +67,6 @@ func _duplicate_particle_materials() -> void:
 		_particles_idle.process_material = _idle_process
 	if _particles_assim and _particles_assim.process_material:
 		_assim_process = _particles_assim.process_material.duplicate() as ParticleProcessMaterial
-		_assim_process.attractor_interaction_enabled = true
 		_particles_assim.process_material = _assim_process
 	if _particles_tool and _particles_tool.process_material:
 		_tool_process = _particles_tool.process_material.duplicate() as ParticleProcessMaterial
@@ -301,8 +299,6 @@ func _update_assimilation_particles(t: float, budget: int) -> void:
 		return
 	var active := _particle_mode == ParticleMode.ASSIMILATION or _swirl_timer > 0.0
 	_particles_assim.emitting = active
-	if _attractor:
-		_attractor.strength = lerpf(0.0, 2.8, t) if active else 0.0
 	if not active:
 		_particles_assim.amount = 0
 		return
@@ -314,10 +310,12 @@ func _update_assimilation_particles(t: float, budget: int) -> void:
 
 	if _assim_process:
 		_assim_process.emission_sphere_radius = lerpf(1.4, 1.85, t)
-		_assim_process.radial_accel_min = lerpf(-4.5, -7.0, t)
-		_assim_process.radial_accel_max = lerpf(-2.5, -5.0, t)
+		# radial_accel négatif = flux entrant (remplace GPUParticlesAttractor3D)
+		var pull := lerpf(-5.5, -9.5, t)
+		_assim_process.radial_accel_min = pull
+		_assim_process.radial_accel_max = pull * 0.55
 		_assim_process.initial_velocity_min = 0.04
-		_assim_process.initial_velocity_max = lerpf(0.15, 0.75, t)
+		_assim_process.initial_velocity_max = lerpf(0.12, 0.65, t)
 	_particles_assim.speed_scale = lerpf(1.0, 2.4, t)
 
 

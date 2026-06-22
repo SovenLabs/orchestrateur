@@ -23,7 +23,7 @@ use tracing_subscriber::EnvFilter;
 #[command(
     name = "orchestrateur",
     version,
-    about = "Orchestrateur v0.18.0 — CLI headless + daemon Territoire Graphique"
+    about = "Orchestrateur v0.19.0 — CLI headless + daemon Territoire Graphique"
 )]
 struct Cli {
     /// Racine du workspace (défaut: ./workspace).

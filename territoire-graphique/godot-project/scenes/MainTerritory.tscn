@@ -1,6 +1,7 @@
-[gd_scene load_steps=9 format=3 uid="uid://main_territory_p17"]
+[gd_scene load_steps=10 format=3 uid="uid://main_territory_p17"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/daemon_client.gd" id="9_daemon"]
 [ext_resource type="Script" path="res://scripts/territory_manager.gd" id="2_manager"]
 [ext_resource type="Script" path="res://scripts/dock_layout.gd" id="3_layout"]
 [ext_resource type="PackedScene" uid="uid://brain_sphere_p17" path="res://scenes/BrainSphere.tscn" id="4_brain"]
@@ -99,3 +100,6 @@ size_flags_vertical = 3
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
+
+[node name="DaemonClient" type="Node" parent="."]
+script = ExtResource("9_daemon")

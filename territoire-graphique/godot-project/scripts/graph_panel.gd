@@ -1,30 +1,41 @@
 class_name GraphPanel
 extends DockPanel
-## Panneau Graphe — hubs via force-directed-graph addon.
+## Panneau Graphe — hubs force-directed.
 
 signal hub_selected(memory_id: String)
 
 @onready var _graph: ForceGraph = %ForceGraph
 @onready var _stats: Label = %GraphStats
 
+var _daemon: DaemonClient
 var _pending_rid := ""
 
 
 func _ready() -> void:
+	panel_id = "graph"
 	panel_title = "Graphe"
 	super._ready()
+	_daemon = DaemonClient.resolve(self)
 	if _graph:
 		_graph.node_clicked.connect(_on_node_clicked)
-	DaemonClient.command_completed.connect(_on_command_completed)
+	if _daemon:
+		_daemon.command_completed.connect(_on_command_completed)
+		_daemon.broadcast_received.connect(_on_broadcast)
 
 
 func refresh_graph() -> void:
-	_pending_rid = DaemonClient.execute_graph()
+	if _daemon:
+		_pending_rid = _daemon.execute_graph()
 
 
 func highlight_memory(memory_id: String) -> void:
 	if _graph:
 		_graph.highlight_memory(memory_id)
+
+
+func _on_broadcast(event: String, _payload: Dictionary, _source: String) -> void:
+	if event == "graph_changed":
+		refresh_graph()
 
 
 func _on_command_completed(request_id: String, response: Dictionary) -> void:

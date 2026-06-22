@@ -4,9 +4,11 @@
 //! Le client Godot (ou tout autre client) se connecte au daemon Rust indépendamment du rendu.
 
 mod error;
+mod hub;
 mod protocol;
 mod server;
 
 pub use error::DaemonError;
-pub use protocol::{DaemonClientMessage, DaemonServerMessage};
+pub use hub::{TerritoryHub, WindowKind};
+pub use protocol::{ClientInfo, DaemonClientMessage, DaemonServerMessage, TerritoryBroadcast};
 pub use server::{build_router, run_daemon, serve, DaemonState, HealthResponse};

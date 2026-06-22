@@ -12,8 +12,9 @@ use axum::{
 };
 use futures_util::{SinkExt, StreamExt};
 use serde::Serialize;
-use tower_http::trace::TraceLayer;
+use tokio::sync::mpsc;
 use tracing::{info, warn};
+use uuid::Uuid;
 
 use crate::bridge::execute_command;
 use crate::config::DaemonConfig;
@@ -21,12 +22,16 @@ use crate::facade::OrchestratorFacade;
 use crate::VERSION;
 
 use super::error::DaemonError;
+use super::hub::{
+    requires_main_window, resolve_subscriptions, ClientSession, TerritoryHub, WindowKind,
+};
 use super::protocol::{DaemonClientMessage, DaemonServerMessage};
 
 /// État partagé du daemon WebSocket.
 pub struct DaemonState {
     facade: Arc<OrchestratorFacade>,
     config: DaemonConfig,
+    hub: TerritoryHub,
 }
 
 /// Réponse HTTP santé daemon.
@@ -38,6 +43,10 @@ pub struct HealthResponse {
     pub version: String,
     /// Port configuré.
     pub port: u16,
+    /// Identifiant de session territorial actif.
+    pub territory_session_id: String,
+    /// Nombre de clients WS connectés.
+    pub connected_clients: usize,
 }
 
 /// Construit le routeur Axum du daemon.
@@ -46,7 +55,6 @@ pub fn build_router(state: Arc<DaemonState>) -> Router {
     Router::new()
         .route("/health", get(health_handler))
         .route("/ws", get(ws_upgrade_handler))
-        .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
 
@@ -68,6 +76,7 @@ pub async fn serve(
     let state = Arc::new(DaemonState {
         facade,
         config: config.clone(),
+        hub: TerritoryHub::new(),
     });
     let app = build_router(state);
 
@@ -87,6 +96,8 @@ async fn health_handler(State(state): State<Arc<DaemonState>>) -> Json<HealthRes
         status: "ok".into(),
         version: VERSION.into(),
         port: state.config.port,
+        territory_session_id: state.hub.territory_session_id(),
+        connected_clients: state.hub.client_count(),
     })
 }
 
@@ -99,96 +110,153 @@ async fn ws_upgrade_handler(
 
 async fn handle_ws_socket(state: Arc<DaemonState>, socket: WebSocket) {
     let (mut sender, mut receiver) = socket.split();
+    let (out_tx, mut out_rx) = mpsc::unbounded_channel::<DaemonServerMessage>();
+    let session_id = Uuid::now_v7().to_string();
     let mut authenticated = false;
+    let mut window_kind = WindowKind::Main;
 
-    while let Some(msg) = receiver.next().await {
-        let msg = match msg {
-            Ok(Message::Text(text)) => text,
-            Ok(Message::Close(_)) | Err(_) => break,
-            Ok(_) => continue,
-        };
+    loop {
+        tokio::select! {
+            outbound = out_rx.recv() => {
+                match outbound {
+                    Some(message) => {
+                        if send_json(&mut sender, message).await.is_err() {
+                            break;
+                        }
+                    }
+                    None => break,
+                }
+            }
+            incoming = receiver.next() => {
+                let msg = match incoming {
+                    Some(Ok(Message::Text(text))) => text,
+                    Some(Ok(Message::Close(_))) | None | Some(Err(_)) => break,
+                    Some(Ok(_)) => continue,
+                };
 
-        let parsed: DaemonClientMessage = match serde_json::from_str(&msg) {
-            Ok(m) => m,
-            Err(err) => {
-                let _ = send_json(
-                    &mut sender,
-                    DaemonServerMessage::Error {
-                        request_id: None,
-                        message: format!("JSON invalide: {err}"),
-                    },
-                )
-                .await;
-                continue;
-            }
-        };
+                let parsed: DaemonClientMessage = match serde_json::from_str(&msg) {
+                    Ok(m) => m,
+                    Err(err) => {
+                        let _ = send_json(
+                            &mut sender,
+                            DaemonServerMessage::Error {
+                                request_id: None,
+                                message: format!("JSON invalide: {err}"),
+                            },
+                        )
+                        .await;
+                        continue;
+                    }
+                };
 
-        match parsed {
-            DaemonClientMessage::Connect { token } => {
-                if !verify_token(&state.config, &token) {
-                    let _ = send_json(
-                        &mut sender,
-                        DaemonServerMessage::Error {
-                            request_id: None,
-                            message: "token invalide ou absent".into(),
-                        },
-                    )
-                    .await;
-                    break;
-                }
-                authenticated = true;
-                let _ = send_json(
-                    &mut sender,
-                    DaemonServerMessage::ConnectOk {
-                        version: VERSION.into(),
-                    },
-                )
-                .await;
-            }
-            DaemonClientMessage::Ping { nonce } => {
-                if !authenticated {
-                    let _ = send_json(
-                        &mut sender,
-                        DaemonServerMessage::Error {
-                            request_id: None,
-                            message: "non authentifié — envoyez Connect d'abord".into(),
-                        },
-                    )
-                    .await;
-                    continue;
-                }
-                let _ = send_json(&mut sender, DaemonServerMessage::Pong { nonce }).await;
-            }
-            DaemonClientMessage::Execute {
-                request_id,
-                command,
-            } => {
-                if !authenticated {
-                    let _ = send_json(
-                        &mut sender,
-                        DaemonServerMessage::Error {
-                            request_id: Some(request_id),
-                            message: "non authentifié — envoyez Connect d'abord".into(),
-                        },
-                    )
-                    .await;
-                    continue;
-                }
-                let response = execute_command(&state.facade, command).await;
-                if let crate::bridge::Response::Error(ref err) = response {
-                    warn!(kind = %err.kind, "daemon execute error");
-                }
-                let _ = send_json(
-                    &mut sender,
-                    DaemonServerMessage::Result {
+                match parsed {
+                    DaemonClientMessage::Connect { token, client } => {
+                        if !verify_token(&state.config, &token) {
+                            let _ = send_json(
+                                &mut sender,
+                                DaemonServerMessage::Error {
+                                    request_id: None,
+                                    message: "token invalide ou absent".into(),
+                                },
+                            )
+                            .await;
+                            break;
+                        }
+                        window_kind = WindowKind::parse(&client.window_kind);
+                        let subscriptions = resolve_subscriptions(
+                            window_kind,
+                            &client.panels,
+                            &client.subscriptions,
+                        );
+                        authenticated = true;
+                        state.hub.register(ClientSession {
+                            session_id: session_id.clone(),
+                            window_kind,
+                            subscriptions,
+                            outbound: out_tx.clone(),
+                        });
+                        let _ = send_json(
+                            &mut sender,
+                            DaemonServerMessage::ConnectOk {
+                                version: VERSION.into(),
+                                session_id: session_id.clone(),
+                                territory_session_id: state.hub.territory_session_id(),
+                            },
+                        )
+                        .await;
+                    }
+                    DaemonClientMessage::Ping { nonce } => {
+                        if !authenticated {
+                            let _ = send_json(
+                                &mut sender,
+                                DaemonServerMessage::Error {
+                                    request_id: None,
+                                    message: "non authentifié — envoyez Connect d'abord".into(),
+                                },
+                            )
+                            .await;
+                            continue;
+                        }
+                        let _ = send_json(&mut sender, DaemonServerMessage::Pong { nonce }).await;
+                    }
+                    DaemonClientMessage::Execute {
                         request_id,
-                        response,
-                    },
-                )
-                .await;
+                        command,
+                    } => {
+                        if !authenticated {
+                            let _ = send_json(
+                                &mut sender,
+                                DaemonServerMessage::Error {
+                                    request_id: Some(request_id),
+                                    message: "non authentifié — envoyez Connect d'abord".into(),
+                                },
+                            )
+                            .await;
+                            continue;
+                        }
+                        if requires_main_window(&command) && window_kind != WindowKind::Main {
+                            let _ = send_json(
+                                &mut sender,
+                                DaemonServerMessage::Result {
+                                    request_id: request_id.clone(),
+                                    response: crate::bridge::Response::Error(
+                                        crate::bridge::types::AppError {
+                                            kind: "main_window_required".into(),
+                                            message: "cette commande est réservée à la fenêtre principale".into(),
+                                        },
+                                    ),
+                                },
+                            )
+                            .await;
+                            continue;
+                        }
+                        let response = execute_command(&state.facade, command).await;
+                        if let crate::bridge::Response::Error(ref err) = response {
+                            warn!(kind = %err.kind, "daemon execute error");
+                        }
+                        let _ = send_json(
+                            &mut sender,
+                            DaemonServerMessage::Result {
+                                request_id: request_id.clone(),
+                                response: response.clone(),
+                            },
+                        )
+                        .await;
+
+                        for event in TerritoryHub::events_from_response(
+                            &session_id,
+                            &request_id,
+                            &response,
+                        ) {
+                            state.hub.broadcast(event, Some(&session_id));
+                        }
+                    }
+                }
             }
         }
     }
+
+    state.hub.unregister(&session_id);
 }
 
 async fn send_json(

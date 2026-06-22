@@ -1,6 +1,6 @@
 # Documentation Orchestrateur
 
-Index des documents du projet **Orchestrateur** (workspace Cargo **0.18.0**).
+Index des documents du projet **Orchestrateur** (workspace Cargo **0.19.0**).
 
 **Mantra :** Cortex first, agent second, gateway third. Voir [`RAPPORT_PHASES_7-14.md`](RAPPORT_PHASES_7-14.md).
 
@@ -31,5 +31,6 @@ Index des documents du projet **Orchestrateur** (workspace Cargo **0.18.0**).
 | 15 | [`Phase_15_Territoire_Graphique_PoC.md`](Phase_15_Territoire_Graphique_PoC.md) | `phase15-v0.16.0` |
 | 16 | [`Phase_16_Shaders_Particules_WebSocket.md`](Phase_16_Shaders_Particules_WebSocket.md) | `phase16-v0.17.0` |
 | 17 | [`Phase_17_Territoire_Graphique.md`](Phase_17_Territoire_Graphique.md) | `phase17-v0.18.0` |
+| 18 | [`Phase_18_Multi_fenetrage.md`](Phase_18_Multi_fenetrage.md) | `phase18-v0.19.0` |
 
 Point d’entrée utilisateur : [`../README.md`](../README.md).

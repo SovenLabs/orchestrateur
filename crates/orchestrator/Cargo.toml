@@ -28,6 +28,7 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time", "net", "process", "io-util"] }
 toml.workspace = true
 tracing.workspace = true
+uuid.workspace = true
 axum = { workspace = true, optional = true }
 tower-http = { workspace = true, optional = true }
 futures-util = { workspace = true, optional = true }

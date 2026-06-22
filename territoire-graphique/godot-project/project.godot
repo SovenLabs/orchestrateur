@@ -22,7 +22,8 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-DaemonClient="*res://scripts/daemon_client.gd"
+WindowManager="*res://scripts/window_manager.gd"
+TerritoryTheme="*res://scripts/territory_theme.gd"
 
 [display]
 

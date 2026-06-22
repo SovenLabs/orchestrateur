@@ -46,9 +46,16 @@ Tous les messages sont du JSON texte sur le WebSocket.
 ```json
 {
   "type": "connect",
-  "token": "votre-token-secret"
+  "token": "votre-token-secret",
+  "client": {
+    "window_kind": "main",
+    "panels": ["chat", "memory", "graph", "monitoring"],
+    "subscriptions": ["activity", "memories", "graph", "chat", "brain_pulse"]
+  }
 }
 ```
+
+`client` est optionnel (défaut : `window_kind: main`). Pour une fenêtre d'extension Godot : `window_kind: "extension"`, `panels: ["graph"]`, etc.
 
 Le token doit correspondre à la variable d'environnement configurée (`ORCHESTRATEUR_DAEMON_TOKEN` par défaut).
 
@@ -101,9 +108,27 @@ Exemples de commandes (`command` field) :
 ```json
 {
   "type": "connect_ok",
-  "version": "0.15.0"
+  "version": "0.19.0",
+  "session_id": "uuid-client-ws",
+  "territory_session_id": "uuid-territoire-daemon"
 }
 ```
+
+### `broadcast` — synchronisation multi-fenêtres (Phase 18)
+
+Émis par le daemon vers les clients abonnés (pas de réponse client requise).
+
+```json
+{
+  "type": "broadcast",
+  "territory_session_id": "uuid-territoire-daemon",
+  "event": "memories_changed",
+  "source_session_id": "uuid-client-source",
+  "payload": {}
+}
+```
+
+Événements : `memories_changed`, `graph_changed`, `brain_pulse`, `chat_reply`.
 
 ### `result`
 
@@ -155,8 +180,10 @@ curl http://127.0.0.1:28790/health
 ```json
 {
   "status": "ok",
-  "version": "0.15.0",
-  "port": 28790
+  "version": "0.19.0",
+  "port": 28790,
+  "territory_session_id": "uuid-territoire-daemon",
+  "connected_clients": 2
 }
 ```
 

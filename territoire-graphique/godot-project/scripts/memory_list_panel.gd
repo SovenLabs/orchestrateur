@@ -9,6 +9,7 @@ signal memory_selected(memory_id: String)
 @onready var _detail: RichTextLabel = %MemoryDetail
 @onready var _refresh_btn: Button = %RefreshButton
 
+var _daemon: DaemonClient
 var _items: Array = []
 var _pending_list_rid := ""
 var _pending_detail_rid := ""
@@ -16,25 +17,33 @@ var _id_by_row: Dictionary = {}
 
 
 func _ready() -> void:
+	panel_id = "memory"
 	panel_title = "Mémoires"
 	super._ready()
+	_daemon = DaemonClient.resolve(self)
 	_list.item_selected.connect(_on_item_selected)
 	_refresh_btn.pressed.connect(_refresh_list)
 	_search.text_submitted.connect(_on_search)
-	DaemonClient.command_completed.connect(_on_command_completed)
-	DaemonClient.connection_state_changed.connect(func(c, _d): if c: _refresh_list())
+	if _daemon:
+		_daemon.command_completed.connect(_on_command_completed)
+		_daemon.connection_state_changed.connect(func(c, _d): if c: _refresh_list())
+		_daemon.broadcast_received.connect(_on_broadcast)
 
 
 func _refresh_list() -> void:
-	_pending_list_rid = DaemonClient.execute_list(_search.text.strip_edges())
+	if not _daemon:
+		return
+	_pending_list_rid = _daemon.execute_list(_search.text.strip_edges())
 
 
 func _on_search(_text: String) -> void:
+	if not _daemon:
+		return
 	var q := _search.text.strip_edges()
 	if q.is_empty():
 		_refresh_list()
 	else:
-		_pending_list_rid = DaemonClient.execute_search(q)
+		_pending_list_rid = _daemon.execute_search(q)
 
 
 func focus_memory(memory_id: String) -> void:
@@ -43,7 +52,8 @@ func focus_memory(memory_id: String) -> void:
 			_list.select(idx)
 			_on_item_selected(idx)
 			return
-	_pending_detail_rid = DaemonClient.execute_get_memory(memory_id)
+	if _daemon:
+		_pending_detail_rid = _daemon.execute_get_memory(memory_id)
 	memory_selected.emit(memory_id)
 
 
@@ -52,7 +62,13 @@ func _on_item_selected(index: int) -> void:
 		return
 	var mem_id: String = _id_by_row[index]
 	memory_selected.emit(mem_id)
-	_pending_detail_rid = DaemonClient.execute_get_memory(mem_id)
+	if _daemon:
+		_pending_detail_rid = _daemon.execute_get_memory(mem_id)
+
+
+func _on_broadcast(event: String, _payload: Dictionary, _source: String) -> void:
+	if event == "memories_changed":
+		_refresh_list()
 
 
 func _on_command_completed(request_id: String, response: Dictionary) -> void:

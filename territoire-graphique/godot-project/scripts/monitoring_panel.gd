@@ -1,6 +1,6 @@
 class_name MonitoringPanel
 extends DockPanel
-## Panneau Monitoring — barre lissée + statut connexion.
+## Panneau Monitoring — activité et connexion.
 
 @onready var _bar: ProgressBar = %ActivityBar
 @onready var _label: Label = %ActivityLabel
@@ -10,6 +10,7 @@ var _display_value := 0.0
 
 
 func _ready() -> void:
+	panel_id = "monitoring"
 	panel_title = "Monitoring"
 	super._ready()
 

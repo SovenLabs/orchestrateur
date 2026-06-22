@@ -10,9 +10,11 @@ mod skill_execute;
 mod skill_list;
 mod skill_suggest;
 mod tool;
-mod toolsets;
+mod capability_profiles;
 
-pub use toolsets::{ToolsetDescriptor, ToolsetRegistry, TOOLSET_DESCRIPTORS};
+pub use capability_profiles::{
+    CapabilityProfileDescriptor, CapabilityProfileRegistry, CAPABILITY_PROFILE_DESCRIPTORS,
+};
 
 pub use memory_assimilate::MemoryAssimilateTool;
 pub use memory_get::MemoryGetTool;

@@ -5,6 +5,17 @@
 **Dépôt :** https://github.com/SovenLabs/orchestrateur  
 **Tag courant :** `phase14-v0.14.0`
 
+### Mantra d'identité (post Phase 14)
+
+> **Cortex first, agent second, gateway third.**
+
+| Renommage | Ancien | Nouveau |
+|-----------|--------|---------|
+| Profils outils | `toolsets` / `active_toolset` | `capability-profiles` / `active_capability_profile` |
+| Port gateway | `18789` | `28789` (défaut) |
+
+Les **différenciateurs** du produit : auto-assimilation, graphe, honeypots, recherche proactive — pas les 18 canaux messaging.
+
 ---
 
 ## Vue d'ensemble
@@ -14,7 +25,7 @@
 | 7 | 0.7.0 | `phase7-v0.7.0` | Agent loop + outils mémoire + sessions |
 | 8 | 0.8.0 | `phase8-v0.8.0` | Gateway WebSocket + canaux P0 |
 | 9 | 0.9.0 | `phase9-v0.9.0` | Provider registry + MCP stdio |
-| 10 | 0.10.0 | `phase10-v0.10.0` | 18 canaux + toolsets + auto-assimilation |
+| 10 | 0.10.0 | `phase10-v0.10.0` | 18 canaux gateway + profils de capacités + auto-assimilation |
 | 11 | 0.11.0 | `phase11-v0.11.0` | Skills hub filesystem + plugins subprocess |
 | 12 | 0.12.0 | `phase12-v0.12.0` | Plugins natifs + inbound stub HTTP |
 | 13 | 0.13.0 | `phase13-v0.13.0` | Marketplace + intégrité BLAKE3 + skill_suggest |
@@ -59,7 +70,7 @@ Poser la boucle agent (LLM ↔ outils) avec persistance de sessions, sans gatewa
 ## Phase 8 — v0.8.0 — Gateway WebSocket
 
 ### Objectif
-Gateway temps réel (port 18789), canaux messaging P0, streaming agent, webhook HTTP.
+Gateway temps réel (port 28789 depuis identité v0.14+), canaux messaging P0, streaming agent, webhook HTTP.
 
 ### Livrables majeurs
 
@@ -82,7 +93,7 @@ Gateway temps réel (port 18789), canaux messaging P0, streaming agent, webhook 
 **CLI**
 ```powershell
 orchestrateur gateway run
-orchestrateur gateway run --port 18789 --bind 127.0.0.1
+orchestrateur gateway run --port 28789 --bind 127.0.0.1
 ```
 
 **Protocole WS (résumé)**
@@ -132,10 +143,10 @@ orchestrateur providers list --kind embedding
 
 ---
 
-## Phase 10 — v0.10.0 — Canaux étendus + toolsets
+## Phase 10 — v0.10.0 — Canaux gateway + profils de capacités
 
 ### Objectif
-18 canaux messaging, 6 toolsets groupés, auto-assimilation systématique par tour.
+18 canaux messaging (gateway optionnel), 7 profils de capacités, auto-assimilation systématique par tour.
 
 ### Livrables majeurs
 
@@ -146,13 +157,13 @@ webchat, webhook, telegram, discord, slack, whatsapp, signal, matrix, teams, ema
 - **Polling actif (Phase 10) :** telegram uniquement
 - **Stubs :** les 13 autres
 
-**Toolsets** (`tools/toolsets.rs`)
+**Profils de capacités** (`tools/capability_profiles.rs`)
 
 | ID | Outils |
 |----|--------|
 | `memory` | memory_search, memory_get, memory_assimilate |
 | `mcp` | mcp_list_tools, mcp_call |
-| `agent` | memory + mcp (défaut) |
+| `agent` | memory + mcp + skills (défaut) |
 | `research` | memory_search, memory_get |
 | `ingest` | memory_assimilate, memory_search |
 | `full` | tous les outils |
@@ -168,7 +179,7 @@ webchat, webhook, telegram, discord, slack, whatsapp, signal, matrix, teams, ema
 **CLI**
 ```powershell
 orchestrateur channels list
-orchestrateur toolsets list
+orchestrateur capability-profiles list
 ```
 
 ---
@@ -238,7 +249,7 @@ X-Orchestrateur-Channel-Token: <token>
 
 **Outils agent agentic**
 - `skill_list`, `skill_execute`
-- Toolset `skills` (7 toolsets) inclus dans `agent`
+- Profil `skills` (7 profils) inclus dans `agent`
 - `[agent] skill_tools_enabled = true`
 
 **Vérification**
@@ -363,7 +374,7 @@ marketplace_require_signature = false
 | Zone | Chemin |
 |------|--------|
 | Agent | `crates/orchestrator/src/agent/` |
-| Tools / toolsets | `crates/orchestrator/src/tools/` |
+| Tools / capability_profiles | `crates/orchestrator/src/tools/` |
 | Gateway | `crates/orchestrator/src/gateway/` |
 | Skills | `crates/orchestrator/src/skills/` |
 | Providers | `crates/orchestrator/src/providers/` |
@@ -396,9 +407,9 @@ orchestrateur assimilate "Texte à mémoriser"
 orchestrateur gateway run
 orchestrateur channels list
 
-# Providers & toolsets
+# Providers & profils de capacités
 orchestrateur providers list
-orchestrateur toolsets list
+orchestrateur capability-profiles list
 
 # Skills
 orchestrateur skill list

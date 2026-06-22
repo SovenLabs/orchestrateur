@@ -17,8 +17,8 @@ pub struct AgentConfig {
     pub auto_assimilate_turn: bool,
     /// Nombre maximal de tours d'historique envoyés au LLM.
     pub max_history_turns: usize,
-    /// Toolset actif (`memory`, `agent`, `full`, …) — Phase 10.
-    pub active_toolset: String,
+    /// Profil de capacités actif (`memory`, `agent`, `full`, …) — Phase 10.
+    pub active_capability_profile: String,
     /// Expose `skill_list` / `skill_execute` à l'agent (Phase 12).
     pub skill_tools_enabled: bool,
     /// Injecte le catalogue skills dans le prompt (Phase 13).
@@ -47,7 +47,7 @@ impl AgentConfig {
             proactive_search_limit: settings.proactive_search_limit,
             auto_assimilate_turn: settings.auto_assimilate_turn,
             max_history_turns: settings.max_history_turns,
-            active_toolset: settings.active_toolset.clone(),
+            active_capability_profile: settings.active_capability_profile.clone(),
             skill_tools_enabled: settings.skill_tools_enabled,
             skill_auto_suggest: settings.skill_auto_suggest,
             skill_auto_execute: settings.skill_auto_execute,

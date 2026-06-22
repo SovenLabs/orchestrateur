@@ -6,11 +6,11 @@ use serde_json::Value;
 use crate::agent::AgentConfig;
 use crate::deps::AppDependencies;
 use crate::skills::SkillRegistry;
-use crate::memory_assimilate::MemoryAssimilateTool;
-use crate::memory_get::MemoryGetTool;
-use crate::memory_search::MemorySearchTool;
-use crate::tool::{Tool, ToolContext, ToolDefinition, ToolError, ToolResult};
-use crate::toolsets::ToolsetRegistry;
+use super::capability_profiles::CapabilityProfileRegistry;
+use super::memory_assimilate::MemoryAssimilateTool;
+use super::memory_get::MemoryGetTool;
+use super::memory_search::MemorySearchTool;
+use super::tool::{Tool, ToolContext, ToolDefinition, ToolError, ToolResult};
 
 /// Registre central des outils agent Phase 7.
 pub struct ToolRegistry {
@@ -45,15 +45,15 @@ impl ToolRegistry {
         registry
     }
 
-    /// Construit le registre complet puis applique le toolset Phase 10.
+    /// Construit le registre complet puis applique le profil de capacités Phase 10.
     #[must_use]
-    pub fn build_for_deps(deps: &AppDependencies, toolset_id: &str) -> Self {
+    pub fn build_for_deps(deps: &AppDependencies, profile_id: &str) -> Self {
         let base = if deps.mcp.is_some() {
             Self::with_memory_and_mcp_tools()
         } else {
             Self::with_memory_tools()
         };
-        ToolsetRegistry::filter_registry(&base, toolset_id)
+        CapabilityProfileRegistry::filter_registry(&base, profile_id)
     }
 
     /// Construit le registre agent avec outils skills optionnels (Phase 12).
@@ -63,7 +63,7 @@ impl ToolRegistry {
         config: &AgentConfig,
         skills: Option<Arc<SkillRegistry>>,
     ) -> Self {
-        let mut registry = Self::build_for_deps(deps, &config.active_toolset);
+        let mut registry = Self::build_for_deps(deps, &config.active_capability_profile);
         if config.skill_tools_enabled {
             if let Some(skills) = skills {
                 registry.register(Arc::new(super::skill_list::SkillListTool::new(

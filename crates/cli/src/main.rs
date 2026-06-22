@@ -11,7 +11,7 @@ use clap::{Parser, Subcommand};
 use infrastructure::bootstrap_workspace;
 use orchestrator::{
     execute_command, BridgeSkillContext, Command, OrchestratorFacade, ProviderKind,
-    ProviderRegistry, Response, SkillsHub, SkillsMarketplace, ToolsetRegistry,
+    CapabilityProfileRegistry, ProviderRegistry, Response, SkillsHub, SkillsMarketplace,
 };
 #[cfg(feature = "gateway")]
 use orchestrator::ChannelCatalog;
@@ -116,16 +116,17 @@ enum Commands {
         #[command(subcommand)]
         command: ProviderCommands,
     },
-    /// Canaux gateway et toolsets agent (Phase 10).
+    /// Canaux gateway (Phase 10).
     #[cfg(feature = "gateway")]
     Channels {
         #[command(subcommand)]
         command: ChannelCommands,
     },
-    /// Toolsets agent (Phase 10).
-    Toolsets {
+    /// Profils de capacités agent — outils Cortex exposés au LLM (Phase 10).
+    #[command(name = "capability-profiles")]
+    CapabilityProfiles {
         #[command(subcommand)]
-        command: ToolsetCommands,
+        command: CapabilityProfileCommands,
     },
     /// Hub skills — plugins dynamiques (Phase 11).
     SkillsHub {
@@ -142,8 +143,8 @@ enum ChannelCommands {
 }
 
 #[derive(Subcommand)]
-enum ToolsetCommands {
-    /// Liste les groupes d'outils agent.
+enum CapabilityProfileCommands {
+    /// Liste les profils de capacités agent.
     List,
 }
 
@@ -174,7 +175,7 @@ enum ProviderCommands {
 #[cfg(feature = "gateway")]
 #[derive(Subcommand)]
 enum GatewayCommands {
-    /// Démarre le gateway (WS :18789, webhook, canaux).
+    /// Démarre le gateway (WS :28789, webhook, canaux).
     Run {
         /// Port d'écoute (surcharge `orchestrator.toml`).
         #[arg(long)]
@@ -308,8 +309,8 @@ async fn main() -> Result<()> {
         Commands::Channels { command } => match command {
             ChannelCommands::List => cmd_channels_list()?,
         },
-        Commands::Toolsets { command } => match command {
-            ToolsetCommands::List => cmd_toolsets_list()?,
+        Commands::CapabilityProfiles { command } => match command {
+            CapabilityProfileCommands::List => cmd_capability_profiles_list()?,
         },
         Commands::SkillsHub { command } => match command {
             SkillsHubCommands::List => cmd_skills_hub_list(&facade)?,
@@ -657,15 +658,15 @@ fn cmd_skills_hub_verify(facade: &OrchestratorFacade) -> Result<()> {
     Ok(())
 }
 
-fn cmd_toolsets_list() -> Result<()> {
-    let registry = ToolsetRegistry::new();
-    for toolset in registry.descriptors() {
-        let tools = if toolset.tools.is_empty() {
+fn cmd_capability_profiles_list() -> Result<()> {
+    let registry = CapabilityProfileRegistry::new();
+    for profile in registry.descriptors() {
+        let tools = if profile.tools.is_empty() {
             "(tous)".to_string()
         } else {
-            toolset.tools.join(", ")
+            profile.tools.join(", ")
         };
-        println!("{:<10} {:<22} [{tools}]", toolset.id, toolset.display_name);
+        println!("{:<10} {:<22} [{tools}]", profile.id, profile.display_name);
     }
     Ok(())
 }

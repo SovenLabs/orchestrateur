@@ -60,7 +60,7 @@ path = "logs/audit.jsonl"
 [gateway]
 enabled = true
 bind = "127.0.0.1"
-port = 18789
+port = 28789
 token_env = "ORCHESTRATEUR_GATEWAY_TOKEN"
 
 [gateway.webhook]
@@ -105,9 +105,9 @@ enabled = false
 # command = "npx"
 # args = ["-y", "@modelcontextprotocol/server-filesystem", "."]
 
-# Agent Phase 10 — toolsets + auto-assimilation systématique
+# Agent Phase 10 — profils de capacités + auto-assimilation systématique
 [agent]
-active_toolset = "agent"
+active_capability_profile = "agent"
 auto_assimilate_turn = true
 max_tool_iterations = 3
 graph_context_enabled = true

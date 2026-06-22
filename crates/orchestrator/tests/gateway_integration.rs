@@ -14,9 +14,9 @@ fn test_facade() -> Arc<OrchestratorFacade> {
 }
 
 #[test]
-fn gateway_config_defaults_to_18789() {
+fn gateway_config_defaults_to_28789() {
     let cfg = OrchestratorConfig::default();
-    assert_eq!(cfg.gateway.port, 18_789);
+    assert_eq!(cfg.gateway.port, 28_789);
     assert!(cfg.gateway.enabled);
 }
 

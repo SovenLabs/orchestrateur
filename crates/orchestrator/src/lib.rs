@@ -100,7 +100,8 @@ pub use agent::{
 #[cfg(feature = "gateway")]
 pub use gateway::{run_gateway, GatewayError, GatewayRunner};
 pub use tools::{
-    ToolError, ToolRegistry, ToolsetDescriptor, ToolsetRegistry, TOOLSET_DESCRIPTORS,
+    CapabilityProfileDescriptor, CapabilityProfileRegistry, ToolError, ToolRegistry,
+    CAPABILITY_PROFILE_DESCRIPTORS,
 };
 #[cfg(feature = "gateway")]
 pub use gateway::ChannelCatalog;

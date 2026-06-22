@@ -1,6 +1,8 @@
 # Documentation Orchestrateur
 
-Index des documents du projet **Orchestrateur** (workspace Cargo **0.13.0**).
+Index des documents du projet **Orchestrateur** (workspace Cargo **0.14.0**).
+
+**Mantra :** Cortex first, agent second, gateway third. Voir [`RAPPORT_PHASES_7-14.md`](RAPPORT_PHASES_7-14.md).
 
 ## Prompts (source de vérité active)
 

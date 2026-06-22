@@ -1,6 +1,6 @@
 # Orchestrateur — Second cerveau local souverain
 
-**Version Cargo workspace : 0.13.0** · **Rust 1.80+** · **Juin 2026**
+**Version Cargo workspace : 0.14.0** · **Rust 1.80+** · **Juin 2026**
 
 > Documentation architecte : [`docs/prompt/PROMPT_MAITRE.md`](docs/prompt/PROMPT_MAITRE.md) · Archives phases : [`docs/`](docs/)
 
@@ -10,15 +10,34 @@
 
 Le projet s’appelle **Orchestrateur**. Il est conçu pour durer **7 à 10 ans**, en **local et souverain**, avec un **contrôle total** à chaque niveau.
 
-| Couche | Rôle | Priorité |
-|--------|------|----------|
-| **Cortex** | Le **Squelette** — domaine, ports hexagonaux, mémoires Markdown, graphe, recherche | **n°1** |
-| **Orchestrateur** | L’**Esprit** — use cases, facade, bridge, sécurité, skills | **n°2** |
-| **Peau** | Interface optionnelle et remplaçable (HUD egui, TUI ratatui, CLI) | Optionnelle |
+### Mantra d’architecture
 
-**Hiérarchie non négociable** : Cortex → Orchestrateur → Peau. La solidité du squelette prime sur tout rendu visuel.
+> **Cortex first, agent second, gateway third.**
 
-**Skills** (futur) : capacités ajoutées à l’Esprit (voix, images, trading, etc.).
+| Priorité | Couche | Rôle |
+|----------|--------|------|
+| **1** | **Cortex** | Le **Squelette** — mémoires Markdown, graphe, LanceDB, ports hexagonaux |
+| **2** | **Agent** | L’**Esprit** — LLM + outils mémoire natifs, au service du Cortex |
+| **3** | **Gateway** | **Canal d’entrée optionnel** — WS, webhooks, messagerie (pas le cœur du produit) |
+| — | **Peau** | HUD / TUI / CLI — remplaçable, bridge uniquement |
+
+Le **cerveau et l’IA sont fusionnés** : l’agent n’est pas un chatbot autonome, c’est l’opérateur du Cortex. Chaque tour peut assimiler, rechercher et enrichir le graphe — pas seulement répondre.
+
+**Hiérarchie non négociable** : Cortex → Orchestrateur (agent) → Peau / gateway. La solidité du squelette prime sur tout rendu visuel ou connecteur messaging.
+
+### Différenciateurs (cœur du produit)
+
+Ces capacités définissent Orchestrateur — pas la liste des canaux messaging :
+
+| Capacité | Détail |
+|----------|--------|
+| **Auto-assimilation** | Chaque tour agent peut persister un résumé en Cortex (`auto_assimilate_turn = true` par défaut) |
+| **Graphe de connaissances** | Hubs, backlinks, contexte graphe injecté dans le prompt agent |
+| **Recherche proactive** | Souvenirs pertinents chargés *avant* l’appel LLM |
+| **Honeypots & intégrité** | Mémoires canari, empreinte BLAKE3 config, audit chaîné tamper-evident |
+| **Profils de capacités** | Groupes d’outils Cortex (`memory`, `agent`, `research`, …) — pas un catalogue de plugins distant |
+
+**Skills** : extensions optionnelles de l’Esprit (subprocess, natif, marketplace local) — jamais le substitut du Cortex.
 
 ---
 
@@ -175,13 +194,13 @@ Exécutables produits :
 .\target\release\orchestrateur.exe list --workspace workspace
 .\target\release\orchestrateur.exe get <uuid> --workspace workspace
 
-# Gateway WebSocket Phase 8 (port 18789)
+# Gateway WebSocket Phase 8 (port 28789 — optionnel, canal d'entrée)
 $env:ORCHESTRATEUR_GATEWAY_TOKEN = "secret"
 .\target\release\orchestrateur.exe gateway run --workspace workspace
 
-# Catalogue canaux (18) et toolsets agent (Phase 10)
+# Canaux gateway + profils de capacités agent
 .\target\release\orchestrateur.exe channels list
-.\target\release\orchestrateur.exe toolsets list
+.\target\release\orchestrateur.exe capability-profiles list
 
 # Hub skills + plugins dynamiques (Phase 11)
 .\target\release\orchestrateur.exe skills-hub list
@@ -227,18 +246,17 @@ cargo test -p orchestrator --features gateway
 cargo test -p mcp
 ```
 
-Lister les providers, canaux et toolsets :
+Lister les providers, profils de capacités et hub skills :
 
 ```powershell
 orchestrateur providers list
 orchestrateur providers list --kind llm
-orchestrateur channels list
-orchestrateur toolsets list
+orchestrateur capability-profiles list
 orchestrateur skills-hub list
 orchestrateur skills-hub marketplace
 orchestrateur skills-hub sync
 orchestrateur skills-hub verify
-orchestrateur toolsets list   # inclut toolset `skills`
+orchestrateur channels list    # gateway optionnel (18 canaux)
 ```
 
 Les tests **sécurité**, **charge** et **intégration lourde** sont marqués `#[ignore]` — ils ne tournent pas par défaut.
@@ -296,7 +314,7 @@ Tags Git : `phase1-closed`, `phase2-closed`, `phase3-v0.1.0`, `phase4-v0.3.0`.
 | 5 | TUI ratatui intégré au cœur, mode dégradé sans IA |
 | 6 | Skills opérationnelles, bridge chat/skills, HUD/TUI chat, packaging Windows |
 | 7–9 | Agent loop, gateway WS, provider registry (12 LLM + 5 embeddings), MCP stdio |
-| 10 | 18 canaux, 6 toolsets, auto-assimilation par tour, `[agent]` TOML |
+| 10 | 18 canaux gateway, profils de capacités, auto-assimilation par tour, `[agent]` TOML |
 | 11 | Skills hub filesystem, plugins subprocess, `[skills_hub]` TOML |
 | 12 | Plugins natifs, inbound stub HTTP, outils agent `skill_*` |
 | 13 | Marketplace skills, intégrité BLAKE3, `skill_suggest` + auto-suggest |

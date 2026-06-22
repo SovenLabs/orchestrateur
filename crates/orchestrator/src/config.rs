@@ -274,7 +274,7 @@ pub struct GatewayConfig {
     pub enabled: bool,
     /// Adresse de liaison.
     pub bind: String,
-    /// Port d'écoute (style OpenClaw : 18789).
+    /// Port d'écoute du gateway local (défaut 28789).
     pub port: u16,
     /// Variable d'environnement du token d'authentification WS.
     pub token_env: String,
@@ -295,7 +295,7 @@ impl Default for GatewayConfig {
         Self {
             enabled: true,
             bind: "127.0.0.1".into(),
-            port: 18_789,
+            port: 28_789,
             token_env: "ORCHESTRATEUR_GATEWAY_TOKEN".into(),
             webhook: GatewayChannelConfig {
                 enabled: true,
@@ -364,8 +364,8 @@ pub struct AgentSettingsConfig {
     pub auto_assimilate_turn: bool,
     /// Historique maximal envoyé au LLM.
     pub max_history_turns: usize,
-    /// Toolset actif (`agent`, `memory`, `full`, …).
-    pub active_toolset: String,
+    /// Profil de capacités actif (`agent`, `memory`, `full`, …).
+    pub active_capability_profile: String,
     /// Outils agent `skill_list` / `skill_execute` (Phase 12).
     pub skill_tools_enabled: bool,
     /// Injecte le catalogue skills + suggestions dans le prompt agent (Phase 13).
@@ -386,7 +386,7 @@ impl Default for AgentSettingsConfig {
             proactive_search_limit: 5,
             auto_assimilate_turn: true,
             max_history_turns: 20,
-            active_toolset: "agent".into(),
+            active_capability_profile: "agent".into(),
             skill_tools_enabled: true,
             skill_auto_suggest: true,
             skill_auto_execute: false,
@@ -783,8 +783,8 @@ fn merge_agent(target: &mut AgentSettingsConfig, section: AgentSection) {
     if let Some(v) = section.max_history_turns {
         target.max_history_turns = v;
     }
-    if let Some(v) = section.active_toolset {
-        target.active_toolset = v;
+    if let Some(v) = section.active_capability_profile {
+        target.active_capability_profile = v;
     }
     if let Some(v) = section.skill_tools_enabled {
         target.skill_tools_enabled = v;
@@ -1014,7 +1014,8 @@ struct AgentSection {
     proactive_search_limit: Option<usize>,
     auto_assimilate_turn: Option<bool>,
     max_history_turns: Option<usize>,
-    active_toolset: Option<String>,
+    #[serde(alias = "active_toolset")]
+    active_capability_profile: Option<String>,
     skill_tools_enabled: Option<bool>,
     skill_auto_suggest: Option<bool>,
     skill_auto_execute: Option<bool>,
@@ -1328,7 +1329,7 @@ enabled = false
         let cfg = OrchestratorConfig::default();
         assert!(cfg.agent.auto_assimilate_turn);
         assert!(cfg.agent.skill_tools_enabled);
-        assert_eq!(cfg.agent.active_toolset, "agent");
+        assert_eq!(cfg.agent.active_capability_profile, "agent");
         assert_eq!(cfg.agent.max_tool_iterations, 3);
     }
 
@@ -1359,7 +1360,7 @@ enabled = false
 
         let cfg = OrchestratorConfig::load_workspace(dir.path()).unwrap();
         assert!(!cfg.agent.auto_assimilate_turn);
-        assert_eq!(cfg.agent.active_toolset, "research");
+        assert_eq!(cfg.agent.active_capability_profile, "research");
         assert_eq!(cfg.agent.max_tool_iterations, 5);
 
         let whatsapp = cfg

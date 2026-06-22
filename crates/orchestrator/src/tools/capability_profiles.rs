@@ -1,8 +1,8 @@
 use super::registry::ToolRegistry;
 
-/// Groupe nommé d'outils agent (style Hermess toolsets).
+/// Profil de capacités agent — groupe d'outils Cortex (Phase 10+).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ToolsetDescriptor {
+pub struct CapabilityProfileDescriptor {
     /// Identifiant TOML / CLI (`memory`, `agent`, `full`, …).
     pub id: &'static str,
     /// Nom affiché.
@@ -11,19 +11,19 @@ pub struct ToolsetDescriptor {
     pub tools: &'static [&'static str],
 }
 
-/// Catalogue des toolsets Phase 10.
-pub const TOOLSET_DESCRIPTORS: &[ToolsetDescriptor] = &[
-    ToolsetDescriptor {
+/// Catalogue des profils de capacités.
+pub const CAPABILITY_PROFILE_DESCRIPTORS: &[CapabilityProfileDescriptor] = &[
+    CapabilityProfileDescriptor {
         id: "memory",
         display_name: "Mémoire Cortex",
         tools: &["memory_search", "memory_get", "memory_assimilate"],
     },
-    ToolsetDescriptor {
+    CapabilityProfileDescriptor {
         id: "mcp",
         display_name: "MCP distant",
         tools: &["mcp_list_tools", "mcp_call"],
     },
-    ToolsetDescriptor {
+    CapabilityProfileDescriptor {
         id: "agent",
         display_name: "Agent standard",
         tools: &[
@@ -37,33 +37,33 @@ pub const TOOLSET_DESCRIPTORS: &[ToolsetDescriptor] = &[
             "skill_suggest",
         ],
     },
-    ToolsetDescriptor {
+    CapabilityProfileDescriptor {
         id: "skills",
         display_name: "Skills agentic",
         tools: &["skill_list", "skill_execute", "skill_suggest"],
     },
-    ToolsetDescriptor {
+    CapabilityProfileDescriptor {
         id: "research",
         display_name: "Recherche mémoire",
         tools: &["memory_search", "memory_get"],
     },
-    ToolsetDescriptor {
+    CapabilityProfileDescriptor {
         id: "ingest",
         display_name: "Assimilation",
         tools: &["memory_assimilate", "memory_search"],
     },
-    ToolsetDescriptor {
+    CapabilityProfileDescriptor {
         id: "full",
         display_name: "Complet (tous outils enregistrés)",
         tools: &[],
     },
 ];
 
-/// Registre des toolsets.
+/// Registre des profils de capacités.
 #[derive(Debug, Clone, Copy, Default)]
-pub struct ToolsetRegistry;
+pub struct CapabilityProfileRegistry;
 
-impl ToolsetRegistry {
+impl CapabilityProfileRegistry {
     /// Nouveau registre (catalogue statique).
     #[must_use]
     pub const fn new() -> Self {
@@ -72,20 +72,20 @@ impl ToolsetRegistry {
 
     /// Tous les descripteurs.
     #[must_use]
-    pub fn descriptors(&self) -> &'static [ToolsetDescriptor] {
-        TOOLSET_DESCRIPTORS
+    pub fn descriptors(&self) -> &'static [CapabilityProfileDescriptor] {
+        CAPABILITY_PROFILE_DESCRIPTORS
     }
 
-    /// Recherche un toolset par identifiant.
+    /// Recherche un profil par identifiant.
     #[must_use]
-    pub fn get(&self, id: &str) -> Option<&'static ToolsetDescriptor> {
-        TOOLSET_DESCRIPTORS.iter().find(|t| t.id == id)
+    pub fn get(&self, id: &str) -> Option<&'static CapabilityProfileDescriptor> {
+        CAPABILITY_PROFILE_DESCRIPTORS.iter().find(|p| p.id == id)
     }
 
-    /// Filtre un registre d'outils selon le toolset actif.
+    /// Filtre un registre d'outils selon le profil actif.
     #[must_use]
-    pub fn filter_registry(source: &ToolRegistry, toolset_id: &str) -> ToolRegistry {
-        let Some(descriptor) = Self::new().get(toolset_id) else {
+    pub fn filter_registry(source: &ToolRegistry, profile_id: &str) -> ToolRegistry {
+        let Some(descriptor) = Self::new().get(profile_id) else {
             return source.clone_subset(source.names().as_slice());
         };
         if descriptor.id == "full" {
@@ -100,14 +100,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn catalog_has_seven_toolsets() {
-        assert_eq!(ToolsetRegistry::new().descriptors().len(), 7);
+    fn catalog_has_seven_capability_profiles() {
+        assert_eq!(CapabilityProfileRegistry::new().descriptors().len(), 7);
     }
 
     #[test]
-    fn research_toolset_filters_memory_tools() {
+    fn research_profile_filters_memory_tools() {
         let base = ToolRegistry::with_memory_tools();
-        let filtered = ToolsetRegistry::filter_registry(&base, "research");
+        let filtered = CapabilityProfileRegistry::filter_registry(&base, "research");
         let names = filtered.names();
         assert_eq!(names.len(), 2);
         assert!(names.contains(&"memory_search"));

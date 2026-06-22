@@ -1,0 +1,101 @@
+[gd_scene load_steps=9 format=3 uid="uid://main_territory_p17"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/territory_manager.gd" id="2_manager"]
+[ext_resource type="Script" path="res://scripts/dock_layout.gd" id="3_layout"]
+[ext_resource type="PackedScene" uid="uid://brain_sphere_p17" path="res://scenes/BrainSphere.tscn" id="4_brain"]
+[ext_resource type="PackedScene" uid="uid://memory_list_panel_p17" path="res://scenes/MemoryListPanel.tscn" id="5_memory"]
+[ext_resource type="PackedScene" uid="uid://graph_panel_p17" path="res://scenes/GraphPanel.tscn" id="6_graph"]
+[ext_resource type="PackedScene" uid="uid://chat_panel_p17" path="res://scenes/ChatPanel.tscn" id="7_chat"]
+[ext_resource type="PackedScene" uid="uid://monitoring_panel_p17" path="res://scenes/MonitoringPanel.tscn" id="8_monitor"]
+
+[node name="TerritoireGraphique" type="Node3D"]
+script = ExtResource("1_main")
+
+[node name="TerritoryManager" type="Node" parent="."]
+script = ExtResource("2_manager")
+brain_sphere = NodePath("../BrainSphere")
+monitoring_panel = NodePath("../UI/DockRoot/HSplit/RightSplit/MonitoringPanel")
+chat_panel = NodePath("../UI/DockRoot/HSplit/RightSplit/ChatPanel")
+memory_list_panel = NodePath("../UI/DockRoot/HSplit/LeftSplit/MemoryListPanel")
+graph_panel = NodePath("../UI/DockRoot/HSplit/LeftSplit/GraphPanel")
+dock_layout = NodePath("../DockLayout")
+
+[node name="DockLayout" type="Node" parent="."]
+script = ExtResource("3_layout")
+h_split = NodePath("../UI/DockRoot/HSplit")
+left_v = NodePath("../UI/DockRoot/HSplit/LeftSplit")
+right_v = NodePath("../UI/DockRoot/HSplit/RightSplit")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 2, 4, 2)
+light_energy = 0.6
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.94, 0.342, 0, -0.342, 0.94, 0, 0.5, 4.2)
+fov = 55.0
+
+[node name="BrainSphere" parent="." instance=ExtResource("4_brain")]
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="DockRoot" type="MarginContainer" parent="UI"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="HSplit" type="HSplitContainer" parent="UI/DockRoot"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+split_offset = 300
+
+[node name="LeftSplit" type="VSplitContainer" parent="UI/DockRoot/HSplit"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+split_offset = 220
+
+[node name="MemoryListPanel" parent="UI/DockRoot/HSplit/LeftSplit" instance=ExtResource("5_memory")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="GraphPanel" parent="UI/DockRoot/HSplit/LeftSplit" instance=ExtResource("6_graph")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CenterSpacer" type="Control" parent="UI/DockRoot/HSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+mouse_filter = 2
+
+[node name="RightSplit" type="VSplitContainer" parent="UI/DockRoot/HSplit"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+split_offset = 280
+
+[node name="ChatPanel" parent="UI/DockRoot/HSplit/RightSplit" instance=ExtResource("7_chat")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MonitoringPanel" parent="UI/DockRoot/HSplit/RightSplit" instance=ExtResource("8_monitor")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3

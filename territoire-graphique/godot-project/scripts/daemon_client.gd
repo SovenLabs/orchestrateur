@@ -1,8 +1,10 @@
 extends Node
-## Client WebSocket Option B — fallback HTTP /health puis GDExtension si chargée.
+## Client WebSocket Option B — hub Command/Response pour tous les panneaux.
 
 signal activity_changed(intensity: float)
 signal connection_state_changed(connected: bool, detail: String)
+signal command_completed(request_id: String, response: Dictionary)
+signal brain_pulse_requested(boost: float, duration: float)
 
 const WS_URL := "ws://127.0.0.1:28790/ws"
 const HEALTH_URL := "http://127.0.0.1:28790/health"
@@ -27,15 +29,49 @@ func _ready() -> void:
 		_token = "dev"
 	_http.request_completed.connect(_on_http_health)
 	add_child(_http)
-	_try_gdextension_probe()
 	_connect_ws()
 
 
-func _try_gdextension_probe() -> void:
-	if ClassDB.class_exists("TerritoireBridge"):
-		var bridge = ClassDB.instantiate("TerritoireBridge")
-		if bridge and bridge.has_method("default_ws_url"):
-			print("GDExtension TerritoireBridge disponible — ", bridge.call("default_ws_url"))
+func is_ready() -> bool:
+	return _authenticated and not _use_fallback
+
+
+func execute(command: Dictionary) -> String:
+	_request_id += 1
+	var rid := str(_request_id)
+	if not is_ready():
+		command_completed.emit(rid, {
+			"response": "Error",
+			"payload": {"kind": "offline", "message": "Daemon non connecté"},
+		})
+		return rid
+	var msg := {"type": "execute", "request_id": rid, "command": command}
+	_peer.send_text(JSON.stringify(msg))
+	return rid
+
+
+func execute_chat(message: String) -> String:
+	brain_pulse_requested.emit(0.35, 0.4)
+	return execute({"command": "Chat", "payload": {"message": message}})
+
+
+func execute_list(filter: String = "", offset: int = 0, limit: int = 100) -> String:
+	var payload := {"filter": null, "offset": offset, "limit": limit}
+	if not filter.is_empty():
+		payload["filter"] = filter
+	return execute({"command": "List", "payload": payload})
+
+
+func execute_search(query: String, limit: int = 30) -> String:
+	return execute({"command": "Search", "payload": {"query": query, "limit": limit}})
+
+
+func execute_get_memory(id: String) -> String:
+	return execute({"command": "GetMemory", "payload": {"id": id}})
+
+
+func execute_graph() -> String:
+	return execute({"command": "Graph"})
 
 
 func _connect_ws() -> void:
@@ -44,7 +80,6 @@ func _connect_ws() -> void:
 		_enable_fallback("WebSocket indisponible (%s)" % error_string(err))
 		return
 	_use_fallback = false
-	print("Connexion daemon… ", WS_URL)
 
 
 func _enable_fallback(reason: String) -> void:
@@ -52,7 +87,6 @@ func _enable_fallback(reason: String) -> void:
 	_connected = false
 	_authenticated = false
 	connection_state_changed.emit(false, reason)
-	print("Fallback actif — ", reason)
 
 
 func _process(delta: float) -> void:
@@ -94,18 +128,11 @@ func _process(delta: float) -> void:
 
 
 func _send_connect() -> void:
-	var msg := {"type": "connect", "token": _token}
-	_peer.send_text(JSON.stringify(msg))
+	_peer.send_text(JSON.stringify({"type": "connect", "token": _token}))
 
 
 func _request_health() -> void:
-	_request_id += 1
-	var msg := {
-		"type": "execute",
-		"request_id": str(_request_id),
-		"command": {"command": "HealthCheck"},
-	}
-	_peer.send_text(JSON.stringify(msg))
+	execute({"command": "HealthCheck"})
 
 
 func _handle_packet(text: String) -> void:
@@ -117,33 +144,46 @@ func _handle_packet(text: String) -> void:
 			_authenticated = true
 			connection_state_changed.emit(true, "Connecté v%s" % data.get("version", "?"))
 			_request_health()
+			execute_list()
+			execute_graph()
 		"result":
-			_parse_health_result(data)
+			_dispatch_result(data)
 		"error":
 			push_warning("Daemon: %s" % data.get("message", "erreur"))
-		"pong":
-			pass
 
 
-func _parse_health_result(data: Dictionary) -> void:
+func _dispatch_result(data: Dictionary) -> void:
 	var response: Dictionary = data.get("response", {})
-	if response.get("response") != "Health":
-		return
-	var payload: Dictionary = response.get("payload", {})
-	var intensity := ActivityMapper.clamp_intensity(
-		ActivityMapper.from_health(
-			str(payload.get("status", "unknown")),
-			bool(payload.get("llm_available", false)),
-			bool(payload.get("embedding_available", false)),
+	var rid: String = str(data.get("request_id", ""))
+	var kind: String = str(response.get("response", ""))
+
+	if kind == "Health":
+		var payload: Dictionary = response.get("payload", {})
+		var intensity := ActivityMapper.clamp_intensity(
+			ActivityMapper.from_health(
+				str(payload.get("status", "unknown")),
+				bool(payload.get("llm_available", false)),
+				bool(payload.get("embedding_available", false)),
+			)
 		)
-	)
-	activity_changed.emit(intensity)
+		activity_changed.emit(intensity)
+
+	if kind == "ChatReply":
+		brain_pulse_requested.emit(0.5, 0.6)
+		var reply: String = str(response.get("payload", {}).get("reply", ""))
+		if response.get("payload", {}).get("auto_assimilated"):
+			execute_list()
+
+	if kind == "Assimilated":
+		brain_pulse_requested.emit(0.45, 0.5)
+		execute_list()
+		execute_graph()
+
+	command_completed.emit(rid, response)
 
 
 func _poll_http_health() -> void:
-	if _http.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
-		return
-	if _pending_health:
+	if _http.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED or _pending_health:
 		return
 	_pending_health = true
 	_http.request(HEALTH_URL)
@@ -154,9 +194,7 @@ func _on_http_health(_result: int, _code: int, _headers: PackedStringArray, body
 	if _code != 200:
 		return
 	var data = JSON.parse_string(body.get_string_from_utf8())
-	if typeof(data) != TYPE_DICTIONARY:
-		return
-	# HTTP health ne donne pas llm/embedding — intensité modérée si daemon répond.
-	var raw := 0.45 if data.get("status") == "ok" else 0.3
-	activity_changed.emit(ActivityMapper.clamp_intensity(raw))
-	connection_state_changed.emit(true, "HTTP health (fallback)")
+	if typeof(data) == TYPE_DICTIONARY:
+		var raw := 0.45 if data.get("status") == "ok" else 0.3
+		activity_changed.emit(ActivityMapper.clamp_intensity(raw))
+		connection_state_changed.emit(true, "HTTP health (fallback)")

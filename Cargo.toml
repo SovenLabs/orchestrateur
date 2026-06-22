@@ -21,7 +21,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.17.0"
+version = "0.18.0"
 edition = "2021"
 authors = ["Sovën"]
 license = "MIT OR Apache-2.0"

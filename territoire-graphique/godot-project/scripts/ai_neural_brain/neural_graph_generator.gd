@@ -27,12 +27,12 @@ static func build_knn_edges(
 	neighbors_k: int,
 	max_edge_length: float,
 	seed: int,
-) -> PackedVector2iArray:
+) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	var n := positions.size()
 	var edge_set := {}
-	var edges := PackedVector2iArray()
+	var edges: Array = []
 
 	for i in range(n):
 		var distances: Array = []
@@ -91,4 +91,4 @@ static func build_knn_edges(
 
 static func hash01(a: int, b: int, c: int) -> float:
 	var v := sin(float(a * 127.1 + b * 311.7 + c * 74.7)) * 43758.5453
-	return fract(v)
+	return v - floor(v)

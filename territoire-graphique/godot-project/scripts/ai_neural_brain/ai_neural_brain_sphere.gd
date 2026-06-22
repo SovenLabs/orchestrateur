@@ -62,7 +62,7 @@ const SYNAPSE_SHADER := preload("res://shaders/ai_neural_brain/synapse_multimesh
 @onready var _synapses_mm: MultiMeshInstance3D = $Synapses
 
 var _neuron_positions: PackedVector3Array = PackedVector3Array()
-var _edges: PackedVector2iArray = PackedVector2iArray()
+var _edges: Array = []
 var _edge_lookup: Dictionary = {}
 var _edge_spikes: PackedFloat32Array = PackedFloat32Array()
 
@@ -259,7 +259,7 @@ func _build_synapse_multimesh() -> void:
 	_edge_spikes.fill(0.0)
 
 	for edge_i in range(_edges.size()):
-		var e := _edges[edge_i]
+		var e: Vector2i = _edges[edge_i]
 		var a := _neuron_positions[e.x]
 		var b := _neuron_positions[e.y]
 		mm.set_instance_transform(edge_i, _ribbon_transform(a, b))
@@ -286,7 +286,7 @@ func _ribbon_transform(a: Vector3, b: Vector3) -> Transform3D:
 func _build_edge_lookup() -> void:
 	_edge_lookup.clear()
 	for i in range(_edges.size()):
-		var e := _edges[i]
+		var e: Vector2i = _edges[i]
 		var key := "%d:%d" % [e.x, e.y]
 		_edge_lookup[key] = i
 
@@ -300,7 +300,7 @@ func _stimulate_edges_for_neurons(indices: PackedInt32Array, amount: float) -> v
 	var dirty := false
 	for idx in indices:
 		for edge_i in range(_edges.size()):
-			var e := _edges[edge_i]
+			var e: Vector2i = _edges[edge_i]
 			if e.x != idx and e.y != idx:
 				continue
 			_edge_spikes[edge_i] = maxf(_edge_spikes[edge_i], amount)

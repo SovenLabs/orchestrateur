@@ -1,3 +1,4 @@
+class_name NeuralBrainEnvironment
 extends WorldEnvironment
 ## WorldEnvironment cinématique — glow/bloom pour AI Neural Brain Sphere.
 

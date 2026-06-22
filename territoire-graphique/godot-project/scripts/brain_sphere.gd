@@ -194,7 +194,7 @@ func _update_particles() -> void:
 
 	_update_idle_particles(t, budget)
 	_update_assimilation_particles(t, budget)
-	_update_tool_particles(t)
+	_update_tool_particles(t, budget)
 
 
 func _update_idle_particles(t: float, budget: int) -> void:

@@ -1,0 +1,22 @@
+[gd_scene load_steps=5 format=3 uid="uid://ai_neural_brain_demo"]
+
+[ext_resource type="PackedScene" uid="uid://ai_neural_brain_sphere" path="res://scenes/ai_neural_brain/AINeuralBrainSphere.tscn" id="1_brain"]
+[ext_resource type="Script" path="res://scripts/ai_neural_brain/neural_brain_environment.gd" id="2_env"]
+[ext_resource type="Script" path="res://scripts/ai_neural_brain/neural_brain_camera.gd" id="3_cam"]
+[ext_resource type="Script" path="res://scripts/ai_neural_brain/ai_neural_brain_demo.gd" id="4_demo"]
+
+[sub_resource type="Environment" id="Environment_neural"]
+
+[node name="AINeuralBrainDemo" type="Node3D"]
+script = ExtResource("4_demo")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_neural")
+script = ExtResource("2_env")
+
+[node name="AINeuralBrainSphere" parent="." instance=ExtResource("1_brain")]
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.94, 0.342, 0, -0.342, 0.94, 0, 1.2, 9.5)
+script = ExtResource("3_cam")
+target_path = NodePath("../AINeuralBrainSphere")

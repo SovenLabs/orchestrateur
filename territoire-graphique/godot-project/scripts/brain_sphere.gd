@@ -1,6 +1,6 @@
 extends Node3D
 class_name BrainSphere
-## Boule de Pixels Vivante — réactivité temps réel Phase 20.
+## Boule de Pixels Vivante — Plexus + particules pro + post FX.
 
 enum ParticleMode { IDLE, ASSIMILATION, TOOL_CALL }
 
@@ -14,10 +14,13 @@ const MAX_ASSIM_PARTICLES := 140
 const MAX_TOOL_PARTICLES := 80
 const MAX_TOTAL_PARTICLES := 300
 
+const PARTICLE_SHADER := preload("res://shaders/brain_particle.gdshader")
+
 @onready var _mesh: MeshInstance3D = $Mesh
 @onready var _particles_idle: GPUParticles3D = $ParticlesIdle
 @onready var _particles_assim: GPUParticles3D = $ParticlesAssimilation
 @onready var _particles_tool: GPUParticles3D = $ParticlesTool
+@onready var _attractor: GPUParticlesAttractor3D = $AssimAttractor
 
 var activity_intensity := 0.35
 var _target_intensity := 0.35
@@ -36,16 +39,60 @@ var _particle_mode_timer := 0.0
 var _living := 1.0
 var _target_living := 1.0
 var _material: ShaderMaterial
+var _post_fx: Node = null
+
+var _idle_process: ParticleProcessMaterial
+var _assim_process: ParticleProcessMaterial
+var _tool_process: ParticleProcessMaterial
+var _idle_draw: ShaderMaterial
+var _assim_draw: ShaderMaterial
+var _tool_draw: ShaderMaterial
 
 
 func _ready() -> void:
 	_material = _mesh.material_override as ShaderMaterial
+	_duplicate_particle_materials()
+	_setup_particle_draw_materials()
+	_post_fx = get_tree().get_first_node_in_group("territory_environment")
 	_apply_shader_state()
 	var mapper := get_node_or_null("/root/VisualEventMapper")
 	if mapper:
 		mapper.visual_effect_triggered.connect(_on_visual_effect_signal)
 		mapper.effect_ready.connect(apply_visual_effect)
 		mapper.activity_level_changed.connect(_on_mapper_activity)
+
+
+func _duplicate_particle_materials() -> void:
+	if _particles_idle and _particles_idle.process_material:
+		_idle_process = _particles_idle.process_material.duplicate() as ParticleProcessMaterial
+		_particles_idle.process_material = _idle_process
+	if _particles_assim and _particles_assim.process_material:
+		_assim_process = _particles_assim.process_material.duplicate() as ParticleProcessMaterial
+		_assim_process.attractor_interaction_enabled = true
+		_particles_assim.process_material = _assim_process
+	if _particles_tool and _particles_tool.process_material:
+		_tool_process = _particles_tool.process_material.duplicate() as ParticleProcessMaterial
+		_particles_tool.process_material = _tool_process
+
+
+func _setup_particle_draw_materials() -> void:
+	_idle_draw = _make_particle_material(Color(0.3, 0.68, 1.0, 0.75))
+	_assim_draw = _make_particle_material(Color(0.45, 0.88, 1.0, 0.9))
+	_tool_draw = _make_particle_material(Color(0.95, 0.55, 0.25, 0.95))
+	if _particles_idle:
+		_particles_idle.material_override = _idle_draw
+	if _particles_assim:
+		_particles_assim.material_override = _assim_draw
+	if _particles_tool:
+		_particles_tool.material_override = _tool_draw
+
+
+func _make_particle_material(color: Color) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = PARTICLE_SHADER
+	mat.set_shader_parameter("particle_color", color)
+	mat.set_shader_parameter("softness", 0.55)
+	return mat
 
 
 func _process(delta: float) -> void:
@@ -93,6 +140,7 @@ func _process(delta: float) -> void:
 		_mesh.position = Vector3.ZERO
 
 	_apply_shader_state()
+	_update_post_fx()
 	_update_particles()
 
 
@@ -186,6 +234,13 @@ func _apply_shader_state() -> void:
 	_material.set_shader_parameter("swirl", swirl_val)
 	var refract := 0.02 if _degraded else 0.04 + _display_intensity * 0.03
 	_material.set_shader_parameter("refraction_strength", refract)
+	var plexus := 0.35 if _degraded else 0.65 + _display_intensity * 0.85 + swirl_val * 0.35
+	_material.set_shader_parameter("plexus_strength", plexus)
+
+
+func _update_post_fx() -> void:
+	if _post_fx and _post_fx.has_method("set_activity"):
+		_post_fx.set_activity(_display_intensity, _stress)
 
 
 func _update_particles() -> void:
@@ -195,6 +250,19 @@ func _update_particles() -> void:
 	_update_idle_particles(t, budget)
 	_update_assimilation_particles(t, budget)
 	_update_tool_particles(t, budget)
+	_update_particle_colors(t)
+
+
+func _update_particle_colors(t: float) -> void:
+	if _idle_draw:
+		var idle_col := Color(0.25, 0.55, 1.0, 0.65).lerp(Color(0.4, 0.82, 1.0, 0.85), t)
+		if _degraded:
+			idle_col = idle_col.lerp(Color(0.45, 0.4, 0.25, 0.45), 0.6)
+		_idle_draw.set_shader_parameter("particle_color", idle_col)
+	if _assim_draw:
+		_assim_draw.set_shader_parameter("particle_color", Color(0.5, 0.92, 1.0, 0.85 + t * 0.1))
+	if _tool_draw:
+		_tool_draw.set_shader_parameter("particle_color", Color(1.0, 0.6, 0.2, 0.9))
 
 
 func _update_idle_particles(t: float, budget: int) -> void:
@@ -214,14 +282,15 @@ func _update_idle_particles(t: float, budget: int) -> void:
 		amount = int(amount * 1.15)
 	_particles_idle.amount = mini(amount, budget)
 
-	var process_mat: ParticleProcessMaterial = _particles_idle.process_material
-	if process_mat:
-		process_mat.emission_sphere_radius = lerpf(1.05, 1.4, t)
-		process_mat.initial_velocity_min = lerpf(0.08, 0.5, t)
-		process_mat.initial_velocity_max = lerpf(0.25, 1.2, t)
-		process_mat.scale_min = lerpf(0.012, 0.03, t)
-		process_mat.scale_max = lerpf(0.03, 0.07, t)
-	var speed := lerpf(0.35, 1.4, t)
+	if _idle_process:
+		_idle_process.emission_sphere_radius = lerpf(1.05, 1.45, t)
+		_idle_process.initial_velocity_min = lerpf(0.08, 0.55, t)
+		_idle_process.initial_velocity_max = lerpf(0.25, 1.3, t)
+		_idle_process.scale_min = lerpf(0.012, 0.03, t)
+		_idle_process.scale_max = lerpf(0.03, 0.075, t)
+		_idle_process.orbit_velocity_min = lerpf(0.05, 0.2, t)
+		_idle_process.orbit_velocity_max = lerpf(0.15, 0.45, t)
+	var speed := lerpf(0.35, 1.5, t)
 	if _degraded:
 		speed *= 0.35
 	_particles_idle.speed_scale = speed
@@ -232,6 +301,8 @@ func _update_assimilation_particles(t: float, budget: int) -> void:
 		return
 	var active := _particle_mode == ParticleMode.ASSIMILATION or _swirl_timer > 0.0
 	_particles_assim.emitting = active
+	if _attractor:
+		_attractor.strength = lerpf(0.0, 2.8, t) if active else 0.0
 	if not active:
 		_particles_assim.amount = 0
 		return
@@ -241,14 +312,13 @@ func _update_assimilation_particles(t: float, budget: int) -> void:
 		amount = int(amount * 1.3)
 	_particles_assim.amount = mini(amount, budget)
 
-	var process_mat: ParticleProcessMaterial = _particles_assim.process_material
-	if process_mat:
-		process_mat.emission_sphere_radius = lerpf(1.35, 1.75, t)
-		process_mat.radial_accel_min = lerpf(-3.5, -6.0, t)
-		process_mat.radial_accel_max = lerpf(-2.0, -4.5, t)
-		process_mat.initial_velocity_min = 0.05
-		process_mat.initial_velocity_max = lerpf(0.2, 0.8, t)
-	_particles_assim.speed_scale = lerpf(1.0, 2.2, t)
+	if _assim_process:
+		_assim_process.emission_sphere_radius = lerpf(1.4, 1.85, t)
+		_assim_process.radial_accel_min = lerpf(-4.5, -7.0, t)
+		_assim_process.radial_accel_max = lerpf(-2.5, -5.0, t)
+		_assim_process.initial_velocity_min = 0.04
+		_assim_process.initial_velocity_max = lerpf(0.15, 0.75, t)
+	_particles_assim.speed_scale = lerpf(1.0, 2.4, t)
 
 
 func _update_tool_particles(t: float, _budget: int) -> void:
@@ -259,9 +329,8 @@ func _update_tool_particles(t: float, _budget: int) -> void:
 			_particles_tool.emitting = false
 		return
 
-	var process_mat: ParticleProcessMaterial = _particles_tool.process_material
-	if process_mat:
-		process_mat.emission_sphere_radius = lerpf(0.9, 1.1, t)
-		process_mat.initial_velocity_min = lerpf(1.5, 3.5, t)
-		process_mat.initial_velocity_max = lerpf(3.0, 6.0, t)
-	_particles_tool.speed_scale = lerpf(1.8, 3.5, t)
+	if _tool_process:
+		_tool_process.emission_sphere_radius = lerpf(0.9, 1.15, t)
+		_tool_process.initial_velocity_min = lerpf(1.5, 3.8, t)
+		_tool_process.initial_velocity_max = lerpf(3.0, 6.5, t)
+	_particles_tool.speed_scale = lerpf(1.8, 3.8, t)

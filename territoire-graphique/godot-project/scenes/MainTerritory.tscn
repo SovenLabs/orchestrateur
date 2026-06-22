@@ -1,6 +1,7 @@
-[gd_scene load_steps=10 format=3 uid="uid://main_territory_p17"]
+[gd_scene load_steps=11 format=3 uid="uid://main_territory_p17"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/brain_visual_fx.gd" id="10_postfx"]
 [ext_resource type="Script" path="res://scripts/daemon_client.gd" id="9_daemon"]
 [ext_resource type="Script" path="res://scripts/territory_manager.gd" id="2_manager"]
 [ext_resource type="Script" path="res://scripts/dock_layout.gd" id="3_layout"]
@@ -29,6 +30,7 @@ left_v = NodePath("../UI/DockRoot/HSplit/LeftSplit")
 right_v = NodePath("../UI/DockRoot/HSplit/RightSplit")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+script = ExtResource("10_postfx")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 2, 4, 2)

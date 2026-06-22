@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://brain_sphere_p17"]
+[gd_scene load_steps=11 format=3 uid="uid://brain_sphere_p17"]
 
 [ext_resource type="Script" path="res://scripts/brain_sphere.gd" id="1_script"]
 [ext_resource type="Shader" path="res://shaders/brain_living_shader.gdshader" id="2_shader"]
@@ -12,6 +12,7 @@ shader_parameter/stress = 0.0
 shader_parameter/swirl = 0.0
 shader_parameter/living = 1.0
 shader_parameter/refraction_strength = 0.04
+shader_parameter/plexus_strength = 0.85
 
 [sub_resource type="SphereMesh" id="SphereMesh_brain"]
 radius = 1.0
@@ -31,6 +32,8 @@ spread = 180.0
 initial_velocity_min = 0.15
 initial_velocity_max = 0.6
 gravity = Vector3(0, 0, 0)
+orbit_velocity_min = 0.08
+orbit_velocity_max = 0.25
 scale_min = 0.015
 scale_max = 0.05
 
@@ -44,6 +47,7 @@ initial_velocity_max = 0.4
 radial_accel_min = -4.0
 radial_accel_max = -2.5
 gravity = Vector3(0, 0, 0)
+attractor_interaction_enabled = true
 scale_min = 0.02
 scale_max = 0.055
 
@@ -64,6 +68,12 @@ script = ExtResource("1_script")
 [node name="Mesh" type="MeshInstance3D" parent="."]
 mesh = SubResource("SphereMesh_brain")
 material_override = SubResource("ShaderMaterial_brain")
+
+[node name="AssimAttractor" type="GPUParticlesAttractor3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+strength = 0.0
+attenuation = 1.2
+radius = 2.2
 
 [node name="ParticlesIdle" type="GPUParticles3D" parent="."]
 amount = 60

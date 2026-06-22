@@ -2,7 +2,7 @@ extends Control
 class_name ExtensionTerritory
 ## Fenêtre d'extension du territoire — panneau unique, pas de Boule.
 
-@onready var _daemon: DaemonClient = $DaemonClient
+@onready var _daemon: TerritoryDaemonClient = $DaemonClient
 @onready var _slot: MarginContainer = %PanelSlot
 @onready var _status: Label = %StatusLabel
 

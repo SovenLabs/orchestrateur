@@ -9,11 +9,11 @@ class_name TerritoryManager
 @export var graph_panel: GraphPanel
 @export var dock_layout: DockLayout
 
-var _daemon: DaemonClient
+var _daemon: TerritoryDaemonClient
 
 
 func _ready() -> void:
-	_daemon = DaemonClient.resolve(self)
+	_daemon = TerritoryDaemonClient.resolve(self)
 	if dock_layout:
 		dock_layout.restore()
 

@@ -7,7 +7,7 @@ signal hub_selected(memory_id: String)
 @onready var _graph: ForceGraph = %ForceGraph
 @onready var _stats: Label = %GraphStats
 
-var _daemon: DaemonClient
+var _daemon: TerritoryDaemonClient
 var _pending_rid := ""
 
 
@@ -15,7 +15,7 @@ func _ready() -> void:
 	panel_id = "graph"
 	panel_title = "Graphe"
 	super._ready()
-	_daemon = DaemonClient.resolve(self)
+	_daemon = TerritoryDaemonClient.resolve(self)
 	if _graph:
 		_graph.node_clicked.connect(_on_node_clicked)
 	if _daemon:

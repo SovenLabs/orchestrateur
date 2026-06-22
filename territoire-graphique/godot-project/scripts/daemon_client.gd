@@ -1,5 +1,5 @@
 extends Node
-class_name DaemonClient
+class_name TerritoryDaemonClient
 ## Client WebSocket par fenêtre — hub Command/Response + broadcast territorial.
 
 signal activity_changed(intensity: float)
@@ -46,10 +46,10 @@ func _ready() -> void:
 	_connect_ws()
 
 
-static func resolve(from: Node) -> DaemonClient:
+static func resolve(from: Node) -> TerritoryDaemonClient:
 	if not from:
 		return null
-	return from.get_tree().get_first_node_in_group("territory_daemon") as DaemonClient
+	return from.get_tree().get_first_node_in_group("territory_daemon") as TerritoryDaemonClient
 
 
 func configure_window(kind: String, panels: Array) -> void:

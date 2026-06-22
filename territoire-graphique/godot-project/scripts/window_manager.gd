@@ -1,7 +1,7 @@
 extends Node
 ## Gestionnaire multi-fenêtrage — une Boule, extensions détachables.
 
-const EXTENSION_SCENE := preload("res://scenes/ExtensionTerritory.tscn")
+const EXTENSION_SCENE_PATH := "res://scenes/ExtensionTerritory.tscn"
 
 var main_window: Window = null
 var _extensions: Dictionary = {}
@@ -27,14 +27,20 @@ func open_extension(panel_id: String) -> void:
 			return
 		_extensions.erase(panel_id)
 
+	var packed: PackedScene = load(EXTENSION_SCENE_PATH)
+	if not packed:
+		push_error("Scène extension introuvable : %s" % EXTENSION_SCENE_PATH)
+		return
+
 	var win := Window.new()
 	win.title = "Territoire — %s" % PanelRegistry.title_for(panel_id)
 	win.size = Vector2i(720, 560)
 	win.min_size = Vector2i(420, 320)
 	win.close_requested.connect(_on_extension_close_requested.bind(panel_id))
 
-	var content: ExtensionTerritory = EXTENSION_SCENE.instantiate()
-	content.configure(panel_id)
+	var content: Control = packed.instantiate()
+	if content.has_method("configure"):
+		content.configure(panel_id)
 	win.add_child(content)
 	get_tree().root.add_child(win)
 	TerritoryTheme.apply_to(content)

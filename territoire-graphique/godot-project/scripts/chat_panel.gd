@@ -6,7 +6,7 @@ extends DockPanel
 @onready var _reply: RichTextLabel = %ChatReply
 @onready var _send_btn: Button = %SendButton
 
-var _daemon: DaemonClient
+var _daemon: TerritoryDaemonClient
 var _pending_rid := ""
 
 
@@ -14,7 +14,7 @@ func _ready() -> void:
 	panel_id = "chat"
 	panel_title = "Chat"
 	super._ready()
-	_daemon = DaemonClient.resolve(self)
+	_daemon = TerritoryDaemonClient.resolve(self)
 	_send_btn.pressed.connect(_on_send)
 	_input.gui_input.connect(_on_input_gui)
 	if _daemon:

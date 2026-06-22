@@ -1,7 +1,7 @@
 extends Node3D
 ## Fenêtre principale — seule scène autorisée à héberger la Boule de Pixels.
 
-@onready var _daemon: DaemonClient = $DaemonClient
+@onready var _daemon: TerritoryDaemonClient = $DaemonClient
 
 
 func _ready() -> void:

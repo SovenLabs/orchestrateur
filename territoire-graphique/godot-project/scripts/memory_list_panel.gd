@@ -9,7 +9,7 @@ signal memory_selected(memory_id: String)
 @onready var _detail: RichTextLabel = %MemoryDetail
 @onready var _refresh_btn: Button = %RefreshButton
 
-var _daemon: DaemonClient
+var _daemon: TerritoryDaemonClient
 var _items: Array = []
 var _pending_list_rid := ""
 var _pending_detail_rid := ""
@@ -20,7 +20,7 @@ func _ready() -> void:
 	panel_id = "memory"
 	panel_title = "Mémoires"
 	super._ready()
-	_daemon = DaemonClient.resolve(self)
+	_daemon = TerritoryDaemonClient.resolve(self)
 	_list.item_selected.connect(_on_item_selected)
 	_refresh_btn.pressed.connect(_refresh_list)
 	_search.text_submitted.connect(_on_search)

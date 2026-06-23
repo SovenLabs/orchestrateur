@@ -9,6 +9,7 @@
 pub mod error;
 pub mod modules;
 pub mod ports;
+pub mod signals;
 pub mod types;
 pub mod version;
 
@@ -17,9 +18,14 @@ pub use modules::{
     analyze_b1, analyze_b1_5, analyze_b12, analyze_b2, analyze_b2_5, build_setup_analysis,
     run_all, MacroClimate, MarketRegime, ModuleContext, StructureBias,
 };
+pub use signals::{
+    evaluate_acceptance_expansion, evaluate_cascade_trigger, evaluate_false_migration,
+    evaluate_impulse_trigger, evaluate_leverage_trap, evaluate_value_migration, run_all_signals,
+    SignalContext,
+};
 pub use ports::MarketDataProvider;
 pub use types::{
     B212Lineage, B212SetupAnalysis, Bar, MarketScenario, ModuleId, ModuleOutput, OhlcvSeries,
-    ProposalStatus, SetupContext, Timeframe, TradeProposal,
+    ProposalStatus, SetupContext, SignalKind, SignalOutput, Timeframe, TradeProposal,
 };
 pub use version::B212_VERSION;

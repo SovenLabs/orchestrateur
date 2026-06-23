@@ -3,6 +3,7 @@ use serde_json::Value;
 
 use super::lineage::B212Lineage;
 use super::module_output::ModuleOutput;
+use super::signal::SignalOutput;
 use super::Timeframe;
 
 /// Contexte d'analyse d'un setup (entrée pipeline).
@@ -30,7 +31,7 @@ pub struct B212SetupAnalysis {
     pub modules: Vec<ModuleOutput>,
     /// Signaux avancés (PR-3).
     #[serde(default)]
-    pub signals: Vec<Value>,
+    pub signals: Vec<SignalOutput>,
     /// Bundle scoring (PR-4).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scores: Option<Value>,

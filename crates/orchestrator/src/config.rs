@@ -402,7 +402,7 @@ impl Default for AgentsConfig {
 }
 
 /// Configuration protocole B212 Phase 3 (TOML `[b212]`).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct B212Config {
     /// Active le protocole B212 (fixtures + pipeline).
     pub enabled: bool,
@@ -412,6 +412,12 @@ pub struct B212Config {
     pub journal_dir: String,
     /// Propositions trade HITL (`workspace/b212/proposals`).
     pub proposals_dir: String,
+    /// Fills paper (`workspace/b212/sim`).
+    pub sim_dir: String,
+    /// Publie les événements B212 via [`EventPublisher::publish_b212`].
+    pub events_enabled: bool,
+    /// Notionnel USD de base pour exécution paper (`normal` sizing).
+    pub sim_base_notional_usd: f64,
 }
 
 impl Default for B212Config {
@@ -421,6 +427,9 @@ impl Default for B212Config {
             fixtures_dir: "b212/fixtures".into(),
             journal_dir: "b212/journal".into(),
             proposals_dir: "b212/proposals".into(),
+            sim_dir: "b212/sim".into(),
+            events_enabled: false,
+            sim_base_notional_usd: 10_000.0,
         }
     }
 }
@@ -759,6 +768,12 @@ impl OrchestratorConfig {
         self.workspace_root.join(&self.b212.proposals_dir)
     }
 
+    /// Fills paper B212.
+    #[must_use]
+    pub fn b212_sim_dir(&self) -> PathBuf {
+        self.workspace_root.join(&self.b212.sim_dir)
+    }
+
     /// Bible B212 de référence (`workspace/b212/bible/`).
     #[must_use]
     pub fn b212_bible_dir(&self) -> PathBuf {
@@ -952,6 +967,19 @@ fn merge_b212(target: &mut B212Config, section: B212Section) {
     if let Some(v) = section.proposals_dir {
         if !v.trim().is_empty() {
             target.proposals_dir = v;
+        }
+    }
+    if let Some(v) = section.sim_dir {
+        if !v.trim().is_empty() {
+            target.sim_dir = v;
+        }
+    }
+    if let Some(v) = section.events_enabled {
+        target.events_enabled = v;
+    }
+    if let Some(v) = section.sim_base_notional_usd {
+        if v > 0.0 {
+            target.sim_base_notional_usd = v;
         }
     }
 }
@@ -1346,6 +1374,9 @@ struct B212Section {
     fixtures_dir: Option<String>,
     journal_dir: Option<String>,
     proposals_dir: Option<String>,
+    sim_dir: Option<String>,
+    events_enabled: Option<bool>,
+    sim_base_notional_usd: Option<f64>,
 }
 
 #[derive(Debug, Deserialize)]

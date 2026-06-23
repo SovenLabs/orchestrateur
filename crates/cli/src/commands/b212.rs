@@ -39,6 +39,11 @@ pub enum B212Commands {
         #[arg(long, default_value = "rejet opérateur")]
         reason: String,
     },
+    /// Exécute une proposition approuvée en simulation paper.
+    SimExecute {
+        /// Identifiant proposition.
+        id: String,
+    },
 }
 
 pub async fn run(cmd: B212Commands, workspace: &Path) -> Result<()> {
@@ -103,6 +108,10 @@ pub async fn run(cmd: B212Commands, workspace: &Path) -> Result<()> {
                 Command::B212RejectProposal { id, reason },
             )
             .await?;
+            println!("{resp}");
+        }
+        B212Commands::SimExecute { id } => {
+            let resp = run_bridge_command(&facade, Command::B212SimExecute { id }).await?;
             println!("{resp}");
         }
     }

@@ -1,9 +1,10 @@
 //! Handlers bridge pour les commandes B212.
 
-use b212::{ProposalStatus, TradeProposal};
+use b212::{ProposalStatus, SimFill, TradeProposal};
 
 use crate::bridge::{
-    AppError, B212AgentStepSummary, B212ProposalSummary, B212WorkflowSummary, Response,
+    AppError, B212AgentStepSummary, B212ProposalSummary, B212SimFillSummary, B212WorkflowSummary,
+    Response,
 };
 use crate::facade::OrchestratorFacade;
 
@@ -71,6 +72,17 @@ pub async fn execute_b212_reject_proposal(
     }
 }
 
+/// Exécute une proposition approuvée en simulation paper.
+pub async fn execute_b212_sim_execute(facade: &OrchestratorFacade, id: &str) -> Response {
+    match facade.b212_sim_execute(id).await {
+        Ok((proposal, fill)) => Response::B212SimExecuted {
+            proposal: proposal_summary(&proposal),
+            fill: fill_summary(&fill),
+        },
+        Err(err) => b212_error(err),
+    }
+}
+
 fn workflow_summary(result: &B212WorkflowResult) -> B212WorkflowSummary {
     let scores = result.analysis.scores.as_ref();
     let cardinal_passed = result
@@ -98,6 +110,19 @@ fn workflow_summary(result: &B212WorkflowResult) -> B212WorkflowSummary {
                 summary: s.summary.clone(),
             })
             .collect(),
+    }
+}
+
+fn fill_summary(fill: &SimFill) -> B212SimFillSummary {
+    B212SimFillSummary {
+        id: fill.id.clone(),
+        proposal_id: fill.proposal_id.clone(),
+        symbol: fill.symbol.clone(),
+        side: fill.side.clone(),
+        entry_price: fill.entry_price,
+        quantity: fill.quantity,
+        notional_usd: fill.notional_usd,
+        realized_pnl_usd: fill.realized_pnl_usd,
     }
 }
 

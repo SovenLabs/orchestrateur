@@ -163,6 +163,11 @@ pub enum Command {
         /// Motif de rejet.
         reason: String,
     },
+    /// Exécute une proposition approuvée en simulation paper.
+    B212SimExecute {
+        /// Identifiant proposition.
+        id: String,
+    },
 }
 
 fn default_b212_session() -> String {

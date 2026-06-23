@@ -11,8 +11,10 @@ use tracing::warn;
 use reqwest::Client;
 use thiserror::Error;
 
-use b212::{B212Journal, MarketDataProvider, ProposalRepository};
-use crate::b212::{FileB212Journal, FileProposalRepository, FixtureMarketDataProvider};
+use b212::{B212Journal, MarketDataProvider, ProposalRepository, SimTradeRepository};
+use crate::b212::{
+    FileB212Journal, FileProposalRepository, FileSimTradeRepository, FixtureMarketDataProvider,
+};
 use crate::embedding::{build_embedding_provider, EmbeddingFactoryError};
 use crate::llm::{build_llm_provider, LlmFactoryError};
 use crate::draft_repository::FileDraftRepository;
@@ -94,7 +96,7 @@ pub async fn build_app_dependencies(
     let draft_repo: Arc<dyn orchestrator::draft::DraftRepository> =
         Arc::new(FileDraftRepository::new(config.drafts_dir()));
 
-    let (market_data, b212_journal, b212_proposals) = if config.b212.enabled {
+    let (market_data, b212_journal, b212_proposals, b212_sim_trades) = if config.b212.enabled {
         let fixtures_dir = config.b212_fixtures_dir();
         std::fs::create_dir_all(&fixtures_dir).map_err(|e| {
             WiringError::VectorStore(VectorStoreFactoryError::Build(format!(
@@ -112,6 +114,11 @@ pub async fn build_app_dependencies(
                 "b212 proposals: {e}"
             )))
         })?;
+        std::fs::create_dir_all(config.b212_sim_dir()).map_err(|e| {
+            WiringError::VectorStore(VectorStoreFactoryError::Build(format!(
+                "b212 sim: {e}"
+            )))
+        })?;
         (
             Some(Arc::new(FixtureMarketDataProvider::new(fixtures_dir))
                 as Arc<dyn MarketDataProvider>),
@@ -123,9 +130,13 @@ pub async fn build_app_dependencies(
                 Arc::new(FileProposalRepository::new(config.b212_proposals_dir()))
                     as Arc<dyn ProposalRepository>,
             ),
+            Some(
+                Arc::new(FileSimTradeRepository::new(config.b212_sim_dir()))
+                    as Arc<dyn SimTradeRepository>,
+            ),
         )
     } else {
-        (None, None, None)
+        (None, None, None, None)
     };
 
     Ok(AppDependencies::new(
@@ -141,5 +152,6 @@ pub async fn build_app_dependencies(
         market_data,
         b212_journal,
         b212_proposals,
+        b212_sim_trades,
     ))
 }

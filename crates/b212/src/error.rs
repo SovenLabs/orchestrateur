@@ -41,4 +41,10 @@ pub enum B212Error {
     /// Erreur journal ou persistance.
     #[error("journal: {0}")]
     Journal(String),
+    /// Fill paper introuvable.
+    #[error("sim fill not found: {0}")]
+    SimFillNotFound(String),
+    /// Erreur exécution simulation paper.
+    #[error("sim execution: {0}")]
+    SimExecution(String),
 }

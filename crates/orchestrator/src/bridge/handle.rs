@@ -1,6 +1,8 @@
 use cortex::DomainEvent;
 use flume::{Receiver, Sender};
 
+use crate::events::B212Event;
+
 use super::command::Command;
 use super::error::BridgeError;
 use super::events::FanoutEventPublisher;
@@ -26,6 +28,9 @@ pub trait OrchestratorHandle: Send + Sync + Clone {
 
     /// Ouvre un abonnement aux événements de domaine (fan-out).
     fn subscribe_events(&self) -> Receiver<DomainEvent>;
+
+    /// Ouvre un abonnement aux événements B212 (fan-out).
+    fn subscribe_b212_events(&self) -> Receiver<B212Event>;
 }
 
 /// Handle local basé sur des canaux `flume` — utilisé par les clients bridge embarqués.
@@ -69,5 +74,9 @@ impl OrchestratorHandle for ChannelHandle {
 
     fn subscribe_events(&self) -> Receiver<DomainEvent> {
         self.events.subscribe()
+    }
+
+    fn subscribe_b212_events(&self) -> Receiver<B212Event> {
+        self.events.subscribe_b212()
     }
 }

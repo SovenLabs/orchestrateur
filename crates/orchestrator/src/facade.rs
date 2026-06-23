@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use crate::b212::{
     ensure_b212_agents, relay_workflow_steps, wake_b212_agents_for_workflow, B212AnalyzeRequest,
-    B212GovernanceService, B212WorkflowResult, B212WorkflowService,
+    B212GovernanceService, B212SimExecutorService, B212WorkflowResult, B212WorkflowService,
 };
 use crate::bridge::DraftSummary;
 use crate::draft::{DraftError, DraftStatus, StoredDraft};
@@ -305,6 +305,15 @@ impl OrchestratorFacade {
         gov.reject(id, reason).await
     }
 
+    /// Exécute une proposition approuvée en simulation paper (fill + PnL).
+    pub async fn b212_sim_execute(
+        &self,
+        id: &str,
+    ) -> Result<(b212::TradeProposal, b212::SimFill), b212::B212Error> {
+        let service = self.b212_sim_executor()?;
+        service.execute(id).await
+    }
+
     fn b212_governance(&self) -> Result<B212GovernanceService, b212::B212Error> {
         let journal = self
             .deps
@@ -316,7 +325,35 @@ impl OrchestratorFacade {
             .b212_proposals
             .clone()
             .ok_or_else(|| b212::B212Error::Config("proposals B212 absent".into()))?;
-        Ok(B212GovernanceService::new(journal, proposals))
+        if self.deps.config.b212.events_enabled {
+            Ok(B212GovernanceService::with_events(
+                journal,
+                proposals,
+                self.deps.events.clone(),
+                true,
+            ))
+        } else {
+            Ok(B212GovernanceService::new(journal, proposals))
+        }
+    }
+
+    fn b212_sim_executor(&self) -> Result<B212SimExecutorService, b212::B212Error> {
+        let market_data = self
+            .deps
+            .market_data
+            .clone()
+            .ok_or_else(|| b212::B212Error::Config("market_data B212 absent".into()))?;
+        let sim_trades = self
+            .deps
+            .b212_sim_trades
+            .clone()
+            .ok_or_else(|| b212::B212Error::Config("sim_trades B212 absent".into()))?;
+        Ok(B212SimExecutorService::new(
+            self.b212_governance()?,
+            market_data,
+            sim_trades,
+            self.deps.config.b212.sim_base_notional_usd,
+        ))
     }
 
     /// Tour agent pour un agent persistant (Phase 2b) — personality + session `agent-{id}`.

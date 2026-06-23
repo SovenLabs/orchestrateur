@@ -210,6 +210,9 @@ pub async fn execute_command(facade: &OrchestratorFacade, cmd: Command) -> Respo
         Command::B212RejectProposal { id, reason } => {
             crate::b212::execute_b212_reject_proposal(facade, &id, &reason).await
         }
+        Command::B212SimExecute { id } => {
+            crate::b212::execute_b212_sim_execute(facade, &id).await
+        }
     }
 }
 

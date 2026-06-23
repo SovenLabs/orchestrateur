@@ -229,6 +229,27 @@ pub struct AgentSummary {
     pub last_heartbeat: Option<String>,
 }
 
+/// Résumé fill paper B212 (bridge).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct B212SimFillSummary {
+    /// Identifiant fill.
+    pub id: String,
+    /// Proposition source.
+    pub proposal_id: String,
+    /// Symbole.
+    pub symbol: String,
+    /// Direction.
+    pub side: String,
+    /// Prix d'entrée.
+    pub entry_price: f64,
+    /// Quantité.
+    pub quantity: f64,
+    /// Notionnel USD.
+    pub notional_usd: f64,
+    /// PnL réalisé USD.
+    pub realized_pnl_usd: f64,
+}
+
 /// Résumé proposition trade B212 (bridge).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct B212ProposalSummary {

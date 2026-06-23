@@ -7,6 +7,7 @@
 #![warn(missing_docs, rust_2018_idioms)]
 
 pub mod error;
+pub mod execution;
 pub mod journal;
 pub mod modules;
 pub mod ports;
@@ -40,11 +41,12 @@ pub use signals::{
     evaluate_impulse_trigger, evaluate_leverage_trap, evaluate_value_migration, run_all_signals,
     SignalContext,
 };
-pub use ports::{B212Journal, MarketDataProvider, ProposalRepository};
+pub use execution::{execute_paper_fill, notional_for_sizing};
+pub use ports::{B212Journal, MarketDataProvider, ProposalRepository, SimTradeRepository};
 pub use types::{
     AlignmentScore, B212Lineage, B212SetupAnalysis, Bar, CardinalRuleId, CardinalRulesResult,
     CardinalViolation, JournalEntry, JournalEventKind, MarketScenario, ModuleId, ModuleOutput,
     OhlcvSeries, ProposalStatus, QuickCheckBlock, QuickCheckItem, QuickCheckResult, ScoreBundle,
-    SetupContext, SignalKind, SignalOutput, Timeframe, TradeLocationScore, TradeProposal,
+    SetupContext, SignalKind, SignalOutput, SimFill, Timeframe, TradeLocationScore, TradeProposal,
 };
 pub use version::B212_VERSION;

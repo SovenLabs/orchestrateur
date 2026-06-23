@@ -5,7 +5,8 @@ use crate::draft::StoredDraft;
 use crate::security::AuditEvent;
 
 use super::types::{
-    AgentMessageSummary, AgentSummary, AppError, B212ProposalSummary, B212WorkflowSummary,
+    AgentMessageSummary, AgentSummary, AppError, B212ProposalSummary, B212SimFillSummary,
+    B212WorkflowSummary,
     BridgeSearchHit, DraftSummary, HubIntegritySummary, HubSummary, MarketplaceEntrySummary,
     MemorySummary, SkillSummary, WatcherStatus,
 };
@@ -198,4 +199,13 @@ pub enum Response {
         /// Proposition.
         proposal: B212ProposalSummary,
     },
+    /// Fill paper B212 exécuté.
+    B212SimExecuted {
+        /// Proposition mise à jour.
+        proposal: B212ProposalSummary,
+        /// Fill simulé.
+        fill: B212SimFillSummary,
+    },
+    /// Événement B212 poussé sur le bus (optionnel).
+    B212Event(crate::events::B212Event),
 }

@@ -97,7 +97,18 @@ impl B212WorkflowService {
     #[must_use]
     pub fn governance(&self) -> Option<B212GovernanceService> {
         match (&self.deps.b212_journal, &self.deps.b212_proposals) {
-            (Some(j), Some(p)) => Some(B212GovernanceService::new(j.clone(), p.clone())),
+            (Some(j), Some(p)) => {
+                if self.deps.config.b212.events_enabled {
+                    Some(B212GovernanceService::with_events(
+                        j.clone(),
+                        p.clone(),
+                        self.deps.events.clone(),
+                        true,
+                    ))
+                } else {
+                    Some(B212GovernanceService::new(j.clone(), p.clone()))
+                }
+            }
             _ => None,
         }
     }

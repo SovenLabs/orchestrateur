@@ -9,6 +9,7 @@ mod proposal;
 mod score;
 mod setup;
 mod signal;
+mod sim;
 
 pub use cardinal::{CardinalRuleId, CardinalRulesResult, CardinalViolation};
 pub use journal::{JournalEntry, JournalEventKind};
@@ -22,3 +23,4 @@ pub use score::{
 };
 pub use setup::{B212SetupAnalysis, SetupContext};
 pub use signal::{SignalKind, SignalOutput};
+pub use sim::SimFill;

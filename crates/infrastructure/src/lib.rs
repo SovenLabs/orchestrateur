@@ -21,7 +21,9 @@ mod providers;
 mod vector_store;
 mod wiring;
 
-pub use b212::{FileB212Journal, FileProposalRepository, FixtureMarketDataProvider};
+pub use b212::{
+    FileB212Journal, FileProposalRepository, FileSimTradeRepository, FixtureMarketDataProvider,
+};
 pub use bootstrap::{bootstrap_workspace, BootstrapError, MEMORY_MODE_HINT};
 pub use embedding::{
     build_embedding_provider, ChainedEmbeddingProvider, EmbeddingFactoryError,

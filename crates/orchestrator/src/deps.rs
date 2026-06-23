@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use b212::{B212Journal, MarketDataProvider, ProposalRepository};
+use b212::{B212Journal, MarketDataProvider, ProposalRepository, SimTradeRepository};
 use cortex::{EmbeddingProvider, MemoryRepository, SessionRepository, VectorStore};
 
 use crate::config::OrchestratorConfig;
@@ -39,6 +39,8 @@ pub struct AppDependencies {
     pub b212_journal: Option<Arc<dyn B212Journal>>,
     /// Propositions trade HITL B212.
     pub b212_proposals: Option<Arc<dyn ProposalRepository>>,
+    /// Fills paper B212.
+    pub b212_sim_trades: Option<Arc<dyn SimTradeRepository>>,
 }
 
 impl AppDependencies {
@@ -57,6 +59,7 @@ impl AppDependencies {
         market_data: Option<Arc<dyn MarketDataProvider>>,
         b212_journal: Option<Arc<dyn B212Journal>>,
         b212_proposals: Option<Arc<dyn ProposalRepository>>,
+        b212_sim_trades: Option<Arc<dyn SimTradeRepository>>,
     ) -> Self {
         Self::with_events(
             memory_repo,
@@ -72,6 +75,7 @@ impl AppDependencies {
             market_data,
             b212_journal,
             b212_proposals,
+            b212_sim_trades,
         )
     }
 
@@ -91,6 +95,7 @@ impl AppDependencies {
         market_data: Option<Arc<dyn MarketDataProvider>>,
         b212_journal: Option<Arc<dyn B212Journal>>,
         b212_proposals: Option<Arc<dyn ProposalRepository>>,
+        b212_sim_trades: Option<Arc<dyn SimTradeRepository>>,
     ) -> Self {
         Self {
             memory_repo,
@@ -106,6 +111,7 @@ impl AppDependencies {
             market_data,
             b212_journal,
             b212_proposals,
+            b212_sim_trades,
         }
     }
 
@@ -132,6 +138,7 @@ impl AppDependencies {
             config,
             events,
             security,
+            None,
             None,
             None,
             None,

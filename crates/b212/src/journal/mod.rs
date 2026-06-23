@@ -4,7 +4,7 @@ use chrono::Utc;
 use serde_json::json;
 
 use crate::types::{
-    B212Lineage, B212SetupAnalysis, CardinalRulesResult, JournalEntry, JournalEventKind,
+    B212Lineage, B212SetupAnalysis, CardinalRulesResult, JournalEntry, JournalEventKind, SimFill,
     TradeProposal,
 };
 
@@ -87,8 +87,18 @@ pub fn entry_proposal_rejected(proposal: &TradeProposal) -> JournalEntry {
 
 /// Entrée pour exécution simulation paper.
 #[must_use]
-pub fn entry_proposal_sim_executed(proposal: &TradeProposal) -> JournalEntry {
-    journal_proposal_event(proposal, JournalEventKind::ProposalSimExecuted, json!({}))
+pub fn entry_proposal_sim_executed(proposal: &TradeProposal, fill: Option<&SimFill>) -> JournalEntry {
+    let details = match fill {
+        Some(f) => json!({
+            "fill_id": f.id,
+            "entry_price": f.entry_price,
+            "quantity": f.quantity,
+            "notional_usd": f.notional_usd,
+            "realized_pnl_usd": f.realized_pnl_usd,
+        }),
+        None => json!({}),
+    };
+    journal_proposal_event(proposal, JournalEventKind::ProposalSimExecuted, details)
 }
 
 fn journal_proposal_event(

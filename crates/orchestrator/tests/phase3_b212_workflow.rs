@@ -7,7 +7,9 @@ use std::sync::Arc;
 
 use b212::{MarketDataProvider, Timeframe};
 use cortex::{EmbeddingProvider, MemoryRepository, SessionRepository, VectorStore};
-use infrastructure::{FileB212Journal, FileProposalRepository, FixtureMarketDataProvider};
+use infrastructure::{
+    FileB212Journal, FileProposalRepository, FileSimTradeRepository, FixtureMarketDataProvider,
+};
 use orchestrator::testing::{
     InMemoryDraftRepository, InMemoryEmbeddingProvider, InMemoryLlmProvider, InMemoryVectorStore,
 };
@@ -63,6 +65,8 @@ async fn build_phase3_deps(workspace: &std::path::Path) -> orchestrator::AppDepe
     let journal: Arc<dyn b212::B212Journal> = Arc::new(FileB212Journal::new(cfg.b212_journal_dir()));
     let proposals: Arc<dyn b212::ProposalRepository> =
         Arc::new(FileProposalRepository::new(cfg.b212_proposals_dir()));
+    let sim_trades: Arc<dyn b212::SimTradeRepository> =
+        Arc::new(FileSimTradeRepository::new(cfg.b212_sim_dir()));
 
     std::fs::create_dir_all(cfg.agents_dir()).unwrap();
     std::fs::create_dir_all(workspace.join(".orchestrateur")).unwrap();
@@ -81,6 +85,7 @@ async fn build_phase3_deps(workspace: &std::path::Path) -> orchestrator::AppDepe
         Some(market_data),
         Some(journal),
         Some(proposals),
+        Some(sim_trades),
     )
 }
 

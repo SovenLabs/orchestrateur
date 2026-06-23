@@ -1,6 +1,6 @@
 //! Registre d'outils agent Phase 7.
 
-mod hermes;
+mod extended;
 mod mcp_call;
 mod mcp_list;
 mod memory_assimilate;

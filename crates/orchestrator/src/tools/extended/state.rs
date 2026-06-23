@@ -1,4 +1,4 @@
-//! `todo` et `memory` — état agent persistant (port Hermess).
+//! `todo` et `memory` — état agent persistant.
 
 use std::path::PathBuf;
 use std::sync::Arc;

@@ -1,4 +1,4 @@
-//! `read_file`, `write_file`, `patch`, `search_files` — port Hermess file_tools.
+//! `read_file`, `write_file`, `patch`, `search_files`.
 
 use std::path::Path;
 use std::process::Command;

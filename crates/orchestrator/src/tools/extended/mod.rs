@@ -1,4 +1,4 @@
-//! Outils agent portés depuis Hermess — compatibilité schémas et comportements.
+//! Outils agent étendus — fichiers, skills, sessions, shell, orchestration.
 
 mod external;
 mod files;
@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use super::registry::ToolRegistry;
 
-/// Enregistre tous les outils Hermess dans le registre.
+/// Enregistre les outils étendus dans le registre.
 pub fn register_all(registry: &mut ToolRegistry) {
     files::register(registry);
     skills::register(registry);

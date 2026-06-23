@@ -1,4 +1,4 @@
-//! Barre de progression style Hermes (terminal).
+//! Barre de progression terminal.
 
 use std::io::{self, Write};
 use std::thread;
@@ -68,7 +68,7 @@ impl ProgressSession {
     }
 }
 
-/// Affiche une carte d'intro type Hermes (texte centré visuellement).
+/// Affiche une carte d'intro (texte centré visuellement).
 pub fn print_setup_card(headline: &str, subtitle: &str) {
     let line = "─".repeat(54);
     println!();

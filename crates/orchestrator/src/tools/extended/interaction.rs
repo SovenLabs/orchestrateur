@@ -1,4 +1,4 @@
-//! `clarify` — port Hermess (question structurée à l'utilisateur).
+//! `clarify` — question structurée à l'utilisateur.
 
 use async_trait::async_trait;
 use serde_json::{json, Value};

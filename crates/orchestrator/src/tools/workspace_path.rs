@@ -1,4 +1,4 @@
-//! Résolution de chemins relatifs au workspace (garde-fous Hermess).
+//! Résolution de chemins relatifs au workspace (garde-fous traversal).
 
 use std::path::{Component, Path, PathBuf};
 

@@ -1,4 +1,4 @@
-//! Outils externes Hermess — web, browser, multimédia (stubs configurables).
+//! Outils externes — web, browser, multimédia (stubs configurables).
 
 use std::sync::Arc;
 
@@ -50,47 +50,47 @@ macro_rules! stub_tool {
 stub_tool!(
     WebSearchTool,
     "web_search",
-    "Recherche web (provider externe requis — plugins Hermess tavily/brave/searxng).",
+    "Recherche web (provider externe requis).",
     r#"{"type":"object","properties":{"query":{"type":"string"},"limit":{"type":"integer"}},"required":["query"]}"#,
-    "Installer une skill P6 subprocess ou configurer un provider web (voir Hermess plugins/web/)."
+    "Configurer un provider web ou une skill P6 subprocess."
 );
 
 stub_tool!(
     BrowserNavigateTool,
     "browser_navigate",
-    "Navigation navigateur avec snapshot accessibilité (provider browser requis).",
+    "Navigation navigateur avec snapshot accessibilité (provider requis).",
     r#"{"type":"object","properties":{"url":{"type":"string"}},"required":["url"]}"#,
-    "Brancher agent-browser ou Browserbase (voir Hermess tools/browser_tool.py)."
+    "Brancher un client navigateur headless (CDP ou service distant)."
 );
 
 stub_tool!(
     OpenPageTool,
     "open_page",
-    "Alias Hermess — ouvre et lit une page (utiliser browser_navigate ou web_extract).",
+    "Ouvre et lit une page web (préférer browser_navigate ou web_extract).",
     r#"{"type":"object","properties":{"url":{"type":"string"}},"required":["url"]}"#,
-    "Équivalent open_page → browser_navigate dans Hermess."
+    "Alias de browser_navigate pour compatibilité schéma outil."
 );
 
 stub_tool!(
     ImageGenerateTool,
     "image_generate",
-    "Génération d'images text-to-image (FAL / gateway requis).",
+    "Génération d'images text-to-image (provider requis).",
     r#"{"type":"object","properties":{"prompt":{"type":"string"},"aspect_ratio":{"type":"string"}},"required":["prompt"]}"#,
-    "Configurer plugins/image_gen (Hermess) ou skill subprocess locale."
+    "Configurer un provider image ou skill subprocess locale."
 );
 
 stub_tool!(
     TextToSpeechTool,
     "text_to_speech",
-    "Synthèse vocale (Edge TTS, ElevenLabs, OpenAI, …).",
+    "Synthèse vocale (provider TTS requis).",
     r#"{"type":"object","properties":{"text":{"type":"string"},"output_path":{"type":"string"}},"required":["text"]}"#,
-    "Configurer agent/tts_registry (Hermess) ou provider TTS local."
+    "Configurer un provider TTS local ou distant."
 );
 
 stub_tool!(
     VisionAnalyzeTool,
     "vision_analyze",
-    "Analyse d'image via modèle vision (auxiliary client requis).",
+    "Analyse d'image via modèle vision.",
     r#"{"type":"object","properties":{"image_url":{"type":"string"},"question":{"type":"string"}},"required":["image_url"]}"#,
-    "Utiliser un LLM multimodal primaire ou auxiliary vision (Hermess vision_tools.py)."
+    "Utiliser un LLM multimodal primaire ou un provider vision dédié."
 );

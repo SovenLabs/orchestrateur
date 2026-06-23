@@ -1,4 +1,4 @@
-//! Configuration guidée des canaux messaging (style Hermes).
+//! Configuration guidée des canaux messaging.
 
 use std::path::Path;
 

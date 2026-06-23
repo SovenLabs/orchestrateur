@@ -1,4 +1,4 @@
-//! `terminal` et `execute_code` — port Hermess.
+//! `terminal` et `execute_code`.
 
 use std::process::Stdio;
 use std::sync::Arc;

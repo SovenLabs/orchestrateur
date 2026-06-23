@@ -25,7 +25,7 @@ pub const CAPABILITY_PROFILE_DESCRIPTORS: &[CapabilityProfileDescriptor] = &[
     },
     CapabilityProfileDescriptor {
         id: "agent",
-        display_name: "Agent standard (Cortex + Hermess core)",
+        display_name: "Agent standard",
         tools: &[
             "memory_search",
             "memory_get",
@@ -60,42 +60,6 @@ pub const CAPABILITY_PROFILE_DESCRIPTORS: &[CapabilityProfileDescriptor] = &[
         id: "ingest",
         display_name: "Assimilation",
         tools: &["memory_assimilate", "memory_search"],
-    },
-    CapabilityProfileDescriptor {
-        id: "hermes",
-        display_name: "Hermess complet (fichiers, shell, web stubs, …)",
-        tools: &[
-            "memory_search",
-            "memory_get",
-            "memory_assimilate",
-            "memory_file_context",
-            "mcp_list_tools",
-            "mcp_call",
-            "skill_list",
-            "skill_execute",
-            "skill_suggest",
-            "skills_list",
-            "skill_view",
-            "skill_manage",
-            "session_search",
-            "todo",
-            "memory",
-            "read_file",
-            "write_file",
-            "patch",
-            "search_files",
-            "terminal",
-            "execute_code",
-            "clarify",
-            "delegate_task",
-            "cronjob",
-            "web_search",
-            "browser_navigate",
-            "open_page",
-            "image_generate",
-            "text_to_speech",
-            "vision_analyze",
-        ],
     },
     CapabilityProfileDescriptor {
         id: "full",
@@ -145,8 +109,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn catalog_has_eight_capability_profiles() {
-        assert_eq!(CapabilityProfileRegistry::new().descriptors().len(), 8);
+    fn catalog_has_seven_capability_profiles() {
+        assert_eq!(CapabilityProfileRegistry::new().descriptors().len(), 7);
     }
 
     #[test]

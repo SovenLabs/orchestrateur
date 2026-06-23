@@ -1,4 +1,4 @@
-//! `delegate_task` et `cronjob` — port Hermess (orchestration).
+//! `delegate_task` et `cronjob`.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -138,7 +138,7 @@ impl Tool for CronjobTool {
                 content: json_result(&json!({
                     "status": "not_implemented",
                     "action": action,
-                    "hint": "Brancher sur le scheduler daemon (équivalent hermes cron tick).",
+                    "hint": "Brancher sur le scheduler daemon (tick cron).",
                 })),
             }),
             other => Err(ToolError::InvalidArguments {

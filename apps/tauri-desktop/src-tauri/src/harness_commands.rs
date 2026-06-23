@@ -1,4 +1,4 @@
-//! Commandes Tauri harness — onboard, canaux, sondes (style Hermes).
+//! Commandes Tauri harness — onboard, canaux, sondes.
 
 use std::path::{Path, PathBuf};
 use std::process::Command as OsCommand;

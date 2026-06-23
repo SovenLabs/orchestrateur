@@ -649,7 +649,7 @@ html.reduce-motion .drawer-slide-right {
   background: linear-gradient(180deg, transparent 0%, var(--void) 45%, var(--void) 100%);
 }
 
-/* Harness setup & messaging (style Hermes) */
+/* Harness setup & messaging */
 .harness-scrim {
   position: fixed;
   inset: 0;

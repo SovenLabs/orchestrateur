@@ -1,4 +1,4 @@
-//! `skills_list`, `skill_view`, `skill_manage` — port Hermess skills_tool + skill_manager.
+//! `skills_list`, `skill_view`, `skill_manage`.
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

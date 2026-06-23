@@ -42,7 +42,7 @@ pub fn format_menu_line(label: &str, hint: &str, badge: Option<&str>) -> String 
     line
 }
 
-/// Badges d'état (style Hermes : `[actif]`, `[needs setup]`).
+/// Badges d'état (`[actif]`, `[needs setup]`).
 pub fn print_status_chips(entries: &[(&str, &str)]) {
     if entries.is_empty() {
         return;

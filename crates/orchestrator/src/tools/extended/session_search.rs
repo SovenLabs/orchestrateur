@@ -1,4 +1,4 @@
-//! `session_search` — port Hermess (discovery / scroll / browse).
+//! `session_search` — discovery / scroll / browse.
 
 use async_trait::async_trait;
 use cortex::TurnRole;

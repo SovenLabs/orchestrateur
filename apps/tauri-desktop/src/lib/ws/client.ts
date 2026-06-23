@@ -157,6 +157,7 @@ export class DaemonWebSocketClient {
         window_id: "tauri-main",
         panels: ["dashboard", "memory", "chat", "agents", "monitoring"],
         subscriptions: ["activity", "memories", "brain_pulse", "chat", "visual"],
+        harness: { can_write_cortex: true, can_run_skills: true },
       },
     });
   }

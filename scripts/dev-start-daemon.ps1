@@ -3,10 +3,11 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
-$env:Path = "$env:USERPROFILE\.cargo\bin;" + $env:Path
+. (Join-Path $PSScriptRoot "lib\cli.ps1")
+Initialize-OrchestrateurBuildEnv
 $env:ORCHESTRATEUR_DAEMON_TOKEN = "dev"
 
-$exe = Join-Path $Root "target\release\orchestrateur.exe"
+$exe = Get-OrchestrateurCliExe -Root $Root -Profile release
 if (-not (Test-Path $exe)) {
     Write-Host "Binaire absent — lancement du build (1ère fois)..."
     & (Join-Path $PSScriptRoot "dev-bootstrap.ps1")

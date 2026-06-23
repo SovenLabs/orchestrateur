@@ -1,3 +1,5 @@
+//! Protocole JSON typé client ↔ gateway (messages, streaming).
+
 use serde::{Deserialize, Serialize};
 
 /// Message client → gateway (WebSocket JSON).

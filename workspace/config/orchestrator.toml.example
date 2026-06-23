@@ -29,8 +29,9 @@ type = "lancedb"
 path = ".orchestrateur/lancedb"
 embedding_dimension = 768
 
-# Défense en profondeur — profils : default | ai_assisted | strict | expert
+# Défense en profondeur — profils : default | ai_assisted | strict | expert | local_only
 # Pour travailler intensivement avec l'IA : profile = "ai_assisted"
+# Zéro egress cloud (LLM/embeddings locaux + scan secrets) : profile = "local_only"
 [security]
 profile = "ai_assisted"
 enabled = true
@@ -39,6 +40,9 @@ max_title_length = 512
 max_tags = 32
 max_backlinks = 20
 detect_injection_patterns = true
+# Surcharges egress (prioritaires sur le profil si définies) :
+# block_cloud_llm = true
+# scan_secrets_before_llm = true
 
 # Surcharges optionnelles (prioritaires sur le profil) :
 # [security.behavioral]
@@ -127,6 +131,18 @@ skill_auto_suggest = true
 # Phase 14 — auto-exécution skill si score suggestion ≥ seuil
 skill_auto_execute = false
 skill_auto_execute_threshold = 10
+# v1.2 — prétraitement bidirectionnel (expand court / compress long)
+message_preprocess = true
+enrichment_min_chars = 40
+compression_max_chars = 8000
+compression_max_attachment_mb = 2
+compression_preserve_entities = true
+
+# Watcher session — génère des drafts depuis les fichiers Markdown surveillés
+[watcher]
+enabled = true
+debounce_secs = 8
+watch_dirs = [".orchestrateur/sessions"]
 
 # Canaux additionnels Phase 10 (stubs — polling HTTP Phase 14)
 # orchestrateur channels list

@@ -2,7 +2,7 @@
 
 **Version Cargo workspace : 0.28.0** · **Protocole WS : 1.2.0** · **Rust 1.80+** · **Juin 2026**
 
-> Architecture : [`docs/architecture.md`](docs/architecture.md) · Protocole : [`docs/protocol-ws.md`](docs/protocol-ws.md)
+> Hiérarchie : [`docs/project-hierarchy.md`](docs/project-hierarchy.md) · Architecture : [`docs/architecture.md`](docs/architecture.md) · Protocole : [`docs/protocol-ws.md`](docs/protocol-ws.md) · Harness : [`docs/harness-integral.md`](docs/harness-integral.md)
 
 ---
 
@@ -46,7 +46,7 @@ Le **cerveau et l’IA sont fusionnés** : l’agent n’est pas un chatbot auto
 |----------------|--------|
 | **Kinds** | Chaque mémoire porte un type sémantique (`decision`, `dead_end`, `pattern`, `context`, `progress`, `business`) — frontmatter Markdown + couleurs UI |
 | **Drafts** | File de revue : brouillons générés (watcher ou agent) → publier / rejeter via daemon WS (`draft_created`, `draft_published`, `draft_discarded`) |
-| **Watcher** | `[watcher] enabled = true` — surveille session/git, produit des drafts LLM ; CLI `watcher status` / `draft publish` |
+| **Watcher** | `[watcher] enabled = true` — surveille session/git, produit des drafts LLM ; CLI `orchestrateur watcher status` / `draft publish` |
 | **Message preprocess** | `[agent] message_preprocess = true` — messages courts/vagues enrichis via graphe + recherche proactive avant le LLM ; événements `MessageExpanded` / `MessageCompressed` |
 
 Desktop Tauri **1.2.0** : onglet Drafts, badges kind cosmiques, contrôle watcher dans le drawer `]`.
@@ -55,38 +55,40 @@ Desktop Tauri **1.2.0** : onglet Drafts, badges kind cosmiques, contrôle watche
 
 ## 3. Architecture du dépôt
 
+Carte spatiale et priorités P0–P6 : **[`docs/project-hierarchy.md`](docs/project-hierarchy.md)**.
+
 ```
-Orchestre/
+orchestrateur/
 ├── crates/
-│   ├── shared-types/     # Types partagés + export TypeScript
-│   ├── orchestrator-core/# Placeholder extraction Cortex/AgentLoop
-│   ├── cortex/           # Domaine + ports (MemoryRepository, VectorStore, EmbeddingProvider)
-│   ├── orchestrator/     # Application (facade, bridge, daemon WS, gateway, watcher, drafts)
-│   ├── infrastructure/   # Adapters (LanceDB, Ollama, xAI, filesystem)
-│   ├── cli/              # Binaire orchestrateur.exe (CLI + daemon)
-│   └── client/           # Client bridge embarqué
+│   ├── shared-types/     # Protocole WS + export TypeScript
+│   ├── orchestrator-core/# Placeholder (fusion prévue avant gel noyau)
+│   ├── cortex/           # P0 — domaine + ports
+│   ├── orchestrator/     # P2/P3 — facade, agent, daemon, gateway
+│   ├── infrastructure/   # P1 — LanceDB, Ollama, xAI, filesystem
+│   ├── mcp/              # P4 — transport MCP stdio
+│   ├── cli/              # P4 — harness CLI (cible : orch.exe seul)
+│   └── client/           # Bridge embarqué
 ├── apps/
-│   └── tauri-desktop/    # Desktop Tauri 2 + Svelte 5
-├── territoire-graphique/ # Client Godot 4
-├── workspace/            # Données utilisateur (hors code source)
-│   ├── config/
-│   ├── memories/
-│   ├── logs/
-│   └── .orchestrateur/   # LanceDB (généré au runtime)
-├── docs/
-│   ├── architecture.md
-│   └── protocol-ws.md
+│   └── tauri-desktop/    # P5 — client WS (cible : apps/desktop-tauri)
+├── territoire-graphique/ # P5 — client Godot (cible : apps/godot-territoire)
+├── plugins/              # P6 — skills natives
+├── workspace/            # Données utilisateur dev (≠ Cargo workspace)
+├── scripts/              # install.ps1, release
 └── Cargo.toml            # Workspace Rust
 ```
 
-| Crate | Responsabilité |
-|-------|----------------|
-| `cortex` | Entités, value objects, ports, services purs — zéro dépendance infra |
-| `orchestrator` | Use cases, facade, bridge, daemon WS (`websocket-server`) |
-| `infrastructure` | Implémentations concrètes des ports |
-| `apps/tauri-desktop` | Interface desktop — client WS du daemon |
+| Crate | Priorité | Responsabilité |
+|-------|----------|----------------|
+| `cortex` | P0 | Entités, ports, services purs |
+| `infrastructure` | P1 | Adapters mémoire / LLM |
+| `orchestrator` | P2–P3 | Facade, bridge, daemon, gateway |
+| `mcp` | P4 | Client/serveur MCP |
+| `cli` | P4 | Harness headless (`orch` installé ; `orchestre` / `orchestrateur` = alias clap) |
+| `apps/tauri-desktop` | P5 | Desktop — client WS du daemon |
 
-Voir [`docs/architecture.md`](docs/architecture.md) et [`territoire-graphique/communication.md`](territoire-graphique/communication.md).
+Après validation du noyau, **seules les skills (P6)** évoluent librement. Voir [`docs/project-hierarchy.md`](docs/project-hierarchy.md).
+
+Voir aussi [`docs/architecture.md`](docs/architecture.md) et [`territoire-graphique/communication.md`](territoire-graphique/communication.md).
 
 ### Lancement développement
 
@@ -130,15 +132,20 @@ Configurer `type = "lancedb"` dans `[vector_store]`. Les providers IA (xAI, Olla
 
 ---
 
-## 5. Installation utilisateur (one-liner)
+## 5. Installateur unique (`install.ps1`)
 
-Les binaires Windows sont publiés sur **[GitHub Releases](https://github.com/SovenLabs/orchestrateur/releases)**.
+Un seul script — deux modes. Binaires release sur **[GitHub Releases](https://github.com/SovenLabs/orchestrateur/releases)**.
 
-```powershell
-irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 | iex
-```
+| Mode | Commande |
+|------|----------|
+| **Release** | `irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 \| iex` |
+| **Release + daemon auto** | `irm … \| iex;` puis relancer avec `-InstallDaemon` ou `$env:ORCHESTRATEUR_INSTALL_DAEMON='1'` |
+| **Dev** | `cd` vers le dépôt, puis `.\install.ps1 -Dev` |
+| **Dev + daemon** | `.\install.ps1 -Dev -InstallDaemon` |
 
-Version fixe : `$env:ORCHESTRATEUR_VERSION = "0.28.0"`
+Après l’install release, le script exécute **`orch doctor`**, initialise le workspace `%APPDATA%\Orchestrateur\workspace`, génère `ORCHESTRATEUR_DAEMON_TOKEN` si absent, et affiche le snippet MCP.
+
+Version fixe release : `$env:ORCHESTRATEUR_VERSION = "0.28.0"`
 
 ---
 
@@ -146,24 +153,41 @@ Version fixe : `$env:ORCHESTRATEUR_VERSION = "0.28.0"`
 
 ### Prérequis
 
-- Rust stable **1.80+** (`rust-toolchain.toml`)
+- Rust stable **1.80+** (`rust-toolchain.toml`) — [rustup.rs](https://rustup.rs/)
 - `protoc` : fourni via `.tools/` (voir `.cargo/config.toml`)
+- `just` (optionnel, recettes dev) — `cargo install just` ou `winget install Casey.Just`
+
+### CLI harness
+
+**Installé :** un seul binaire `orch.exe` dans PATH.
+
+**Alias clap** (même programme, pas de `.exe` séparés) : `orchestre`, `orchestrateur` — visibles dans `orch --help`.
+
+Le mode dev (`.\install.ps1 -Dev`) copie `orch.exe` dans `%USERPROFILE%\.cargo\bin` (ou `C:\Program Files\Orchestrateur\` avec `-AllUsers`). **Ouvrez un nouveau terminal** après l’installation.
 
 ### Build
 
 ```powershell
-cargo build -p orchestrateur-cli
-cargo build --release -p orchestrateur-cli --features gateway,websocket-server
+cd C:\GitDev\Projet\orchestrateur
+cargo build -p orchestrateur-cli --bin orch
+cargo build --release -p orchestrateur-cli --bin orch --features gateway,websocket-server
 ```
 
 ### Lancement (exemples)
 
 ```powershell
+cd C:\GitDev\Projet\orchestrateur
 $env:ORCHESTRATEUR_DAEMON_TOKEN = "secret"
-.\target\release\orchestrateur.exe daemon run --workspace workspace
-.\target\release\orchestrateur.exe list --workspace workspace
-.\target\release\orchestrateur.exe watcher status --workspace workspace
+
+orch daemon run --workspace C:\GitDev\Projet\orchestrateur\workspace
+orch list --workspace workspace
+orch watcher status --workspace workspace
+
+# Sans PATH :
+.\target\release\orch.exe daemon run --workspace workspace
 ```
+
+> **Erreur « n'est pas reconnu »** : vous êtes probablement dans `C:\Windows\System32` sans Rust/just dans le PATH. `cd` vers le dépôt, installez Rust si besoin, puis `.\install.ps1 -Dev`.
 
 ---
 

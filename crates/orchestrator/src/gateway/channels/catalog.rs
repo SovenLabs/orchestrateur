@@ -1,3 +1,5 @@
+//! Catalogue statique des canaux messaging supportés.
+
 /// Descripteur statique d'un canal messaging.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ChannelDescriptor {

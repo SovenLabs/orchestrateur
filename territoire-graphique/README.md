@@ -7,7 +7,7 @@ Client Godot 4 **Boule de Pixels Vivante** connecté au daemon Rust via WebSocke
 ```powershell
 # 1. Daemon
 $env:ORCHESTRATEUR_DAEMON_TOKEN = "dev"
-.\target\release\orchestrateur.exe daemon run --workspace workspace
+.\target\release\orch.exe daemon run --workspace workspace
 
 # 2. Godot 4.3+ — ouvrir godot-project/ et Play (F5)
 ```

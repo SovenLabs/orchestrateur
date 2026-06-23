@@ -10,7 +10,7 @@ publish = false
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-ts-rs = { version = "10", features = ["serde-compat", "chrono-impl"] }
+ts-rs.workspace = true
 
 [[bin]]
 name = "export-ts"

@@ -9,7 +9,7 @@ Application desktop hybride (Phases 21–26). Interface J.A.R.V.I.S. branchée s
 
 - Rust 1.80+ (workspace racine)
 - Node.js 20+
-- Daemon actif : `just daemon` ou `orchestrateur daemon run --workspace workspace`
+- Daemon actif : `just daemon` ou `orch daemon run --workspace workspace`
 - Godot 4.7 (optionnel) — pour **Ouvrir Sphère** / **Territoire Godot**
 
 ## Développement

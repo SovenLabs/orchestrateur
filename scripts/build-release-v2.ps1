@@ -26,8 +26,9 @@ if (-not $SkipBuild) {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
     Write-Host "== Compilation release Rust (CLI + daemon) =="
-    cargo build --release -p orchestrateur-cli --features http,gateway,websocket-server
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    . (Join-Path $PSScriptRoot "lib\cli.ps1")
+    Initialize-OrchestrateurBuildEnv
+    Build-OrchestrateurCli -Root $Root -Profile release -ExtraFeatures http
 
     if (-not $SkipTauri) {
         Write-Host "== Build Tauri desktop =="

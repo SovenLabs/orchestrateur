@@ -1,6 +1,8 @@
 # Architecture Orchestrateur v2 — Phases 21–27
 
-**Version :** 0.27.0 · **Date :** 22 juin 2026 · **Statut :** Livré
+**Version :** 0.28.0 · **Date :** 23 juin 2026 · **Statut :** Harness intégral v1.2
+
+> Hiérarchie complète, priorités P0–P6 et frontière noyau figé / skills : [`project-hierarchy.md`](project-hierarchy.md)
 
 ## Vue d'ensemble
 
@@ -14,7 +16,7 @@ flowchart TB
     subgraph Rust["Cœur Souverain Rust"]
         Core["orchestrator-core<br/>(placeholder)"]
         Orch["orchestrator<br/>Cortex + AgentLoop + Daemon"]
-        Types["shared-types<br/>Protocole 1.1.0 + événements UI"]
+        Types["shared-types<br/>Protocole 1.2.0 + événements UI"]
     end
 
     Tauri -->|window_kind: desktop| Daemon
@@ -32,17 +34,19 @@ flowchart TB
 |-----------|------|------------------|
 | `shared-types` | Protocole WS, `BackendEvent`, export TS | Rust + `ts-rs` |
 | `orchestrator` | Cortex, bridge, daemon WS, gateway | Logique métier |
-| `orchestrator-core` | Future extraction AgentLoop/Cortex runtime | Placeholder |
+| `orchestrator-core` | Future extraction AgentLoop/Cortex runtime | Placeholder — fusionner avant gel |
 | `apps/tauri-desktop` | Apparence 2 cosmique (trou noir chat) + lancement Godot | Svelte 5 + Tauri commands |
 | `territoire-graphique` | Boule de Pixels Vivante + territoire 3D | Client Godot réactif |
 
-**Principe :** le daemon Rust orchestre ; Tauri et Godot sont des clients WS indépendants.
+**Cible dossiers clients :** `apps/desktop-tauri` + `apps/godot-territoire` (voir [`project-hierarchy.md`](project-hierarchy.md)).
+
+**Principe :** le daemon Rust orchestre ; Tauri et Godot sont des clients WS indépendants (P5). Seules les skills (P6) restent évolutives après gel du noyau.
 
 ## Types de fenêtre (`window_kind`)
 
 | Valeur | Client | brain_pulse | Actions critiques |
 |--------|--------|-------------|-------------------|
-| `desktop` | Tauri | ✅ (UI activité) | ❌ Assimilate / ExecuteSkill |
+| `desktop` | Tauri | ✅ (UI activité) | ✅ Harness intégral (Cortex + Esprit) |
 | `sphere` | Godot SphereDedicated | ✅ (rendu 3D) | ❌ |
 | `main` | Godot MainTerritory | ✅ | ✅ |
 | `extension` | Godot panneau détaché | selon abonnements | ❌ |
@@ -52,7 +56,7 @@ flowchart TB
 - **URL :** `ws://127.0.0.1:28790/ws`
 - **Santé :** `http://127.0.0.1:28790/health` (+ `connected_windows`)
 - **Auth :** `connect` + `ORCHESTRATEUR_DAEMON_TOKEN` (défaut `dev`)
-- **Version :** `1.1.0`
+- **Version :** `1.2.0`
 
 Documentation : [`protocol-ws.md`](protocol-ws.md) · [`territoire-graphique/communication.md`](../territoire-graphique/communication.md)
 

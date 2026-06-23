@@ -55,10 +55,12 @@ function Ensure-InnoSetup {
     return $iscc
 }
 
+. (Join-Path $PSScriptRoot "lib\cli.ps1")
+Initialize-OrchestrateurBuildEnv
+
 if (-not $SkipBuild) {
     Write-Host "Compilation release (CLI + daemon + gateway)..."
-    cargo build --release -p orchestrateur-cli --features http,gateway,websocket-server
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Build-OrchestrateurCli -Root $Root -Profile release -ExtraFeatures http
 }
 
 . (Join-Path $PSScriptRoot "stage-release.ps1") -StagingDir $StagingDir -Version $Version | Out-Null

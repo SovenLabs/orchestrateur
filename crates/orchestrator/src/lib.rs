@@ -73,6 +73,7 @@ pub use config::{
     VectorStoreConfig,
     XaiConfig,
 };
+pub use config::editor::{set_channel_enabled, set_primary_llm, set_security_profile};
 pub use mcp::{McpError, McpGateway, McpToolInfo};
 pub use providers::{
     ApiFamily, ProviderDescriptor, ProviderKind, ProviderProfile, ProviderProfiles,
@@ -87,7 +88,8 @@ pub use llm::{ChatMessage, LlmCapabilities, LlmError, LlmProvider, LlmUsageRecor
 pub use memory_draft::{BacklinkDraft, BacklinkDraftKind, MemoryDraft};
 pub use draft::{DraftError, DraftRepository, DraftStatus, StoredDraft};
 pub use security::{
-    build_security_context, build_test_security_context, AuditEvent, BehavioralError,
+    assert_llm_egress_allowed, assert_text_safe_for_llm, build_security_context,
+    build_test_security_context, is_local_llm_provider, scan_secrets, AuditEvent, BehavioralError,
     IntegrityStatus, MemoryDraftValidator, SecurityBootstrapError, SecurityContext,
     SecurityGateError, SecurityProfile, ValidationError,
 };

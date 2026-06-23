@@ -76,7 +76,7 @@ impl NativePluginSkill {
                 path: path.clone(),
                 message: e.to_string(),
             })?);
-        let execute: Symbol<ExecuteFn> =
+        let execute: Symbol<'_, ExecuteFn> =
             lookup_symbol(&library, b"orchestrateur_skill_execute\0").map_err(|_| {
                 NativePluginError::MissingSymbol {
                     path: path.clone(),

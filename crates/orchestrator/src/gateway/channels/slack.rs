@@ -1,14 +1,41 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use tracing::debug;
+use serde::Deserialize;
+use tracing::{debug, info};
 
 use crate::config::GatewayChannelConfig;
 use crate::gateway::delivery::{MessageDelivery, OutboundMessage};
 use crate::gateway::error::GatewayError;
 use crate::gateway::registry::{Channel, ChannelContext, InboundMessage};
 
-/// Canal Slack — stub Phase 8 (livraison `chat.postMessage` si token + channel).
+/// Enveloppe Events API Slack.
+#[derive(Debug, Deserialize)]
+pub struct SlackEventEnvelope {
+    /// `url_verification` ou `event_callback`.
+    pub r#type: String,
+    /// Challenge URL verification.
+    pub challenge: Option<String>,
+    /// Événement imbriqué.
+    pub event: Option<SlackInnerEvent>,
+}
+
+/// Événement Slack imbriqué.
+#[derive(Debug, Deserialize)]
+pub struct SlackInnerEvent {
+    /// Type d'événement (`message`, …).
+    pub r#type: String,
+    /// Texte du message.
+    pub text: Option<String>,
+    /// Utilisateur Slack.
+    pub user: Option<String>,
+    /// Canal Slack.
+    pub channel: Option<String>,
+    /// Sous-type (`bot_message` ignoré).
+    pub subtype: Option<String>,
+}
+
+/// Canal Slack — Events API via `POST /v1/channels/slack/events`.
 #[derive(Debug)]
 pub struct SlackChannel {
     config: GatewayChannelConfig,
@@ -19,6 +46,27 @@ impl SlackChannel {
     #[must_use]
     pub fn new(config: GatewayChannelConfig) -> Self {
         Self { config }
+    }
+
+    /// Convertit un événement Slack en message entrant harness.
+    #[must_use]
+    pub fn envelope_to_inbound(payload: &SlackEventEnvelope) -> Option<InboundMessage> {
+        let event = payload.event.as_ref()?;
+        if event.r#type != "message" {
+            return None;
+        }
+        if event.subtype.is_some() {
+            return None;
+        }
+        let text = event.text.as_ref()?;
+        let user = event.user.as_deref().unwrap_or("unknown");
+        let channel = event.channel.as_deref().unwrap_or("unknown");
+        Some(InboundMessage {
+            channel_id: "slack".into(),
+            session_key: format!("slack:{channel}:{user}"),
+            text: text.clone(),
+            external_id: event.channel.clone(),
+        })
     }
 }
 
@@ -34,18 +82,17 @@ impl Channel for SlackChannel {
 
     async fn start(&self, _ctx: ChannelContext) -> Result<(), GatewayError> {
         if self.config.enabled && std::env::var(&self.config.token_env).is_ok() {
-            debug!("slack configuré — inbound via Events API (Phase 9+)");
+            info!(
+                "slack actif — configurez Events API → POST http://127.0.0.1:28789/v1/channels/slack/events"
+            );
         } else {
-            debug!("slack désactivé ou token absent — stub inactif");
+            debug!("slack désactivé ou token absent");
         }
         Ok(())
     }
 
     async fn handle_inbound(&self, message: InboundMessage) -> Result<(), GatewayError> {
-        debug!(
-            session = %message.session_key,
-            "slack inbound stub (Events API Phase 9+)"
-        );
+        debug!(session = %message.session_key, "slack inbound traité");
         Ok(())
     }
 }

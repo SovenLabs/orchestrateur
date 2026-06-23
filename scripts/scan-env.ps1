@@ -53,9 +53,11 @@ $checks = @(
 
 $checks | Format-Table -AutoSize
 
+. (Join-Path $PSScriptRoot "lib\cli.ps1")
+
 Write-Host "`n--- Binaires projet ---" -ForegroundColor Yellow
 @(
-    (Join-Path $Root "target\release\orchestrateur.exe"),
+    (Get-OrchestrateurCliExe -Root $Root -Profile release),
     (Join-Path $Root "target\debug\orchestrateur-desktop.exe"),
     (Join-Path $Root "workspace\config\orchestrator.toml")
 ) | ForEach-Object {
@@ -92,6 +94,7 @@ if ($optional) {
 }
 
 Write-Host "`nLancement recommandé :" -ForegroundColor Green
-Write-Host "  Terminal 1 : .\scripts\dev-start-daemon.ps1"
+Write-Host "  Install CLI : .\install.ps1 -Dev"
+Write-Host "  Terminal 1 : .\scripts\dev-start-daemon.ps1  (ou : orch daemon run --workspace workspace)"
 Write-Host "  Terminal 2 : .\scripts\dev-start-desktop.ps1"
 Write-Host "  DevTools   : `$env:ORCHESTRATEUR_DEVTOOLS='1' avant desktop (optionnel)`n"

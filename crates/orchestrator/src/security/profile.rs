@@ -13,6 +13,8 @@ pub enum SecurityProfile {
     Strict,
     /// Opérateur souverain — rate limiting et détection injection désactivés.
     Expert,
+    /// Zéro egress cloud — LLM/embeddings locaux uniquement + scan secrets.
+    LocalOnly,
 }
 
 impl SecurityProfile {
@@ -24,6 +26,7 @@ impl SecurityProfile {
             "ai_assisted" | "ai-assisted" | "ai" => Some(Self::AiAssisted),
             "strict" => Some(Self::Strict),
             "expert" => Some(Self::Expert),
+            "local_only" | "local-only" | "local" => Some(Self::LocalOnly),
             _ => None,
         }
     }
@@ -41,6 +44,7 @@ impl SecurityProfile {
             Self::AiAssisted => apply_ai_assisted(config),
             Self::Strict => apply_strict(config),
             Self::Expert => apply_expert(config),
+            Self::LocalOnly => apply_local_only(config),
         }
     }
 }
@@ -84,6 +88,13 @@ fn apply_expert(config: &mut SecurityConfig) {
     config.behavioral.enabled = false;
     config.integrity.enabled = true;
     config.audit.enabled = true;
+}
+
+fn apply_local_only(config: &mut SecurityConfig) {
+    apply_strict(config);
+    config.block_cloud_llm = true;
+    config.scan_secrets_before_llm = true;
+    config.integrity.seed_honeypots = true;
 }
 
 #[cfg(test)]

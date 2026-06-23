@@ -16,7 +16,7 @@
 #define MyAppName "Orchestrateur"
 #define MyAppPublisher "Sovën"
 #define MyAppURL "https://github.com/SovenLabs/orchestrateur"
-#define MyAppExeCLI "orchestrateur.exe"
+#define MyAppExeCLI "orch.exe"
 
 [Setup]
 AppId={{8F2A1B3C-4D5E-6F70-8A9B-0C1D2E3F4A5B}
@@ -54,13 +54,19 @@ Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 Name: "desktopicon"; Description: "Créer un raccourci sur le Bureau"; GroupDescription: "Raccourcis:"; Flags: unchecked
 
 [Files]
+Source: "{#StagingRoot}\orch.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StagingRoot}\orchestrateur.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#StagingRoot}\orchestre.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#StagingRoot}\*.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StagingRoot}\workspace\*"; DestDir: "{app}\workspace"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#StagingRoot}\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StagingRoot}\communication.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StagingRoot}\INSTALL.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StagingRoot}\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#StagingRoot}\app.ico"; DestDir: "{app}"; Flags: ignoreversion
+
+[Registry]
+Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; Check: NeedsAddPath(ExpandConstant('{app}'))
 
 [Icons]
 Name: "{group}\Orchestrateur (daemon)"; Filename: "{app}\{#MyAppExeCLI}"; Parameters: "daemon run --workspace ""{code:GetWorkspaceRoot}"""; WorkingDir: "{app}"
@@ -75,6 +81,15 @@ Filename: "{app}\{#MyAppExeCLI}"; Description: "Lancer le daemon {#MyAppName}"; 
 Type: filesandordirs; Name: "{userappdata}\Orchestrateur"
 
 [Code]
+function NeedsAddPath(Param: string): Boolean;
+var
+  OrigPath: string;
+begin
+  if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', OrigPath) then
+    OrigPath := '';
+  Result := Pos(';' + Param + ';', ';' + OrigPath + ';') = 0;
+end;
+
 function GetWorkspaceRoot(Param: String): String;
 begin
   Result := ExpandConstant('{userappdata}\Orchestrateur\workspace');

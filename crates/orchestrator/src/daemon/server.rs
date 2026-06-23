@@ -26,7 +26,8 @@ use crate::VERSION;
 
 use super::error::DaemonError;
 use super::hub::{
-    requires_main_window, resolve_subscriptions, ClientSession, ConnectedWindows, TerritoryHub,
+    can_harness_write, requires_harness_write, resolve_subscriptions, ClientSession,
+    ConnectedWindows, TerritoryHub,
     WindowKind,
 };
 use super::metrics::{new_shared_metrics, DaemonMetrics, DaemonMetricsSnapshot};
@@ -353,7 +354,7 @@ async fn handle_ws_socket(state: Arc<DaemonState>, socket: WebSocket) {
                             .await;
                             continue;
                         }
-                        if requires_main_window(&command) && window_kind != WindowKind::Main {
+                        if requires_harness_write(&command) && !can_harness_write(window_kind) {
                             let _ = send_json(
                                 &mut sender,
                                 &state.metrics,
@@ -361,8 +362,11 @@ async fn handle_ws_socket(state: Arc<DaemonState>, socket: WebSocket) {
                                     request_id: request_id.clone(),
                                     response: crate::bridge::Response::Error(
                                         crate::bridge::AppError {
-                                            kind: "main_window_required".into(),
-                                            message: "cette commande est réservée à la fenêtre principale".into(),
+                                            kind: "harness_write_denied".into(),
+                                            message: format!(
+                                                "écriture harness refusée pour window_kind={}",
+                                                window_kind.as_str()
+                                            ),
                                         },
                                     ),
                                 },

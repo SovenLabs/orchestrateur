@@ -63,13 +63,13 @@ Copy-FirstMatch -Candidates $sphereCandidates -DestDir $SphereDir -Label "Sphèr
 Orchestrateur v$Version — Package hybride v2 (Phase 26)
 
 Contenu :
-  orchestrateur.exe          CLI + daemon WS (:28790)
+  orch.exe   CLI + daemon WS (:28790) — alias clap : orchestre, orchestrateur
   desktop/                   Installateur Tauri (si build effectué)
   sphere/                    Boule de Pixels Vivante standalone (si export Godot)
 
 Démarrage rapide :
   1. $env:ORCHESTRATEUR_DAEMON_TOKEN = "dev"
-  2. .\orchestrateur.exe daemon run --workspace workspace
+  2. .\orch.exe daemon run --workspace workspace
   3. Lancer l'installateur desktop OU Godot SphereDedicated
 
 Build complet :

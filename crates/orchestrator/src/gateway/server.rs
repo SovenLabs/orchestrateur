@@ -1,3 +1,5 @@
+//! Serveur HTTP/WebSocket Axum du gateway et endpoints de santé.
+
 use std::sync::Arc;
 
 use axum::{
@@ -18,7 +20,7 @@ use tracing::{info, warn};
 
 use crate::VERSION;
 
-use super::channels::{WebhookChannel, WebhookPayload};
+use super::channels::{SlackChannel, SlackEventEnvelope, WebhookChannel, WebhookPayload};
 use super::error::GatewayError;
 use super::{resolve_channel_config, verify_channel_token};
 use super::protocol::{GatewayClientMessage, GatewayServerMessage};
@@ -62,6 +64,7 @@ pub fn build_router(state: Arc<GatewayState>) -> Router {
             "/v1/channels/{channel_id}/inbound",
             post(channel_inbound_handler),
         )
+        .route("/v1/channels/slack/events", post(slack_events_handler))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
@@ -139,6 +142,31 @@ async fn channel_inbound_handler(
         reply,
         session_key: payload.session_key,
     }))
+}
+
+async fn slack_events_handler(
+    State(state): State<Arc<GatewayState>>,
+    Json(payload): Json<SlackEventEnvelope>,
+) -> Result<axum::response::Response, (StatusCode, String)> {
+    if payload.r#type == "url_verification" {
+        let challenge = payload
+            .challenge
+            .unwrap_or_else(|| "".into());
+        return Ok((
+            [(axum::http::header::CONTENT_TYPE, "text/plain")],
+            challenge,
+        )
+            .into_response());
+    }
+    let Some(inbound) = SlackChannel::envelope_to_inbound(&payload) else {
+        return Ok(axum::http::StatusCode::OK.into_response());
+    };
+    let handler = state.runner.inbound_handler();
+    handler
+        .handle(inbound)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(axum::http::StatusCode::OK.into_response())
 }
 
 async fn webhook_handler(

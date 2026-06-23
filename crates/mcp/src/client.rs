@@ -275,3 +275,9 @@ struct ToolCallResult {
 struct ToolContent {
     text: String,
 }
+
+impl Drop for McpStdioClient {
+    fn drop(&mut self) {
+        self.reader_task.abort();
+    }
+}

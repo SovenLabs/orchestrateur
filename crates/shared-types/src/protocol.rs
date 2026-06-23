@@ -1,6 +1,24 @@
+//! Messages WebSocket daemon ↔ clients (handshake, broadcast, erreurs).
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ts_rs::TS;
+
+fn default_true() -> bool {
+    true
+}
+
+/// Capacités harness déclarées par le client au handshake.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
+#[ts(export, export_to = "../../../apps/tauri-desktop/src/lib/generated/")]
+pub struct HarnessCapabilities {
+    /// Peut écrire le Cortex (assimilate, publish draft, …).
+    #[serde(default = "default_true")]
+    pub can_write_cortex: bool,
+    /// Peut exécuter des skills Esprit.
+    #[serde(default = "default_true")]
+    pub can_run_skills: bool,
+}
 
 /// Métadonnées fenêtre client — handshake `connect`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
@@ -18,6 +36,9 @@ pub struct ClientInfo {
     /// Topics broadcast explicites (fusionnés avec les défauts).
     #[serde(default)]
     pub subscriptions: Vec<String>,
+    /// Capacités harness (desktop et main : écriture par défaut).
+    #[serde(default)]
+    pub harness: HarnessCapabilities,
 }
 
 fn default_window_kind() -> String {

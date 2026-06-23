@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use cortex::DomainEvent;
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::json;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -495,13 +495,24 @@ pub fn default_subscriptions(kind: WindowKind, panels: &[String]) -> HashSet<Str
     subs
 }
 
-/// Indique si la commande est réservée à la fenêtre principale.
+/// Indique si la commande modifie le Cortex ou exécute l'Esprit (écriture harness).
 #[must_use]
-pub fn requires_main_window(cmd: &Command) -> bool {
+pub fn requires_harness_write(cmd: &Command) -> bool {
     matches!(
         cmd,
-        Command::Assimilate { .. } | Command::ExecuteSkill { .. }
+        Command::Assimilate { .. }
+            | Command::ExecuteSkill { .. }
+            | Command::PublishDraft { .. }
+            | Command::DiscardDraft { .. }
+            | Command::WatcherStart
+            | Command::WatcherStop
     )
+}
+
+/// Fenêtres autorisées pour les écritures harness (desktop Tauri + territoire principal).
+#[must_use]
+pub fn can_harness_write(kind: WindowKind) -> bool {
+    matches!(kind, WindowKind::Main | WindowKind::Desktop)
 }
 
 /// Fusionne abonnements explicites client et défauts déduits des panneaux.
@@ -601,13 +612,24 @@ mod tests {
     }
 
     #[test]
-    fn critical_commands_require_main() {
-        assert!(requires_main_window(&Command::Assimilate {
+    fn harness_write_commands_detected() {
+        assert!(requires_harness_write(&Command::Assimilate {
             text: "x".into(),
             tags: vec![],
         }));
-        assert!(!requires_main_window(&Command::Chat {
+        assert!(requires_harness_write(&Command::PublishDraft {
+            id: "d1".into(),
+        }));
+        assert!(!requires_harness_write(&Command::Chat {
             message: "hi".into(),
         }));
+    }
+
+    #[test]
+    fn desktop_can_harness_write() {
+        assert!(can_harness_write(WindowKind::Desktop));
+        assert!(can_harness_write(WindowKind::Main));
+        assert!(!can_harness_write(WindowKind::Extension));
+        assert!(!can_harness_write(WindowKind::Sphere));
     }
 }

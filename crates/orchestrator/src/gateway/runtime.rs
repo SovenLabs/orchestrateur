@@ -1,3 +1,5 @@
+//! Boucle d'exécution du gateway et orchestration des canaux actifs.
+
 use std::sync::Arc;
 
 use async_trait::async_trait;

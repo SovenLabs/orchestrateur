@@ -1,3 +1,5 @@
+//! Registre des canaux messaging et routage des messages entrants.
+
 use std::sync::Arc;
 
 use async_trait::async_trait;

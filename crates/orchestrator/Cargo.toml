@@ -11,7 +11,7 @@ default = []
 heavy-tests = []
 cli = []
 http = ["dep:axum", "dep:tower-http"]
-gateway = ["dep:axum", "dep:tower-http", "dep:futures-util", "dep:reqwest"]
+gateway = ["dep:axum", "dep:tower-http", "dep:futures-util", "dep:reqwest", "dep:tokio-tungstenite"]
 websocket-server = ["dep:axum", "dep:tower-http", "dep:futures-util"]
 plugins-native = ["dep:libloading"]
 skills-marketplace = ["dep:reqwest"]
@@ -34,6 +34,7 @@ axum = { workspace = true, optional = true }
 tower-http = { workspace = true, optional = true }
 futures-util = { workspace = true, optional = true }
 reqwest = { workspace = true, optional = true }
+tokio-tungstenite = { workspace = true, optional = true }
 libloading = { workspace = true, optional = true }
 notify = { workspace = true }
 

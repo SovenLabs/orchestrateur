@@ -6,6 +6,7 @@
 
 use std::path::Path;
 
+use ts_rs::TS;
 use shared_types::events::{BackendEvent, FrontendCommand};
 use shared_types::protocol::{
     ClientInfo, DaemonClientMessage, DaemonServerMessage, TerritoryBroadcast,
@@ -20,18 +21,17 @@ fn main() {
         std::process::exit(1);
     }
 
-    let exports: [&dyn ts_rs::TS; 7] = [
-        &BackendEvent,
-        &FrontendCommand,
-        &ClientInfo,
-        &TerritoryBroadcast,
-        &DaemonClientMessage,
-        &DaemonServerMessage,
-        &shared_types::ConnectionConfig,
-    ];
-
-    for export in exports {
-        if let Err(err) = export.export() {
+    let cfg = ts_rs::Config::default();
+    for export in [
+        BackendEvent::export(&cfg),
+        FrontendCommand::export(&cfg),
+        ClientInfo::export(&cfg),
+        TerritoryBroadcast::export(&cfg),
+        DaemonClientMessage::export(&cfg),
+        DaemonServerMessage::export(&cfg),
+        shared_types::ConnectionConfig::export(&cfg),
+    ] {
+        if let Err(err) = export {
             eprintln!("export TS échoué: {err}");
             std::process::exit(1);
         }

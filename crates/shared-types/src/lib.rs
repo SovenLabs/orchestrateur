@@ -15,5 +15,6 @@ pub use config::ConnectionConfig;
 pub use protocol_version::{is_client_version_supported, PROTOCOL_MIN_CLIENT, PROTOCOL_VERSION};
 pub use events::{BackendEvent, FrontendCommand};
 pub use protocol::{
-    ClientInfo, DaemonClientMessage, DaemonServerMessage, TerritoryBroadcast,
+    ClientInfo, DaemonClientMessage, DaemonServerMessage, HarnessCapabilities,
+    TerritoryBroadcast,
 };

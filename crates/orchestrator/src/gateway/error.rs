@@ -1,3 +1,5 @@
+//! Erreurs typées du gateway WebSocket Phase 8.
+
 use thiserror::Error;
 
 /// Erreur du gateway Phase 8.

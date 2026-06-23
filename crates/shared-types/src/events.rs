@@ -1,3 +1,5 @@
+//! Événements UI et commandes frontend du protocole territorial v2.
+
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 

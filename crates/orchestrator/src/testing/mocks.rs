@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use async_trait::async_trait;
 use cortex::{
     cosine_similarity, CortexError, Embedding, EmbeddingCapabilities, EmbeddingError,
-    EmbeddingProvider, Memory, MemoryId, MemoryRepository, SearchFilter, SearchHit, SessionRepository,
+    EmbeddingProvider, Memory, MemoryId, MemoryRepository, SearchFilter, SearchHit,
     VectorStore,
 };
 

@@ -1,4 +1,4 @@
-use cortex::{KnowledgeGraph, Memory, SearchFilter};
+use cortex::{KnowledgeGraph, Memory};
 use crate::deps::AppDependencies;
 use crate::skills::suggest_skills;
 use crate::skills::SkillRegistry;

@@ -206,6 +206,10 @@ pub struct SecurityConfig {
     pub audit: AuditConfig,
     /// Profil actif (`ai_assisted`, `strict`, `expert`, …).
     pub profile: Option<crate::security::SecurityProfile>,
+    /// Bloque les providers LLM cloud (profil `local_only`).
+    pub block_cloud_llm: bool,
+    /// Scan les secrets dans le texte avant chat/assimilate.
+    pub scan_secrets_before_llm: bool,
 }
 
 impl Default for SecurityConfig {
@@ -221,6 +225,8 @@ impl Default for SecurityConfig {
             integrity: IntegrityConfig::default(),
             audit: AuditConfig::default(),
             profile: None,
+            block_cloud_llm: false,
+            scan_secrets_before_llm: false,
         }
     }
 }
@@ -559,6 +565,9 @@ impl Default for McpConfig {
         }
     }
 }
+
+/// Édition TOML pour onboard / CLI harness.
+pub mod editor;
 
 /// Configuration applicative de l'orchestrateur.
 #[derive(Debug, Clone, PartialEq)]
@@ -1053,6 +1062,12 @@ fn merge_security(target: &mut SecurityConfig, section: SecuritySection) {
     if let Some(v) = section.detect_injection_patterns {
         target.detect_injection_patterns = v;
     }
+    if let Some(v) = section.block_cloud_llm {
+        target.block_cloud_llm = v;
+    }
+    if let Some(v) = section.scan_secrets_before_llm {
+        target.scan_secrets_before_llm = v;
+    }
     if let Some(b) = section.behavioral {
         if let Some(v) = b.enabled {
             target.behavioral.enabled = v;
@@ -1303,6 +1318,8 @@ struct SecuritySection {
     max_tags: Option<usize>,
     max_backlinks: Option<usize>,
     detect_injection_patterns: Option<bool>,
+    block_cloud_llm: Option<bool>,
+    scan_secrets_before_llm: Option<bool>,
     behavioral: Option<BehavioralSection>,
     integrity: Option<IntegritySection>,
     audit: Option<AuditSection>,

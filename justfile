@@ -26,9 +26,17 @@ desktop-test:
 export-types:
     cargo run -p shared-types --bin export-ts
 
+# Installe orch.exe dans ~/.cargo/bin (install.ps1 -Dev)
+install-cli:
+    powershell -NoProfile -ExecutionPolicy Bypass -File install.ps1 -Dev
+
+# Installe la tâche planifiée Windows OrchestrateurDaemon
+install-daemon:
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-daemon-task.ps1 -StartNow
+
 # Lance le daemon territorial (token dev)
 daemon:
-    $env:ORCHESTRATEUR_DAEMON_TOKEN = "dev"; cargo run --bin orchestrateur -- daemon run --workspace workspace
+    $env:ORCHESTRATEUR_DAEMON_TOKEN = "dev"; cargo run --bin orch -- daemon run --workspace workspace
 
 # Installe les dépendances npm du desktop
 desktop-install:
@@ -73,3 +81,8 @@ phase26-validate: export-types test-ws desktop-test
 
 # Pipeline Phase 27 : types + tests desktop cosmiques
 phase27-validate: export-types desktop-test
+
+# Validation harness intégral (Cortex + Esprit, sans LLM obligatoire)
+harness-smoke:
+    cargo run --bin orch -- doctor --workspace workspace
+    cargo run --bin orch -- harness smoke --workspace workspace

@@ -1,3 +1,5 @@
+//! Livraison des messages sortants vers les canaux messaging.
+
 use std::sync::Arc;
 
 use async_trait::async_trait;

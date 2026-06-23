@@ -5,7 +5,7 @@ use thiserror::Error;
 
 
 use crate::config::OrchestratorConfig;
-use crate::skills::manifest::{compute_integrity_hash, verify_integrity_hash, ManifestError};
+use crate::skills::manifest::{compute_integrity_hash, ManifestError};
 
 /// Entrée du catalogue marketplace.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -124,7 +124,15 @@ impl SkillsMarketplace {
         }
         if let Some(url) = &config.skills_hub.marketplace_url {
             if !url.is_empty() {
-                return Self::fetch_catalog(url).await;
+                #[cfg(feature = "skills-marketplace")]
+                {
+                    return Self::fetch_catalog(config, url).await;
+                }
+                #[cfg(not(feature = "skills-marketplace"))]
+                {
+                    let _ = config;
+                    return Self::fetch_catalog(url).await;
+                }
             }
         }
         Self::load_catalog(config)

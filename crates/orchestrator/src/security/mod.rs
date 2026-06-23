@@ -6,6 +6,7 @@
 mod audit_log;
 mod behavioral_guard;
 mod context;
+mod egress;
 mod honeypot;
 mod integrity;
 mod profile;
@@ -21,4 +22,8 @@ pub use cortex::{
 };
 pub use honeypot::{is_honeypot_memory, seed_honeypots_if_needed, CANARY_TAG};
 pub use integrity::{verify_config_integrity, IntegrityError, IntegrityManifest, IntegrityStatus};
+pub use egress::{
+    assert_llm_egress_allowed, assert_text_safe_for_llm, is_local_llm_provider, scan_secrets,
+    EgressError, SecretFinding,
+};
 pub use profile::SecurityProfile;

@@ -1,5 +1,8 @@
 //! CLI Orchestrateur — headless. Daemon WS pour clients visuels Territoire Graphique.
 
+mod harness_ops;
+mod output;
+
 #[cfg(feature = "http")]
 use std::sync::Arc;
 use std::path::{Path, PathBuf};
@@ -16,14 +19,25 @@ use orchestrator::{
 #[cfg(feature = "gateway")]
 use orchestrator::ChannelCatalog;
 
+use harness_ops::{
+    channels_disable, channels_enable, channels_status, cmd_configure, cmd_doctor, cmd_harness_run,
+    cmd_harness_smoke, cmd_onboard, cmd_uninstall, cmd_update, daemon_install, daemon_status,
+    daemon_stop,
+    gateway_status, onboard_interactive, providers_set, providers_test, ConfigureOptions,
+    OnboardOptions,
+};
+use output::print_response;
 use tracing_subscriber::EnvFilter;
 
 /// Orchestrateur — second cerveau local souverain (CLI headless).
 #[derive(Parser)]
 #[command(
     name = "orchestrateur",
+    alias = "orchestre",
+    alias = "orch",
     version,
-    about = "Orchestrateur v0.21.0 — CLI headless + daemon Territoire Graphique"
+    about = "Orchestrateur v0.28.0 — harness intégral Esprit + Cortex",
+    after_help = "Alias acceptés : orchestrateur, orchestre, orch"
 )]
 struct Cli {
     /// Racine du workspace (défaut: ./workspace).
@@ -36,8 +50,38 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Assistant de première installation harness.
+    Onboard {
+        /// Profil sécurité (`local_only`, `ai_assisted`, …).
+        #[arg(long)]
+        profile: Option<String>,
+        /// Provider LLM primaire.
+        #[arg(long)]
+        llm: Option<String>,
+        /// Raccourci profil local souverain (ollama + zéro egress cloud).
+        #[arg(long)]
+        local_only: bool,
+        /// Installe la tâche planifiée daemon Windows après onboard.
+        #[arg(long)]
+        install_daemon: bool,
+    },
+    /// Met à jour des champs harness dans orchestrator.toml.
+    Configure {
+        #[arg(long)]
+        profile: Option<String>,
+        #[arg(long)]
+        llm: Option<String>,
+        #[arg(long)]
+        local_only: bool,
+    },
+    /// Instructions de mise à jour binaire.
+    Update,
+    /// Stop sécurité + instructions de désinstallation complète.
+    Uninstall,
     /// Santé du service (équivalent `HealthCheck` bridge).
     Health,
+    /// Diagnostic harness intégral (Cortex + Esprit + watcher + drafts).
+    Doctor,
     /// Liste les mémoires persistées (pagination / filtre).
     List {
         /// Filtre titre ou tags (sous-chaîne).
@@ -88,6 +132,26 @@ enum Commands {
     Reindex,
     /// Surveille les fichiers session Markdown et génère des brouillons insight.
     Watch,
+    /// Contrôle du watcher de sessions.
+    Watcher {
+        #[command(subcommand)]
+        command: WatcherCommands,
+    },
+    /// File de brouillons Cortex (gouvernance harness).
+    Draft {
+        #[command(subcommand)]
+        command: DraftCommands,
+    },
+    /// Validation rapide du harness intégré.
+    Harness {
+        #[command(subcommand)]
+        command: HarnessCommands,
+    },
+    /// Serveur MCP stdio (expose Cortex + Esprit aux clients externes).
+    Mcp {
+        #[command(subcommand)]
+        command: McpCommands,
+    },
     /// Skills opérationnelles (liste et exécution via bridge).
     Skill {
         #[command(subcommand)]
@@ -150,6 +214,18 @@ enum Commands {
 enum ChannelCommands {
     /// Liste les canaux messaging enregistrés (≥ 15).
     List,
+    /// Active un canal dans orchestrator.toml.
+    Enable {
+        /// Identifiant canal (`telegram`, `discord`, …).
+        channel: String,
+    },
+    /// Désactive un canal.
+    Disable {
+        /// Identifiant canal.
+        channel: String,
+    },
+    /// Statut enabled + variables d'environnement token.
+    Status,
 }
 
 #[derive(Subcommand)]
@@ -180,6 +256,17 @@ enum ProviderCommands {
         #[arg(long)]
         kind: Option<String>,
     },
+    /// Sonde joignabilité LLM / embedding.
+    Test {
+        /// Filtre : `llm`, `embedding`, ou absent pour tout.
+        #[arg(long)]
+        kind: Option<String>,
+    },
+    /// Définit le provider LLM primaire dans orchestrator.toml.
+    Set {
+        /// Identifiant provider (`ollama`, `xai`, …).
+        provider: String,
+    },
 }
 
 #[cfg(feature = "websocket-server")]
@@ -194,6 +281,12 @@ enum DaemonCommands {
         #[arg(long)]
         bind: Option<String>,
     },
+    /// Installe la tâche planifiée Windows (démarrage à la connexion).
+    Install,
+    /// Statut tâche planifiée + sonde HTTP /health.
+    Status,
+    /// Arrête le daemon (processus + tâche en cours).
+    Stop,
 }
 
 #[cfg(feature = "gateway")]
@@ -208,6 +301,53 @@ enum GatewayCommands {
         #[arg(long)]
         bind: Option<String>,
     },
+    /// Sonde HTTP /health du gateway.
+    Status,
+}
+
+#[derive(Subcommand)]
+enum WatcherCommands {
+    /// Affiche le statut du watcher.
+    Status,
+    /// Démarre le watcher (daemon background si déjà actif).
+    Start,
+    /// Arrête le watcher global.
+    Stop,
+}
+
+#[derive(Subcommand)]
+enum DraftCommands {
+    /// Liste les brouillons en attente.
+    List,
+    /// Affiche un brouillon par identifiant.
+    Get {
+        /// Identifiant du brouillon.
+        id: String,
+    },
+    /// Publie un brouillon en mémoire Cortex.
+    Publish {
+        /// Identifiant du brouillon.
+        id: String,
+    },
+    /// Supprime un brouillon sans publier.
+    Discard {
+        /// Identifiant du brouillon.
+        id: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum HarnessCommands {
+    /// Enchaîne health, graph, drafts, watcher (sans LLM obligatoire).
+    Smoke,
+    /// Démarre daemon + gateway si absents, attend Ctrl+C.
+    Run,
+}
+
+#[derive(Subcommand)]
+enum McpCommands {
+    /// Serveur MCP JSON-RPC sur stdin/stdout.
+    Serve,
 }
 
 #[derive(Subcommand)]
@@ -241,13 +381,22 @@ async fn main() -> Result<()> {
 
     let cli = Cli::parse();
 
-    let deps = bootstrap_workspace(&cli.workspace)
-        .await
-        .map_err(|err| anyhow::anyhow!(err.with_context("CLI")))?;
-    let facade = OrchestratorFacade::new(deps);
+    if let Some(()) = dispatch_lightweight(&cli).await? {
+        return Ok(());
+    }
+
+    let facade = bootstrap_facade(&cli.workspace).await?;
 
     match cli.command {
+        Commands::Onboard { .. }
+        | Commands::Configure { .. }
+        | Commands::Update
+        | Commands::Uninstall
+        | Commands::Harness {
+            command: HarnessCommands::Run,
+        } => unreachable!("géré par dispatch_lightweight"),
         Commands::Health => run_bridge_command(&facade, Command::HealthCheck).await?,
+        Commands::Doctor => cmd_doctor(&facade, &cli.workspace).await?,
         Commands::List {
             filter,
             offset,
@@ -320,6 +469,39 @@ async fn main() -> Result<()> {
         Commands::Import { source } => cmd_import(&facade, &source).await?,
         Commands::Reindex => cmd_reindex(&facade).await?,
         Commands::Watch => cmd_watch(&facade).await?,
+        Commands::Watcher { command } => match command {
+            WatcherCommands::Status => {
+                run_bridge_command(&facade, Command::WatcherStatus).await?
+            }
+            WatcherCommands::Start => {
+                run_bridge_command(&facade, Command::WatcherStart).await?
+            }
+            WatcherCommands::Stop => run_bridge_command(&facade, Command::WatcherStop).await?,
+        },
+        Commands::Draft { command } => match command {
+            DraftCommands::List => run_bridge_command(&facade, Command::ListDrafts).await?,
+            DraftCommands::Get { id } => {
+                run_bridge_command(&facade, Command::GetDraft { id }).await?
+            }
+            DraftCommands::Publish { id } => {
+                run_bridge_command(&facade, Command::PublishDraft { id }).await?
+            }
+            DraftCommands::Discard { id } => {
+                run_bridge_command(&facade, Command::DiscardDraft { id }).await?
+            }
+        },
+        Commands::Harness { command } => match command {
+            HarnessCommands::Smoke => cmd_harness_smoke(&facade).await?,
+            HarnessCommands::Run => unreachable!("géré par dispatch_lightweight"),
+        },
+        Commands::Mcp { command } => match command {
+            McpCommands::Serve => {
+                use std::sync::Arc;
+                mcp::run_stdio_server(Arc::new(facade))
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{e}"))?
+            }
+        },
         #[cfg(feature = "http")]
         Commands::Serve { port, bind } => run_http_server(facade, &bind, port).await?,
         #[cfg(feature = "websocket-server")]
@@ -327,19 +509,28 @@ async fn main() -> Result<()> {
             DaemonCommands::Run { port, bind } => {
                 run_daemon_server(&cli.workspace, port, bind).await?
             }
+            DaemonCommands::Install | DaemonCommands::Status | DaemonCommands::Stop => {
+                unreachable!("géré par dispatch_lightweight")
+            }
         },
         #[cfg(feature = "gateway")]
         Commands::Gateway { command } => match command {
             GatewayCommands::Run { port, bind } => {
                 run_gateway_server(facade, &cli.workspace, port, bind).await?
             }
+            GatewayCommands::Status => unreachable!("géré par dispatch_lightweight"),
         },
         Commands::Providers { command } => match command {
-            ProviderCommands::List { kind } => cmd_providers_list(kind.as_deref())?,
+            ProviderCommands::List { kind: _ } => unreachable!("géré par dispatch_lightweight"),
+            ProviderCommands::Test { kind } => providers_test(&facade, kind.as_deref()).await?,
+            ProviderCommands::Set { provider: _ } => unreachable!("géré par dispatch_lightweight"),
         },
         #[cfg(feature = "gateway")]
         Commands::Channels { command } => match command {
-            ChannelCommands::List => cmd_channels_list()?,
+            ChannelCommands::List
+            | ChannelCommands::Enable { .. }
+            | ChannelCommands::Disable { .. }
+            | ChannelCommands::Status => unreachable!("géré par dispatch_lightweight"),
         },
         Commands::CapabilityProfiles { command } => match command {
             CapabilityProfileCommands::List => cmd_capability_profiles_list()?,
@@ -355,201 +546,135 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+/// Commandes harness sans bootstrap Cortex (config / OS / HTTP probes).
+async fn dispatch_lightweight(cli: &Cli) -> Result<Option<()>> {
+    match &cli.command {
+        Commands::Update => {
+            cmd_update()?;
+            return Ok(Some(()));
+        }
+        Commands::Uninstall => {
+            cmd_uninstall()?;
+            return Ok(Some(()));
+        }
+        Commands::Onboard {
+            profile,
+            llm,
+            local_only,
+            install_daemon,
+        } => {
+            let opts = OnboardOptions {
+                profile: profile.clone(),
+                llm: llm.clone(),
+                local_only: *local_only,
+                install_daemon: *install_daemon,
+            };
+            if opts.profile.is_none()
+                && opts.llm.is_none()
+                && !opts.local_only
+                && !opts.install_daemon
+            {
+                onboard_interactive(&cli.workspace)?;
+            } else {
+                cmd_onboard(&cli.workspace, &opts)?;
+            }
+            return Ok(Some(()));
+        }
+        Commands::Configure {
+            profile,
+            llm,
+            local_only,
+        } => {
+            cmd_configure(
+                &cli.workspace,
+                &ConfigureOptions {
+                    profile: profile.clone(),
+                    llm: llm.clone(),
+                    local_only: *local_only,
+                },
+            )?;
+            return Ok(Some(()));
+        }
+        Commands::Harness {
+            command: HarnessCommands::Run,
+        } => {
+            cmd_harness_run(&cli.workspace).await?;
+            return Ok(Some(()));
+        }
+        Commands::Providers { command } => match command {
+            ProviderCommands::List { kind } => {
+                cmd_providers_list(kind.as_deref())?;
+                return Ok(Some(()));
+            }
+            ProviderCommands::Set { provider } => {
+                providers_set(&cli.workspace, provider)?;
+                return Ok(Some(()));
+            }
+            ProviderCommands::Test { .. } => {}
+        },
+        Commands::CapabilityProfiles {
+            command: CapabilityProfileCommands::List,
+        } => {
+            cmd_capability_profiles_list()?;
+            return Ok(Some(()));
+        }
+        #[cfg(feature = "gateway")]
+        Commands::Channels { command } => match command {
+            ChannelCommands::List => {
+                cmd_channels_list()?;
+                return Ok(Some(()));
+            }
+            ChannelCommands::Enable { channel } => {
+                channels_enable(&cli.workspace, channel)?;
+                return Ok(Some(()));
+            }
+            ChannelCommands::Disable { channel } => {
+                channels_disable(&cli.workspace, channel)?;
+                return Ok(Some(()));
+            }
+            ChannelCommands::Status => {
+                channels_status(&cli.workspace)?;
+                return Ok(Some(()));
+            }
+        },
+        #[cfg(feature = "gateway")]
+        Commands::Gateway {
+            command: GatewayCommands::Status,
+        } => {
+            gateway_status(&cli.workspace).await?;
+            return Ok(Some(()));
+        },
+        #[cfg(feature = "websocket-server")]
+        Commands::Daemon { command } => match command {
+            DaemonCommands::Install => {
+                daemon_install(&cli.workspace)?;
+                return Ok(Some(()));
+            }
+            DaemonCommands::Status => {
+                daemon_status(&cli.workspace).await?;
+                return Ok(Some(()));
+            }
+            DaemonCommands::Stop => {
+                daemon_stop()?;
+                return Ok(Some(()));
+            }
+            DaemonCommands::Run { .. } => {}
+        },
+        _ => {}
+    }
+    Ok(None)
+}
+
+async fn bootstrap_facade(workspace: &Path) -> Result<OrchestratorFacade> {
+    let deps = bootstrap_workspace(workspace)
+        .await
+        .map_err(|err| anyhow::anyhow!(err.with_context("CLI")))?;
+    Ok(OrchestratorFacade::new(deps))
+}
+
 async fn run_bridge_command(facade: &OrchestratorFacade, command: Command) -> Result<()> {
     let response = execute_command(facade, command).await;
     print_response(response)
-}
-
-fn print_response(response: Response) -> Result<()> {
-    match response {
-        Response::Health {
-            status,
-            version,
-            llm_available,
-            embedding_available,
-        } => {
-            println!(
-                "status={status} version={version} llm={llm_available} embedding={embedding_available}"
-            );
-        }
-        Response::MemoryList { items, total } => {
-            if items.is_empty() {
-                println!("Aucune mémoire (total={total}).");
-                return Ok(());
-            }
-            println!("# total={total}");
-            for item in items {
-                let tags = item.tags.join(", ");
-                println!("{} | {} | tags=[{tags}]", item.id, item.title);
-            }
-        }
-        Response::MemoryDetail { memory } => {
-            println!("# {}", memory.title);
-            println!("id: {}", memory.id);
-            if !memory.tags.is_empty() {
-                let tags: Vec<_> = memory.tags.iter().map(|t| t.as_str()).collect();
-                println!("tags: {}", tags.join(", "));
-            }
-            println!("---");
-            println!("{}", memory.content);
-        }
-        Response::SearchResults { items } => {
-            if items.is_empty() {
-                println!("Aucun résultat.");
-                return Ok(());
-            }
-            for hit in items {
-                let preview: String = hit
-                    .snippet
-                    .as_deref()
-                    .unwrap_or("")
-                    .chars()
-                    .take(120)
-                    .collect();
-                println!("{:.3} | {} | {}", hit.score, hit.memory_id, preview);
-            }
-        }
-        Response::Assimilated { memory_id, title } => {
-            println!("Assimilé : {title} ({memory_id})");
-        }
-        Response::GraphSummary {
-            node_count,
-            edge_count,
-            hubs,
-        } => {
-            println!("Nœuds : {node_count}");
-            println!("Arêtes : {edge_count}");
-            for hub in hubs {
-                println!(
-                    "  hub ({}) : {} [{}]",
-                    hub.inbound_links, hub.title, hub.memory_id
-                );
-            }
-        }
-        Response::AuditLog {
-            entries,
-            chain_intact,
-        } => {
-            let status = if chain_intact { "intacte" } else { "ROMPUE" };
-            println!("Chaîne d'audit : {status}");
-            for entry in entries {
-                println!(
-                    "{} | {} | {} | {}",
-                    entry.timestamp, entry.event_type, entry.details, entry.hash
-                );
-            }
-        }
-        Response::Error(err) => {
-            anyhow::bail!("[{}] {}", err.kind, err.message);
-        }
-        Response::Success { message } => {
-            println!("{message}");
-        }
-        Response::ChatReply {
-            reply,
-            tools_invoked,
-            auto_assimilated,
-            auto_executed_skills,
-        } => {
-            println!("{reply}");
-            if !tools_invoked.is_empty() {
-                println!("# outils: {}", tools_invoked.join(", "));
-            }
-            if !auto_executed_skills.is_empty() {
-                println!(
-                    "# skills auto-exécutées: {}",
-                    auto_executed_skills.join(", ")
-                );
-            }
-            if let Some(summary) = auto_assimilated {
-                println!("# auto-assimilé: {summary}");
-            }
-        }
-        Response::SkillList { skills } => {
-            if skills.is_empty() {
-                println!("Aucune skill enregistrée.");
-                return Ok(());
-            }
-            for skill in skills {
-                let version = skill
-                    .version
-                    .as_deref()
-                    .map(|v| format!(" v{v}"))
-                    .unwrap_or_default();
-                println!(
-                    "{} [{}{}] — {}",
-                    skill.name, skill.source, version, skill.description
-                );
-            }
-        }
-        Response::SkillResult { message } => {
-            println!("{message}");
-        }
-        Response::MarketplaceList {
-            version,
-            catalog_hash,
-            entries,
-        } => {
-            let hash = catalog_hash.as_deref().unwrap_or("(non signé)");
-            println!("# Marketplace v{version} hash={hash} ({} entrées)", entries.len());
-            for entry in entries {
-                let state = if entry.enabled { "on" } else { "off" };
-                println!(
-                    "{:<16} {:<6} {} — {}",
-                    entry.id, state, entry.version, entry.description
-                );
-            }
-        }
-        Response::HubIntegrityReport { report } => {
-            println!(
-                "Hub intégrité : {} valide(s), {} invalide(s)",
-                report.valid_count,
-                report.invalid.len()
-            );
-            for (path, message) in &report.invalid {
-                println!("  ! {path}: {message}");
-            }
-        }
-        Response::Event(_) => {}
-        Response::WatcherStatus { status } => {
-            println!(
-                "watcher enabled={} running={} pending={} processed={}",
-                status.enabled,
-                status.running,
-                status.drafts_pending,
-                status.sessions_processed
-            );
-            for dir in &status.watch_dirs {
-                println!("  watch: {dir}");
-            }
-            if let Some(err) = &status.last_error {
-                println!("  erreur: {err}");
-            }
-        }
-        Response::DraftList { items, total } => {
-            println!("# brouillons total={total}");
-            for item in items {
-                println!(
-                    "{} | {} | {:?} | tags=[{}]",
-                    item.id,
-                    item.title,
-                    item.kind,
-                    item.tags.join(", ")
-                );
-            }
-        }
-        Response::DraftPublished {
-            draft_id,
-            memory_id,
-            title,
-        } => {
-            println!("Brouillon publié : {title} (draft={draft_id}, memory={memory_id})");
-        }
-        Response::DraftDiscarded { id } => {
-            println!("Brouillon supprimé : {id}");
-        }
-    }
-    Ok(())
 }
 
 async fn cmd_watch(facade: &OrchestratorFacade) -> Result<()> {
@@ -567,12 +692,12 @@ async fn cmd_watch(facade: &OrchestratorFacade) -> Result<()> {
         None::<orchestrator::watcher::DraftReadyCallback>,
         config,
     ));
+    let watch_dirs = handle.status().await.watch_dirs;
     install_global(Arc::clone(&handle));
-    handle.spawn();
+    Arc::clone(&handle).spawn();
 
     println!(
-        "Watcher actif — Ctrl+C pour arrêter. Répertoires : {:?}",
-        handle.status().await.watch_dirs
+        "Watcher actif — Ctrl+C pour arrêter. Répertoires : {watch_dirs:?}"
     );
 
     tokio::signal::ctrl_c()

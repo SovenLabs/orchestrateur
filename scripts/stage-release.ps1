@@ -7,6 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
+. (Join-Path $PSScriptRoot "lib\cli.ps1")
 
 if (-not $Version) {
     $Version = (Select-String -Path "Cargo.toml" -Pattern '^version = "(.+)"' | ForEach-Object { $_.Matches[0].Groups[1].Value })
@@ -15,8 +16,9 @@ if (-not $StagingDir) {
     $StagingDir = Join-Path $Root "dist\staging"
 }
 
-$CliExe = Join-Path $Root "target\release\orchestrateur.exe"
-if (-not (Test-Path $CliExe)) { throw "Missing binary: $CliExe (run cargo build --release first)" }
+if (-not (Test-OrchestrateurCliBuilt -Root $Root -Profile release)) {
+    throw "Binaire CLI manquant (orch.exe). Lancez : cargo build --release -p orchestrateur-cli --bin orch"
+}
 
 Write-Host "Staging v$Version -> $StagingDir"
 if (Test-Path $StagingDir) { Remove-Item -Recurse -Force $StagingDir }
@@ -26,7 +28,8 @@ New-Item -ItemType Directory -Path (Join-Path $WsDir "config") | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $WsDir "memories") -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $WsDir "logs") -Force | Out-Null
 
-Copy-Item $CliExe $StagingDir
+Copy-Item (Get-OrchestrateurCliExe -Root $Root -Profile release) $StagingDir
+Write-OrchestrateurCliShims -BinDir $StagingDir
 Copy-Item "workspace\config\orchestrator.toml.example" (Join-Path $WsDir "orchestrator.toml.example")
 Copy-Item "README.md" $StagingDir
 Copy-Item "territoire-graphique\communication.md" $StagingDir
@@ -34,15 +37,16 @@ Copy-Item "territoire-graphique\communication.md" $StagingDir
 @"
 Orchestrateur v$Version - Windows package
 
-Installed binaries (Program Files):
-  orchestrateur.exe      CLI headless + daemon Territoire Graphique
+Installed binaries (Program Files) :
+  orchestrateur.exe, orchestre.exe, orch.exe (meme binaire)
+  CLI headless + daemon Territoire Graphique
 
 User workspace (memories, LanceDB, config):
   %APPDATA%\Orchestrateur\workspace
 
 First run:
   1. Edit orchestrator.toml in %APPDATA%\Orchestrateur\workspace\config\
-  2. Start daemon: orchestrateur.exe daemon run --workspace <path>
+  2. Start daemon: orch daemon run --workspace <path>
   3. Launch Desktop Tauri or Territoire Graphique (Godot) — Phases 21–26
   4. Package hybride complet : just release-v26
 

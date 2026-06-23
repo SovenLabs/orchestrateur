@@ -10,6 +10,7 @@ use crate::deps::AppDependencies;
 use crate::error::SkillError;
 use crate::facade::OrchestratorFacade;
 use crate::health::probe_services;
+use crate::security::{assert_llm_egress_allowed, assert_text_safe_for_llm};
 use crate::skills::SkillsMarketplace;
 use crate::skills::SkillContext;
 use crate::VERSION;
@@ -309,6 +310,19 @@ async fn execute_assimilate(
     text: &str,
     tags: &[String],
 ) -> Response {
+    let config = &facade.deps().config;
+    if let Err(err) = assert_llm_egress_allowed(config) {
+        return Response::Error(AppError {
+            kind: err.code,
+            message: err.message,
+        });
+    }
+    if let Err(err) = assert_text_safe_for_llm(&config.security, text) {
+        return Response::Error(AppError {
+            kind: err.code,
+            message: err.message,
+        });
+    }
     match facade.assimilate(text, tags, None).await {
         Ok((memory, _events)) => Response::Assimilated {
             memory_id: memory.id,
@@ -347,6 +361,19 @@ async fn execute_graph(facade: &OrchestratorFacade) -> Response {
 }
 
 async fn execute_chat(facade: &OrchestratorFacade, message: &str) -> Response {
+    let config = &facade.deps().config;
+    if let Err(err) = assert_llm_egress_allowed(config) {
+        return Response::Error(AppError {
+            kind: err.code,
+            message: err.message,
+        });
+    }
+    if let Err(err) = assert_text_safe_for_llm(&config.security, message) {
+        return Response::Error(AppError {
+            kind: err.code,
+            message: err.message,
+        });
+    }
     let probe = probe_services(facade.deps()).await;
     if !probe.llm_available {
         return Response::Error(AppError {

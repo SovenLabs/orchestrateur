@@ -1,4 +1,4 @@
-use super::descriptor::{ProviderDescriptor, ProviderKind, EMBEDDING_DESCRIPTORS, LLM_DESCRIPTORS};
+use super::descriptor::{ProviderDescriptor, EMBEDDING_DESCRIPTORS, LLM_DESCRIPTORS};
 
 /// Registre typé des providers supportés (Phase 9).
 #[derive(Debug, Clone, Copy, Default)]

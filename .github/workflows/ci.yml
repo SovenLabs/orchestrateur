@@ -26,6 +26,14 @@ jobs:
         run: cargo clippy -p cortex -- -D warnings
       - name: clippy orchestrator
         run: cargo clippy -p orchestrator -- -D warnings
+      - name: clippy shared-types
+        run: cargo clippy -p shared-types -- -D warnings
+      - name: clippy mcp
+        run: cargo clippy -p mcp -- -D warnings
+      - name: build install CLI (zero warnings)
+        env:
+          RUSTFLAGS: "-D warnings"
+        run: cargo build -p orchestrateur-cli --bin orch --features gateway,websocket-server --release
       - name: cargo test daemon (websocket-server)
         run: cargo test -p orchestrator --features websocket-server daemon_integration
 

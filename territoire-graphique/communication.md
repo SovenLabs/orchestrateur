@@ -227,13 +227,13 @@ token_env = "ORCHESTRATEUR_DAEMON_TOKEN"
 
 ```powershell
 $env:ORCHESTRATEUR_DAEMON_TOKEN = "secret"
-.\orchestrateur.exe daemon run --workspace workspace
+.\orch.exe daemon run --workspace workspace
 ```
 
 Surcharge port/bind en CLI :
 
 ```powershell
-.\orchestrateur.exe daemon run --workspace workspace --port 28791 --bind 127.0.0.1
+.\orch.exe daemon run --workspace workspace --port 28791 --bind 127.0.0.1
 ```
 
 ---

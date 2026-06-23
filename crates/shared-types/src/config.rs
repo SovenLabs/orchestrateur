@@ -1,3 +1,5 @@
+//! Configuration client WebSocket partagée entre desktop Tauri et clients visuels.
+
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 

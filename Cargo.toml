@@ -62,7 +62,7 @@ flume = "0.11"
 axum = { version = "0.8", features = ["ws"] }
 futures-util = "0.3"
 tokio-tungstenite = "0.26"
-ts-rs = { version = "10", features = ["serde-compat", "chrono-impl"] }
+ts-rs = { version = "12", features = ["serde-compat", "chrono-impl"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["trace"] }
 libloading = "0.8"

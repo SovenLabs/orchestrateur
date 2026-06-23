@@ -7,7 +7,9 @@ use dialoguer::{theme::ColorfulTheme, Select};
 
 use crate::harness_ops::{cmd_onboard, OnboardOptions};
 use crate::tui::actions::block_on_action;
+use crate::tui::bootstrap::wait_for_harness;
 use crate::tui::menus::HarnessAction;
+use crate::tui::progress::print_setup_card;
 use crate::tui::theme::{self, format_menu_line, pause_enter};
 
 struct WizardChoice {
@@ -63,6 +65,11 @@ fn select_with_hints(title: &str, choices: &[WizardChoice]) -> Result<usize> {
 pub fn run_onboard_wizard(workspace: &Path) -> Result<()> {
     theme::print_banner("onboard — Premier lancement", workspace);
 
+    print_setup_card(
+        "Configurons votre harness Orchestrateur",
+        "Connectez un provider LLM pour commencer. La plupart des options prennent un clic.",
+    );
+
     let config_path = workspace.join("config").join("orchestrator.toml");
     if config_path.exists() {
         println!("Config existante détectée : {}", config_path.display());
@@ -102,9 +109,17 @@ pub fn run_onboard_wizard(workspace: &Path) -> Result<()> {
     )?;
 
     println!();
-    println!("Lancement du diagnostic…");
+    tokio::task::block_in_place(|| {
+        tokio::runtime::Handle::current().block_on(wait_for_harness(workspace))
+    })?;
+
+    println!();
+    println!("Diagnostic harness…");
     block_on_action(workspace, HarnessAction::Doctor)?;
 
-    pause_enter("Onboard terminé. Entrée pour fermer — puis : orchestrateur setup")?;
+    println!();
+    println!("Prochaine étape : orchestrateur setup → Gateway & canaux → Configurer Discord/Telegram");
+
+    pause_enter("Onboard terminé. Entrée pour fermer.")?;
     Ok(())
 }

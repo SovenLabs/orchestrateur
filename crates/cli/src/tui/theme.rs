@@ -42,6 +42,19 @@ pub fn format_menu_line(label: &str, hint: &str, badge: Option<&str>) -> String 
     line
 }
 
+/// Badges d'état (style Hermes : `[actif]`, `[needs setup]`).
+pub fn print_status_chips(entries: &[(&str, &str)]) {
+    if entries.is_empty() {
+        return;
+    }
+    let line: Vec<String> = entries
+        .iter()
+        .map(|(name, badge)| format!("{} {}", style(name).dim(), style(badge).yellow()))
+        .collect();
+    println!("{}", line.join("  ·  "));
+    println!();
+}
+
 /// Pied de page raccourcis clavier.
 pub fn print_footer() {
     println!();

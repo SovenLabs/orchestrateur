@@ -49,10 +49,6 @@ pub enum HarnessAction {
     Reindex,
     ChannelsList,
     ChannelsStatus,
-    ChannelEnableTelegram,
-    ChannelEnableDiscord,
-    ChannelDisableTelegram,
-    ChannelDisableDiscord,
     SkillsList,
     SkillRun,
     SkillsHubList,
@@ -223,45 +219,14 @@ static GATEWAY: &[MenuItem] = &[
         action: MenuAction::Run(HarnessAction::GatewayStatus),
     },
     MenuItem {
-        label: "Canaux",
-        hint: "activer ou désactiver Telegram, Discord…",
+        label: "Canaux messaging",
+        hint: "configurer Telegram, Discord, Slack (guide credentials)",
         action: MenuAction::SubMenu(SubMenuId::GatewayChannels),
     },
 ];
 
-static GATEWAY_CHANNELS: &[MenuItem] = &[
-    BACK,
-    MenuItem {
-        label: "Lister les canaux",
-        hint: "catalogue des canaux enregistrés",
-        action: MenuAction::Run(HarnessAction::ChannelsList),
-    },
-    MenuItem {
-        label: "Statut canaux",
-        hint: "enabled + variables token",
-        action: MenuAction::Run(HarnessAction::ChannelsStatus),
-    },
-    MenuItem {
-        label: "Activer Telegram",
-        hint: "active telegram dans orchestrator.toml",
-        action: MenuAction::Run(HarnessAction::ChannelEnableTelegram),
-    },
-    MenuItem {
-        label: "Activer Discord",
-        hint: "active discord dans orchestrator.toml",
-        action: MenuAction::Run(HarnessAction::ChannelEnableDiscord),
-    },
-    MenuItem {
-        label: "Désactiver Telegram",
-        hint: "désactive telegram dans orchestrator.toml",
-        action: MenuAction::Run(HarnessAction::ChannelDisableTelegram),
-    },
-    MenuItem {
-        label: "Désactiver Discord",
-        hint: "désactive discord dans orchestrator.toml",
-        action: MenuAction::Run(HarnessAction::ChannelDisableDiscord),
-    },
-];
+// Menu canaux dynamique : voir `tui/mod.rs::run_gateway_channels_menu`.
+static GATEWAY_CHANNELS: &[MenuItem] = &[BACK];
 
 static CORTEX: &[MenuItem] = &[
     BACK,
@@ -446,7 +411,7 @@ static MAINTENANCE: &[MenuItem] = &[
     },
     MenuItem {
         label: "Désinstaller",
-        hint: "arrêt sécurité + lien uninstall.ps1",
+        hint: "arrêt sécurité + retrait PATH et binaires",
         action: MenuAction::Run(HarnessAction::Uninstall),
     },
 ];

@@ -12,7 +12,7 @@ use orchestrator::{
 use tokio::runtime::Handle;
 
 use crate::harness_ops::{
-    channels_disable, channels_enable, channels_status, cmd_configure, cmd_doctor,
+    channels_status, cmd_configure, cmd_doctor,
     cmd_harness_run, cmd_harness_smoke, cmd_uninstall, daemon_install, daemon_status,
     daemon_stop, gateway_status, providers_set, providers_test, ConfigureOptions,
 };
@@ -142,10 +142,6 @@ pub async fn run_harness_action(workspace: &Path, action: HarnessAction) -> Resu
             }
         }
         HarnessAction::ChannelsStatus => channels_status(workspace)?,
-        HarnessAction::ChannelEnableTelegram => channels_enable(workspace, "telegram")?,
-        HarnessAction::ChannelEnableDiscord => channels_enable(workspace, "discord")?,
-        HarnessAction::ChannelDisableTelegram => channels_disable(workspace, "telegram")?,
-        HarnessAction::ChannelDisableDiscord => channels_disable(workspace, "discord")?,
         HarnessAction::SkillsList => {
             let facade = bootstrap_facade(workspace).await?;
             let response = execute_command(&facade, BridgeCommand::ListSkills).await;

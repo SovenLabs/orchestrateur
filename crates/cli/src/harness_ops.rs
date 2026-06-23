@@ -48,6 +48,92 @@ struct ProbeHealth {
     port: u16,
 }
 
+/// État compact d'un service harness (daemon / gateway).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ServiceProbeState {
+    Unknown,
+    Alive,
+    Down,
+}
+
+impl ServiceProbeState {
+    /// Service répond sur /health.
+    #[must_use]
+    pub fn is_alive(self) -> bool {
+        matches!(self, Self::Alive)
+    }
+
+    /// Badge menu (`[actif]` / `[arrêté]`).
+    #[must_use]
+    pub fn badge(self) -> &'static str {
+        match self {
+            Self::Alive => "[actif]",
+            Self::Down => "[arrêté]",
+            Self::Unknown => "[?]",
+        }
+    }
+}
+
+/// Sonde HTTP /health du daemon.
+pub async fn probe_daemon_health(url: &str) -> ServiceProbeState {
+    probe_health_url(url).await
+}
+
+/// Sonde HTTP /health du gateway.
+pub async fn probe_gateway_health(url: &str) -> ServiceProbeState {
+    probe_health_url(url).await
+}
+
+async fn probe_health_url(url: &str) -> ServiceProbeState {
+    match http_client().get(url).send().await {
+        Ok(resp) if resp.status().is_success() => ServiceProbeState::Alive,
+        Ok(_) => ServiceProbeState::Down,
+        Err(_) => ServiceProbeState::Down,
+    }
+}
+
+/// Badges daemon + gateway pour les menus setup.
+pub async fn harness_service_badges(workspace: &Path) -> (ServiceProbeState, ServiceProbeState) {
+    let Ok(config) = OrchestratorConfig::load_workspace(workspace) else {
+        return (ServiceProbeState::Unknown, ServiceProbeState::Unknown);
+    };
+    let daemon_url = format!("http://{}:{}/health", config.daemon.bind, config.daemon.port);
+    let gateway_url = format!(
+        "http://{}:{}/health",
+        config.gateway.bind, config.gateway.port
+    );
+    tokio::join!(
+        probe_daemon_health(&daemon_url),
+        probe_gateway_health(&gateway_url)
+    )
+}
+
+/// Enregistre une variable d'environnement utilisateur (persistante Windows).
+pub fn set_user_env_var(name: &str, value: &str) -> Result<()> {
+    #[cfg(windows)]
+    {
+        let escaped = value.replace('\'', "''");
+        OsCommand::new("powershell")
+            .args([
+                "-NoProfile",
+                "-Command",
+                &format!(
+                    "[Environment]::SetEnvironmentVariable('{name}', '{escaped}', 'User')"
+                ),
+            ])
+            .status()
+            .context("écriture variable utilisateur")?;
+        std::env::set_var(name, value);
+        return Ok(());
+    }
+    #[cfg(not(windows))]
+    {
+        std::env::set_var(name, value);
+        println!("({name} défini pour la session — exportez-le dans votre shell profile)");
+        Ok(())
+    }
+}
+
 /// Diagnostic harness enrichi (Cortex + services + tokens + egress).
 pub async fn cmd_doctor(facade: &OrchestratorFacade, workspace: &Path) -> Result<()> {
     let config = OrchestratorConfig::load_workspace(workspace)

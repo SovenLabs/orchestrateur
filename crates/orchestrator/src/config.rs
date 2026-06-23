@@ -675,6 +675,18 @@ impl OrchestratorConfig {
             .join("sessions.db")
     }
 
+    /// Répertoire des agents persistants (`workspace/agents/`).
+    #[must_use]
+    pub fn agents_dir(&self) -> PathBuf {
+        self.workspace_root.join("agents")
+    }
+
+    /// Registre humain des agents (`workspace/registry/AGENTS_REGISTRY.md`).
+    #[must_use]
+    pub fn agents_registry_path(&self) -> PathBuf {
+        self.workspace_root.join("registry").join("AGENTS_REGISTRY.md")
+    }
+
     /// Chemin résolu du vector store `LanceDB`.
     #[must_use]
     pub fn lancedb_path(&self) -> PathBuf {

@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 
 use crate::commands::{
-    ConfigCommands, DaemonCommands, MemoryCommands, OnboardArgs, SessionCommands, SkillCommands,
-    UpdateArgs,
+    AgentCommands, ConfigCommands, DaemonCommands, MemoryCommands, OnboardArgs, SessionCommands,
+    SkillCommands, UpdateArgs,
 };
 
 /// Orchestrateur — second cerveau local souverain.
@@ -56,6 +56,12 @@ pub enum Commands {
     Session {
         #[command(subcommand)]
         command: SessionCommands,
+    },
+
+    /// Agents persistants (identité, heartbeat, messagerie).
+    Agent {
+        #[command(subcommand)]
+        command: AgentCommands,
     },
 
     /// Configuration orchestrator.toml.

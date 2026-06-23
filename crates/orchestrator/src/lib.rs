@@ -48,6 +48,16 @@ pub mod skills;
 pub mod daemon;
 /// Boucle agent Phase 7.
 pub mod agent;
+/// Messagerie inter-agents persistants (Phase 2).
+pub mod communication;
+/// Cycle de vie heartbeat des agents persistants (Phase 2).
+pub mod heartbeat;
+/// Gestion centralisée des agents persistants (Phase 2).
+pub mod manager;
+/// Entités et dossier standard des agents persistants (Phase 2).
+pub mod persistent;
+/// Registre central des agents persistants (Phase 2).
+pub mod registry;
 /// Registre d'outils agent Phase 7.
 pub mod tools;
 /// Gateway WebSocket + canaux (feature `gateway`).
@@ -110,6 +120,14 @@ pub use agent::{
     build_agent_adapters, AgentConfig, AgentError, AgentLoop, AgentStreamEvent, AgentStreamSink,
     AgentTurnRequest, AgentTurnResult,
 };
+pub use communication::AgentMessage;
+pub use heartbeat::{AgentHeartbeat, BackgroundTaskReport};
+pub use manager::AgentManager;
+pub use persistent::{
+    AgentIdentity, AgentMemoryStore, AgentStatus, AgentStructure, CortexAgentBridge,
+    PersistentAgent, PersistentAgentConfig, PersistentAgentError,
+};
+pub use registry::AgentRegistry;
 pub use harness::{
     ensure_daemon_token, install_scheduled_task, probe_daemon_status, probe_gateway_status,
     probe_health, probe_harness_services, probe_providers, run_configure, run_doctor, run_onboard,

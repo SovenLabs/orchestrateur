@@ -13,6 +13,8 @@ use std::sync::Arc;
 
 use crate::bridge::DraftSummary;
 use crate::draft::{DraftError, DraftStatus, StoredDraft};
+use crate::manager::AgentManager;
+use crate::persistent::PersistentAgentError;
 use crate::use_cases::{
     AssimilateFromDraft, AssimilateFromText, AssimilationResult, GetMemory, ImportMemories,
     ImportResult, ListMemories, SaveMemory, SearchMemories,
@@ -225,6 +227,15 @@ impl OrchestratorFacade {
     #[must_use]
     pub fn list_skills(&self) -> Vec<SkillEntry> {
         self.skills.list()
+    }
+
+    /// Construit le gestionnaire d'agents persistants (Phase 2).
+    ///
+    /// # Errors
+    ///
+    /// Propage [`PersistentAgentError`] si le chargement initial échoue.
+    pub async fn agent_manager(&self) -> Result<AgentManager, PersistentAgentError> {
+        AgentManager::new(self.deps.clone()).await
     }
 
     /// Tour agent complet Phase 7 — contexte graphe + outils mémoire + session.

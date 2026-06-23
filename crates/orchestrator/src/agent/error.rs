@@ -31,4 +31,12 @@ pub enum AgentError {
     /// Réponse LLM invalide ou vide.
     #[error("réponse LLM invalide: {0}")]
     InvalidLlmResponse(String),
+
+    /// Erreur de récupération de contexte Cortex.
+    #[error(transparent)]
+    Retrieval(#[from] cortex::RetrievalError),
+
+    /// Erreur d'assimilation Cortex.
+    #[error(transparent)]
+    Assimilation(#[from] cortex::AssimilationError),
 }

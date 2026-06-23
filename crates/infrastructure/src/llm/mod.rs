@@ -1,4 +1,11 @@
 //! Adapters du port [`orchestrator::LlmProvider`].
+//!
+//! Le trait [`LlmProvider`] vit dans `orchestrator::llm` (pas ici) pour éviter
+//! une dépendance circulaire. Ce module fournit les implémentations concrètes :
+//!
+//! - [`XaiGrokProvider`] — xAI Grok (chat + structured output `MemoryDraft`)
+//! - [`OllamaLlmProvider`] — Ollama local
+//! - [`ChainedLlmProvider`] — fallback primary → fallbacks TOML
 
 mod anthropic;
 mod chain;

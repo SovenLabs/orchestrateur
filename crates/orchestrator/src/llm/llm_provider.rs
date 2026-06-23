@@ -155,6 +155,42 @@ pub trait LlmProvider: Send + Sync {
     fn last_usage(&self) -> Option<LlmUsageRecorded> {
         None
     }
+
+    /// Complétion simple system + user (wrapper autour de [`Self::chat`]).
+    ///
+    /// `temperature` est ignoré pour l'instant — les adapters appliquent leur propre défaut HTTP.
+    async fn complete(
+        &self,
+        system_prompt: &str,
+        user_message: &str,
+        _temperature: f32,
+    ) -> Result<String, LlmError> {
+        self.chat(&[
+            ChatMessage {
+                role: "system".into(),
+                content: system_prompt.into(),
+            },
+            ChatMessage {
+                role: "user".into(),
+                content: user_message.into(),
+            },
+        ])
+        .await
+    }
+
+    /// Complétion avec historique ; préfixe un message système.
+    async fn complete_with_context(
+        &self,
+        system_prompt: &str,
+        messages: &[ChatMessage],
+    ) -> Result<String, LlmError> {
+        let mut chain = vec![ChatMessage {
+            role: "system".into(),
+            content: system_prompt.into(),
+        }];
+        chain.extend_from_slice(messages);
+        self.chat(&chain).await
+    }
 }
 
 #[cfg(test)]

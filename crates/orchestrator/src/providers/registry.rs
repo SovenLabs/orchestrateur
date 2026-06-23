@@ -49,6 +49,7 @@ impl ProviderRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ProviderKind;
 
     #[test]
     fn registry_has_at_least_ten_llm_providers() {

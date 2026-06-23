@@ -282,9 +282,13 @@ Clients : Tauri (`window_kind: desktop`), Godot (`main`, `sphere`). Voir `shared
 
 | Item | Statut | Action suggérée |
 |------|--------|-----------------|
-| `agent_ports.rs` | ✅ Traits + types figés | Implémenter dans `orchestrator` |
-| Implémentations `ContextProvider` / `AssimilationService` | À faire | Adapter `build_context` + `AssimilateFromText` |
-| Règles `AutoIfChange` | À définir | Seuil sémantique / longueur / entités nouvelles |
+| `agent_ports.rs` | ✅ Traits + types figés | — |
+| `CortexContextProvider` | ✅ | `orchestrator/src/agent/adapters/context_provider.rs` |
+| `CortexAssimilationService` | ✅ | `orchestrator/src/agent/adapters/assimilation_service.rs` |
+| `CortexSemanticSearch` | ✅ | `orchestrator/src/agent/adapters/semantic_search.rs` |
+| `ChangeDetector` (`AutoIfChange`) | ✅ v1 | Longueur min, salutations triviales, score sémantique |
+| `AgentLoopV2` | ✅ | `orchestrator/src/agent/loop_v2.rs` — sans tool-calling |
+| `LlmProvider` + xAI | ✅ existant | Trait : `orchestrator::llm` ; impl : `infrastructure::XaiGrokProvider` |
 | `TurnLogger` dédié | Partiel | Audit `workspace/logs/turns/` si replay requis |
 | `WorkspaceValidator` | Partiel | Extraire `doctor` du CLI vers `orchestrator` |
 
@@ -294,7 +298,10 @@ Clients : Tauri (`window_kind: desktop`), Godot (`main`, `sphere`). Voir `shared
 
 | Élément | Chemin |
 |---------|--------|
-| AgentLoop | `crates/orchestrator/src/agent/loop_impl.rs` |
+| AgentLoop (tools) | `crates/orchestrator/src/agent/loop_impl.rs` |
+| AgentLoopV2 (ports) | `crates/orchestrator/src/agent/loop_v2.rs` |
+| Adapters agent | `crates/orchestrator/src/agent/adapters/` |
+| XaiGrokProvider | `crates/infrastructure/src/llm/xai_grok.rs` |
 | build_context | `crates/orchestrator/src/agent/context.rs` |
 | AssimilateFromDraft | `crates/orchestrator/src/use_cases/assimilate_from_draft.rs` |
 | AssimilateFromText | `crates/orchestrator/src/use_cases/assimilate_from_text.rs` |

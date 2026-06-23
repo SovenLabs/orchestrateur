@@ -11,6 +11,10 @@ use crate::skills::{SkillContext, SkillEntry, SkillOutput, SkillRegistry};
 use std::path::Path;
 use std::sync::Arc;
 
+use crate::b212::{
+    ensure_b212_agents, relay_workflow_steps, wake_b212_agents_for_workflow, B212AnalyzeRequest,
+    B212GovernanceService, B212WorkflowResult, B212WorkflowService,
+};
 use crate::bridge::DraftSummary;
 use crate::draft::{DraftError, DraftStatus, StoredDraft};
 use crate::manager::AgentManager;
@@ -236,6 +240,83 @@ impl OrchestratorFacade {
     /// Propage [`PersistentAgentError`] si le chargement initial échoue.
     pub async fn agent_manager(&self) -> Result<AgentManager, PersistentAgentError> {
         AgentManager::new(self.deps.clone()).await
+    }
+
+    /// Service workflow B212 (Phase 3).
+    ///
+    /// # Errors
+    ///
+    /// Propage [`b212::B212Error`] si B212 est désactivé ou non câblé.
+    pub fn b212_workflow_service(&self) -> Result<B212WorkflowService, b212::B212Error> {
+        B212WorkflowService::new(self.deps.clone())
+    }
+
+    /// Initialise les 6 agents domaine B212 (idempotent).
+    pub async fn b212_init_agents(&self) -> Result<Vec<String>, PersistentAgentError> {
+        let manager = self.agent_manager().await?;
+        let agents = ensure_b212_agents(&manager).await?;
+        Ok(agents.iter().map(|a| a.config.id.clone()).collect())
+    }
+
+    /// Exécute le workflow B212 complet avec agents persistants réveillés.
+    pub async fn b212_analyze(
+        &self,
+        req: B212AnalyzeRequest,
+    ) -> Result<B212WorkflowResult, b212::B212Error> {
+        let service = self.b212_workflow_service()?;
+        let manager = self
+            .agent_manager()
+            .await
+            .map_err(|e| b212::B212Error::Config(e.to_string()))?;
+        wake_b212_agents_for_workflow(&manager)
+            .await
+            .map_err(|e| b212::B212Error::Config(e.to_string()))?;
+        let result = service.run(req).await?;
+        let _ = relay_workflow_steps(&manager, &result.steps)
+            .await
+            .map_err(|e| b212::B212Error::Journal(e.to_string()));
+        Ok(result)
+    }
+
+    /// Liste les propositions trade en attente HITL.
+    pub async fn b212_list_pending_proposals(
+        &self,
+    ) -> Result<Vec<b212::TradeProposal>, b212::B212Error> {
+        let gov = self.b212_governance()?;
+        gov.list_pending().await
+    }
+
+    /// Approuve une proposition B212.
+    pub async fn b212_approve_proposal(
+        &self,
+        id: &str,
+    ) -> Result<b212::TradeProposal, b212::B212Error> {
+        let gov = self.b212_governance()?;
+        gov.approve(id).await
+    }
+
+    /// Rejette une proposition B212.
+    pub async fn b212_reject_proposal(
+        &self,
+        id: &str,
+        reason: &str,
+    ) -> Result<b212::TradeProposal, b212::B212Error> {
+        let gov = self.b212_governance()?;
+        gov.reject(id, reason).await
+    }
+
+    fn b212_governance(&self) -> Result<B212GovernanceService, b212::B212Error> {
+        let journal = self
+            .deps
+            .b212_journal
+            .clone()
+            .ok_or_else(|| b212::B212Error::Config("journal B212 absent".into()))?;
+        let proposals = self
+            .deps
+            .b212_proposals
+            .clone()
+            .ok_or_else(|| b212::B212Error::Config("proposals B212 absent".into()))?;
+        Ok(B212GovernanceService::new(journal, proposals))
     }
 
     /// Tour agent pour un agent persistant (Phase 2b) — personality + session `agent-{id}`.

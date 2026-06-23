@@ -16,8 +16,8 @@ use crate::cli::{
 };
 use crate::cli::Cli;
 use crate::commands::{
-    agent, config, daemon, doctor, health, memory, onboard, session, skill, uninstall, update,
-    DaemonCommands, MemoryCommands, SkillCommands,
+    agent, b212, config, daemon, doctor, health, memory, onboard, session, skill, uninstall,
+    update, DaemonCommands, MemoryCommands, SkillCommands,
 };
 use crate::context::{bootstrap_facade, run_bridge_command};
 use orchestrator::{ConfigureOptions, HarnessSmokeOptions};
@@ -93,6 +93,10 @@ async fn dispatch_lightweight(cli: &Cli) -> Result<Option<()>> {
         }
         Commands::Agent { command } => {
             agent::run(command.clone(), &cli.workspace).await?;
+            Ok(Some(()))
+        }
+        Commands::B212 { command } => {
+            b212::run(command.clone(), &cli.workspace).await?;
             Ok(Some(()))
         }
         Commands::Providers { command } => match command {
@@ -301,7 +305,8 @@ async fn dispatch_facade(cli: &Cli, facade: &OrchestratorFacade) -> Result<()> {
         | Commands::Configure { .. }
         | Commands::Config { .. }
         | Commands::Session { .. }
-        | Commands::Agent { .. } => unreachable!("lightweight"),
+        | Commands::Agent { .. }
+        | Commands::B212 { .. } => unreachable!("lightweight"),
     }
     Ok(())
 }

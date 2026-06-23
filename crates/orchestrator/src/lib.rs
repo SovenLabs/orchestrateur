@@ -158,6 +158,10 @@ pub use gateway::ChannelCatalog;
 pub use use_cases::{
     AssimilateFromText, ListMemories, SearchMemories, DEFAULT_ASSIMILATION_SYSTEM_PROMPT,
 };
+pub use b212::{
+    ensure_b212_agents, B212AnalyzeRequest, B212WorkflowResult, B212WorkflowService, B212_AGENTS,
+    B212GovernanceService,
+};
 
 /// Version du crate alignée sur le workspace.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

@@ -5,9 +5,9 @@ use crate::draft::StoredDraft;
 use crate::security::AuditEvent;
 
 use super::types::{
-    AgentMessageSummary, AgentSummary, AppError, BridgeSearchHit, DraftSummary,
-    HubIntegritySummary, HubSummary, MarketplaceEntrySummary, MemorySummary, SkillSummary,
-    WatcherStatus,
+    AgentMessageSummary, AgentSummary, AppError, B212ProposalSummary, B212WorkflowSummary,
+    BridgeSearchHit, DraftSummary, HubIntegritySummary, HubSummary, MarketplaceEntrySummary,
+    MemorySummary, SkillSummary, WatcherStatus,
 };
 
 /// Réponse produite par le thread orchestrateur vers la couche présentation.
@@ -177,5 +177,25 @@ pub enum Response {
         inbox_count: usize,
         pending_tasks: usize,
         executed: Vec<String>,
+    },
+    /// Agents domaine B212 initialisés.
+    B212AgentsReady {
+        /// Identifiants créés ou existants.
+        agent_ids: Vec<String>,
+    },
+    /// Résultat workflow B212.
+    B212Workflow {
+        /// Résumé desk.
+        result: B212WorkflowSummary,
+    },
+    /// Propositions B212 en attente.
+    B212ProposalList {
+        /// Propositions pending.
+        items: Vec<B212ProposalSummary>,
+    },
+    /// Proposition B212 mise à jour (approve/reject).
+    B212ProposalUpdated {
+        /// Proposition.
+        proposal: B212ProposalSummary,
     },
 }

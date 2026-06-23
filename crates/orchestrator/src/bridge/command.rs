@@ -136,4 +136,39 @@ pub enum Command {
         #[serde(default)]
         mark_read: bool,
     },
+    /// Initialise les 6 agents domaine B212 (idempotent).
+    B212InitAgents,
+    /// Analyse setup B212 via fixtures.
+    B212Analyze {
+        /// Symbole (ex. `BTCUSDT`).
+        symbol: String,
+        /// Session (`london`, `ny`, `asia`).
+        #[serde(default = "default_b212_session")]
+        session: String,
+        /// Lookback bougies par timeframe.
+        #[serde(default = "default_b212_lookback")]
+        lookback: usize,
+    },
+    /// Liste les propositions trade en attente HITL.
+    B212ListProposals,
+    /// Approuve une proposition B212.
+    B212ApproveProposal {
+        /// Identifiant proposition.
+        id: String,
+    },
+    /// Rejette une proposition B212.
+    B212RejectProposal {
+        /// Identifiant proposition.
+        id: String,
+        /// Motif de rejet.
+        reason: String,
+    },
+}
+
+fn default_b212_session() -> String {
+    "london".into()
+}
+
+fn default_b212_lookback() -> usize {
+    24
 }

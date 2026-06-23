@@ -229,6 +229,60 @@ pub struct AgentSummary {
     pub last_heartbeat: Option<String>,
 }
 
+/// Résumé proposition trade B212 (bridge).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct B212ProposalSummary {
+    /// Identifiant proposition.
+    pub id: String,
+    /// Symbole.
+    pub symbol: String,
+    /// Session.
+    pub session: String,
+    /// Direction.
+    pub side: String,
+    /// Statut HITL.
+    pub status: String,
+    /// TLS /10.
+    pub trade_location_score: u8,
+    /// Taille recommandée.
+    pub sizing: String,
+}
+
+/// Résumé workflow B212 (bridge).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct B212WorkflowSummary {
+    /// Symbole.
+    pub symbol: String,
+    /// Session.
+    pub session: String,
+    /// Nombre d'étapes agents.
+    pub step_count: usize,
+    /// Cardinal rules passées.
+    pub cardinal_passed: bool,
+    /// Taille recommandée.
+    pub recommended_sizing: String,
+    /// TLS /10.
+    pub trade_location_score: u8,
+    /// Alignement /10.
+    pub alignment_score: u8,
+    /// Proposition créée.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub proposal_id: Option<String>,
+    /// Étapes agents.
+    pub steps: Vec<B212AgentStepSummary>,
+}
+
+/// Étape agent dans un résumé workflow bridge.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct B212AgentStepSummary {
+    /// Identifiant agent.
+    pub agent_id: String,
+    /// Nom affiché.
+    pub agent_name: String,
+    /// Résumé desk.
+    pub summary: String,
+}
+
 /// Résumé d'un message inter-agent.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AgentMessageSummary {

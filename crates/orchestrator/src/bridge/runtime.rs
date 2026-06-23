@@ -197,6 +197,19 @@ pub async fn execute_command(facade: &OrchestratorFacade, cmd: Command) -> Respo
         Command::AgentMessages { id, mark_read } => {
             execute_agent_messages(facade, &id, mark_read).await
         }
+        Command::B212InitAgents => crate::b212::execute_b212_init_agents(facade).await,
+        Command::B212Analyze {
+            symbol,
+            session,
+            lookback,
+        } => crate::b212::execute_b212_analyze(facade, &symbol, &session, lookback).await,
+        Command::B212ListProposals => crate::b212::execute_b212_list_proposals(facade).await,
+        Command::B212ApproveProposal { id } => {
+            crate::b212::execute_b212_approve_proposal(facade, &id).await
+        }
+        Command::B212RejectProposal { id, reason } => {
+            crate::b212::execute_b212_reject_proposal(facade, &id, &reason).await
+        }
     }
 }
 

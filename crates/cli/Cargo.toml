@@ -33,6 +33,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 uuid = { workspace = true, features = ["v4"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
 axum = { workspace = true, optional = true }
 tower = { workspace = true, optional = true }
 tower-http = { workspace = true, optional = true }

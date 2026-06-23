@@ -18,7 +18,7 @@ use crate::harness_ops::{
     daemon_stop, gateway_status, providers_set, providers_test, ConfigureOptions,
 };
 use crate::output::print_response;
-use crate::update::{cmd_update, UpdateOptions};
+use crate::commands::update::{run as run_update, UpdateArgs};
 
 use super::menus::HarnessAction;
 
@@ -199,7 +199,7 @@ pub async fn run_harness_action(workspace: &Path, action: HarnessAction) -> Resu
             }
         }
         HarnessAction::Update => {
-            cmd_update(UpdateOptions::default()).await?;
+            run_update(UpdateArgs::default()).await?;
         }
         HarnessAction::Uninstall => cmd_uninstall()?,
         HarnessAction::Audit => {

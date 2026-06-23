@@ -720,7 +720,7 @@ pub async fn cmd_harness_run(workspace: &Path) -> Result<()> {
     let daemon_url = format!("http://{}:{}/health", config.daemon.bind, config.daemon.port);
     if config.daemon.enabled && !service_alive(&daemon_url).await {
         let child = OsCommand::new(&exe)
-            .args(["daemon", "run", "--workspace", &ws])
+            .args(["daemon", "start", "--workspace", &ws])
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()

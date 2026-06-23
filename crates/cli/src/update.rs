@@ -1,17 +1,13 @@
 //! Mise à jour autonome du binaire Orchestrateur (release GitHub ou dev local).
 
-use std::path::{Path, PathBuf};
-use std::process::{Command as OsCommand, Stdio};
-
-use anyhow::{Context, Result};
+use anyhow::Result;
 use orchestrator::VERSION;
 use serde::Deserialize;
 
 use crate::harness_ops::daemon_stop;
+use crate::windows_ops::{find_dev_repo_root, powershell_install_body, spawn_detached_after_exit};
 
 const REPO: &str = "SovenLabs/orchestrateur";
-const INSTALL_PS1_URL: &str =
-    "https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1";
 
 /// Options de la commande `orchestrateur update`.
 #[derive(Debug, Clone, Default)]
@@ -52,29 +48,6 @@ fn normalize_tag(tag: &str) -> String {
     }
 }
 
-fn find_dev_repo_root() -> Option<PathBuf> {
-    let mut candidates = Vec::new();
-    if let Ok(cwd) = std::env::current_dir() {
-        candidates.push(cwd);
-    }
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(parent) = exe.parent() {
-            candidates.push(parent.to_path_buf());
-        }
-    }
-    for mut dir in candidates {
-        for _ in 0..10 {
-            let cargo = dir.join("Cargo.toml");
-            let install = dir.join("install.ps1");
-            if cargo.is_file() && install.is_file() {
-                return Some(dir);
-            }
-            dir = dir.parent()?.to_path_buf();
-        }
-    }
-    None
-}
-
 fn resolve_update_mode(opts: &UpdateOptions) -> Result<bool> {
     if opts.dev {
         return Ok(true);
@@ -83,85 +56,6 @@ fn resolve_update_mode(opts: &UpdateOptions) -> Result<bool> {
         return Ok(false);
     }
     Ok(find_dev_repo_root().is_some())
-}
-
-async fn download_install_script() -> Result<String> {
-    let client = reqwest::Client::builder()
-        .user_agent("Orchestrateur-CLI-Update")
-        .build()?;
-    Ok(client
-        .get(INSTALL_PS1_URL)
-        .send()
-        .await?
-        .error_for_status()?
-        .text()
-        .await?)
-}
-
-#[cfg(windows)]
-async fn run_powershell_install(dev: bool, repo_root: Option<&Path>) -> Result<()> {
-    if dev {
-        let discovered = find_dev_repo_root();
-        let root = repo_root
-            .or(discovered.as_deref())
-            .context("mode dev : clone orchestrateur introuvable (Cargo.toml + install.ps1)")?;
-        let script = root.join("install.ps1");
-        println!("Mise à jour dev depuis {} …", root.display());
-        let status = OsCommand::new("powershell")
-            .args([
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                &script.to_string_lossy(),
-                "-Dev",
-                "-SkipDoctor",
-            ])
-            .current_dir(root)
-            .stdin(Stdio::inherit())
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .status()
-            .context("powershell install.ps1 -Dev")?;
-        if !status.success() {
-            anyhow::bail!("install.ps1 a échoué (code {status})");
-        }
-        return Ok(());
-    }
-
-    let temp_dir = std::env::temp_dir().join("orchestrateur-update");
-    std::fs::create_dir_all(&temp_dir).context("mkdir temp update")?;
-    let script_path = temp_dir.join("install.ps1");
-    println!("Téléchargement installateur release…");
-    std::fs::write(&script_path, download_install_script().await?).context("écriture install.ps1 temp")?;
-
-    println!("Installation release en cours…");
-    let status = OsCommand::new("powershell")
-        .args([
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            &script_path.to_string_lossy(),
-            "-SkipDoctor",
-        ])
-        .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .status()
-        .context("powershell install.ps1 release")?;
-    if !status.success() {
-        anyhow::bail!("install.ps1 release a échoué (code {status})");
-    }
-    Ok(())
-}
-
-#[cfg(not(windows))]
-async fn run_powershell_install(_dev: bool, _repo_root: Option<&Path>) -> Result<()> {
-    anyhow::bail!(
-        "orchestrateur update automatique : Windows uniquement pour l'instant.\n\
-         Linux/macOS : cargo build --release -p orchestrateur-cli --bin orch"
-    );
 }
 
 /// Met à jour Orchestrateur (release ou dev selon détection / flags).
@@ -186,7 +80,7 @@ pub async fn cmd_update(opts: UpdateOptions) -> Result<()> {
                 std::process::exit(1);
             }
             None if dev_mode => {
-                println!("Pas de release GitHub — mode dev détecté. Utilisez `orchestrateur update --dev` pour recompiler.");
+                println!("Pas de release GitHub — mode dev détecté. Lancez `orchestrateur update` pour recompiler.");
                 std::process::exit(0);
             }
             None => {
@@ -211,15 +105,22 @@ pub async fn cmd_update(opts: UpdateOptions) -> Result<()> {
     };
 
     if dev_mode {
-        println!("Mode : développement (compile + ~/.orchestrateur/bin)");
+        let dev_root = repo.clone().or_else(find_dev_repo_root);
+        if let Some(root) = dev_root {
+            println!("Mode : développement depuis {}", root.display());
+        } else {
+            println!("Mode : développement (compile + ~/.orchestrateur/bin)");
+        }
     } else {
         println!("Mode : release (GitHub Setup)");
     }
 
-    run_powershell_install(dev_mode, repo.as_deref()).await?;
+    let task = powershell_install_body(dev_mode, repo.as_deref())?;
+    spawn_detached_after_exit(&task)?;
 
     println!();
-    println!("Mise à jour terminée.");
-    println!("Fermez et rouvrez le terminal, puis : orchestrateur --version");
-    Ok(())
+    println!("Mise à jour lancée en arrière-plan (le binaire en cours sera remplacé).");
+    println!("Une fenêtre PowerShell va terminer l'installation.");
+    println!("Puis rouvrez le terminal : orchestrateur --version");
+    std::process::exit(0);
 }

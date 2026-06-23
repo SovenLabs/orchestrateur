@@ -360,17 +360,19 @@ pub async fn daemon_status(workspace: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Arrêt rapide + instructions pour désinstallation complète Windows.
+/// Désinstallation complète Windows (script détaché — le binaire courant se libère).
 pub fn cmd_uninstall() -> Result<()> {
-    println!("Arret des processus Orchestrateur en arriere-plan...");
+    use crate::windows_ops::{powershell_uninstall_body, spawn_detached_after_exit};
+
+    println!("Lancement de la désinstallation complète…");
     daemon_stop()?;
+    let task = powershell_uninstall_body();
+    spawn_detached_after_exit(&task)?;
     println!();
-    println!("Pour retirer Orchestrateur de la machine (PATH, binaires, tache) :");
-    println!("  powershell -ExecutionPolicy Bypass -File uninstall.ps1");
-    println!("  (depot) ou : irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/uninstall.ps1 | iex");
-    println!();
-    println!("Options : -PurgeData (efface %APPDATA%\\Orchestrateur), -AllUsers (Program Files + PATH systeme)");
-    Ok(())
+    println!("Désinstallation lancée en arrière-plan.");
+    println!("PATH, binaires et tâche planifiée seront retirés automatiquement.");
+    println!("Options avancées : uninstall.ps1 -PurgeData -AllUsers");
+    std::process::exit(0);
 }
 
 #[cfg(windows)]
@@ -400,6 +402,8 @@ pub fn daemon_stop() -> Result<()> {
     {
         let _ = OsCommand::new("schtasks")
             .args(["/End", "/TN", DAEMON_TASK_NAME])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
             .status();
         let stopped = stop_orchestrateur_processes_except_current();
         if stopped {

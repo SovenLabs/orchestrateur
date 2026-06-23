@@ -117,6 +117,8 @@ function Uninstall-OrchestrateurComplete {
     Uninstall-OrchestrateurCliArtifacts -AllUsers:$AllUsers
     Uninstall-OrchestrateurPathEntries -AllUsers:$AllUsers
     Clear-OrchestrateurDaemonToken
+    $devMarker = Join-Path $env:USERPROFILE ".orchestrateur\dev-repo.txt"
+    Remove-OrchestrateurDirectory -Path $devMarker -Label "marqueur dev"
 
     if ($PurgeData) {
         $dataRoot = Join-Path $env:APPDATA "Orchestrateur"

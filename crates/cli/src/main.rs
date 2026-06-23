@@ -4,6 +4,7 @@ mod harness_ops;
 mod output;
 mod tui;
 mod update;
+mod windows_ops;
 
 #[cfg(feature = "http")]
 use std::sync::Arc;

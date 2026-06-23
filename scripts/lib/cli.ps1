@@ -9,6 +9,21 @@ function Get-OrchestrateurUserBinDir {
     return Join-Path $env:USERPROFILE ".orchestrateur\bin"
 }
 
+function Write-OrchestrateurDevRepoMarker {
+    param([Parameter(Mandatory = $true)][string]$Root)
+    if (-not (Test-Path -LiteralPath (Join-Path $Root "Cargo.toml"))) {
+        return
+    }
+    $stateDir = Join-Path $env:USERPROFILE ".orchestrateur"
+    if (-not (Test-Path $stateDir)) {
+        New-Item -ItemType Directory -Path $stateDir -Force | Out-Null
+    }
+    $marker = Join-Path $stateDir "dev-repo.txt"
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($marker, $Root, $utf8NoBom)
+    Write-Host "  marqueur dev : $marker"
+}
+
 function Initialize-OrchestrateurBuildEnv {
     $env:Path = "$(Get-OrchestrateurUserBinDir);$env:USERPROFILE\.cargo\bin;C:\Program Files\nodejs;" + $env:Path
     $vcvars = @(
@@ -150,7 +165,12 @@ function Copy-OrchestrateurCliBinary {
         throw "Binaire manquant : $src (build echoue ?)"
     }
     $dst = Join-Path $DestDir "$($script:OrchestrateurCliBin).exe"
-    Copy-Item -Force $src $dst
+    $staging = "$dst.new"
+    Copy-Item -Force $src $staging
+    if (Test-Path -LiteralPath $dst) {
+        Remove-Item -LiteralPath $dst -Force -ErrorAction Stop
+    }
+    Move-Item -LiteralPath $staging -Destination $dst -Force
     Write-Host "  -> $dst"
     Write-OrchestrateurCliShims -BinDir $DestDir
 }
@@ -198,6 +218,7 @@ function Install-OrchestrateurCliToUserPath {
     )
     $binDir = Get-OrchestrateurUserBinDir
     Copy-OrchestrateurCliBinary -Root $Root -DestDir $binDir -Profile $Profile
+    Write-OrchestrateurDevRepoMarker -Root $Root
     Remove-OrchestrateurCliFromLegacyDirs
     Add-OrchestrateurPathEntry -Dir $binDir -Scope "User"
 }

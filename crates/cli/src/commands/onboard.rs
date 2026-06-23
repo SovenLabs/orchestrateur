@@ -4,8 +4,9 @@ use std::path::Path;
 
 use anyhow::Result;
 use clap::Args;
+use orchestrator::OnboardOptions;
 
-use crate::harness_ops::{cmd_onboard, OnboardOptions};
+use crate::present;
 use crate::tui;
 
 /// Options de la commande onboard.
@@ -39,7 +40,7 @@ pub fn run(args: OnboardArgs, workspace: &Path) -> Result<()> {
     if use_wizard {
         tui::run_onboard_wizard(workspace)
     } else {
-        cmd_onboard(
+        present::onboard(
             workspace,
             &OnboardOptions {
                 profile: args.profile,

@@ -7,7 +7,7 @@ use dialoguer::{theme::ColorfulTheme, Confirm, Input, Password, Select};
 use orchestrator::gateway::resolve_channel_config;
 use orchestrator::OrchestratorConfig;
 
-use crate::harness_ops::{channels_enable, channels_status, set_user_env_var};
+use crate::present::{channels_enable, channels_status, set_user_env_var};
 
 use super::theme::{format_menu_line, print_banner, print_breadcrumb};
 

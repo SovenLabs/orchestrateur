@@ -110,7 +110,18 @@ pub use agent::{
     build_agent_adapters, AgentConfig, AgentError, AgentLoop, AgentStreamEvent, AgentStreamSink,
     AgentTurnRequest, AgentTurnResult,
 };
-pub use harness::{probe_health, probe_harness_services, HarnessServiceProbe, ServiceHealth};
+pub use harness::{
+    ensure_daemon_token, install_scheduled_task, probe_daemon_status, probe_gateway_status,
+    probe_health, probe_harness_services, probe_providers, run_configure, run_doctor, run_onboard,
+    run_smoke, scheduled_task_installed, service_badges, set_user_env_var, stop_daemon,
+    validate_probe, ChannelStatusRow, CheckStatus, ConfigureOptions, DaemonInstallResult,
+    DaemonStopResult, DoctorCheck, DoctorReport, HarnessError, HarnessServiceProbe,
+    HarnessSmokeOptions, OnboardOptions, OnboardResult, ProviderProbeResult, ServiceHealth,
+    ServiceProbeState, ServiceStatusDetail, SmokeResult, SupervisorSpawnPlan, DAEMON_TOKEN_ENV,
+    plan_supervisor, spawn_child, wait_for_spawn,
+};
+#[cfg(feature = "gateway")]
+pub use harness::{disable_channel, enable_channel, list_channel_status};
 #[cfg(feature = "gateway")]
 pub use gateway::{run_gateway, GatewayError, GatewayRunner};
 pub use tools::{

@@ -28,7 +28,7 @@ pub enum MenuAction {
     Run(HarnessAction),
 }
 
-/// Action harness mappée vers `harness_ops` / bridge.
+/// Action harness mappée vers `orchestrator::harness` / bridge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HarnessAction {
     Doctor,

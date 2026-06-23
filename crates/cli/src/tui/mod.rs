@@ -18,7 +18,7 @@ use theme::{
     format_menu_line, pause_enter, print_banner, print_breadcrumb, print_footer, print_status_chips,
 };
 
-use crate::harness_ops::harness_service_badges;
+use crate::present::harness_service_badges;
 
 pub use onboard::run_onboard_wizard;
 

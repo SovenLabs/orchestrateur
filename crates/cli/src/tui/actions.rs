@@ -11,11 +11,11 @@ use orchestrator::{
 };
 use tokio::runtime::Handle;
 
-use crate::harness_ops::{
-    channels_status, cmd_configure, cmd_doctor,
-    cmd_harness_run, cmd_harness_smoke, cmd_uninstall, daemon_install, daemon_status,
-    HarnessSmokeOptions,
-    daemon_stop, gateway_status, providers_set, providers_test, ConfigureOptions,
+use orchestrator::{ConfigureOptions, HarnessSmokeOptions};
+
+use crate::present::{
+    channels_status, configure, daemon_install, daemon_status, daemon_stop, doctor,
+    gateway_status, harness_run, harness_smoke, providers_set, providers_test, uninstall,
 };
 use crate::output::print_response;
 use crate::commands::update::{run as run_update, UpdateArgs};
@@ -39,7 +39,7 @@ pub async fn run_harness_action(workspace: &Path, action: HarnessAction) -> Resu
     match action {
         HarnessAction::Doctor => {
             let facade = bootstrap_facade(workspace).await?;
-            cmd_doctor(&facade, workspace).await?;
+            doctor(&facade, workspace).await?;
         }
         HarnessAction::DaemonStatus => daemon_status(workspace).await?,
         HarnessAction::DaemonInstall | HarnessAction::DaemonInstallSettings => {
@@ -49,9 +49,9 @@ pub async fn run_harness_action(workspace: &Path, action: HarnessAction) -> Resu
         HarnessAction::GatewayStatus => gateway_status(workspace).await?,
         HarnessAction::HarnessSmoke => {
             let facade = bootstrap_facade(workspace).await?;
-            cmd_harness_smoke(&facade, workspace, &HarnessSmokeOptions::default()).await?;
+            harness_smoke(&facade, workspace, &HarnessSmokeOptions::default()).await?;
         }
-        HarnessAction::HarnessRun => cmd_harness_run(workspace).await?,
+        HarnessAction::HarnessRun => harness_run(workspace).await?,
         HarnessAction::Health => {
             let facade = bootstrap_facade(workspace).await?;
             run_bridge(&facade, BridgeCommand::HealthCheck).await?;
@@ -179,7 +179,7 @@ pub async fn run_harness_action(workspace: &Path, action: HarnessAction) -> Resu
         HarnessAction::ProviderSetOllama => providers_set(workspace, "ollama")?,
         HarnessAction::ProviderSetXai => providers_set(workspace, "xai")?,
         HarnessAction::ConfigureLocalOnly => {
-            cmd_configure(
+            configure(
                 workspace,
                 &ConfigureOptions {
                     profile: Some("local_only".into()),
@@ -201,7 +201,7 @@ pub async fn run_harness_action(workspace: &Path, action: HarnessAction) -> Resu
         HarnessAction::Update => {
             run_update(UpdateArgs::default()).await?;
         }
-        HarnessAction::Uninstall => cmd_uninstall()?,
+        HarnessAction::Uninstall => uninstall()?,
         HarnessAction::Audit => {
             let facade = bootstrap_facade(workspace).await?;
             run_bridge(

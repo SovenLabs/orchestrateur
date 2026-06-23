@@ -4,7 +4,7 @@ mod cli;
 mod commands;
 mod context;
 mod dispatch;
-mod harness_ops;
+mod present;
 mod output;
 mod tui;
 mod windows_ops;

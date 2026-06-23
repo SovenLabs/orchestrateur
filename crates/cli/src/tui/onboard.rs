@@ -5,7 +5,9 @@ use std::path::Path;
 use anyhow::Result;
 use dialoguer::{theme::ColorfulTheme, Select};
 
-use crate::harness_ops::{cmd_onboard, OnboardOptions};
+use orchestrator::OnboardOptions;
+
+use crate::present;
 use crate::tui::actions::block_on_action;
 use crate::tui::bootstrap::wait_for_harness;
 use crate::tui::menus::HarnessAction;
@@ -98,7 +100,7 @@ pub fn run_onboard_wizard(workspace: &Path) -> Result<()> {
         .default(1)
         .interact()?;
 
-    cmd_onboard(
+    present::onboard(
         workspace,
         &OnboardOptions {
             profile: Some(profile.to_string()),

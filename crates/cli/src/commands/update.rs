@@ -5,7 +5,7 @@ use clap::Args;
 use orchestrator::VERSION;
 use serde::Deserialize;
 
-use crate::harness_ops::daemon_stop;
+use orchestrator::stop_daemon;
 use crate::windows_ops::{find_dev_repo_root, powershell_install_body, spawn_detached_after_exit};
 
 const REPO: &str = "SovenLabs/orchestrateur";
@@ -82,7 +82,7 @@ pub async fn run(args: UpdateArgs) -> Result<()> {
     }
 
     println!("Arrêt du daemon…");
-    daemon_stop()?;
+    stop_daemon().map_err(|e| anyhow::anyhow!("{e}"))?;
 
     if dev_mode {
         if let Some(root) = find_dev_repo_root() {

@@ -7,7 +7,9 @@ use anyhow::Result;
 use orchestrator::OrchestratorConfig;
 use tokio::time::sleep;
 
-use crate::harness_ops::{probe_daemon_health, probe_gateway_health, ServiceProbeState};
+use orchestrator::ServiceProbeState;
+
+use crate::present::{probe_daemon_health, probe_gateway_health};
 
 use super::progress::ProgressSession;
 

@@ -20,9 +20,10 @@ use crate::commands::{
     DaemonCommands, MemoryCommands, SkillCommands,
 };
 use crate::context::{bootstrap_facade, run_bridge_command};
-use crate::harness_ops::{
-    channels_disable, channels_enable, channels_status, cmd_harness_run, cmd_harness_smoke,
-    gateway_status, providers_set, providers_test, ConfigureOptions, HarnessSmokeOptions,
+use orchestrator::{ConfigureOptions, HarnessSmokeOptions};
+use crate::present::{
+    self, channels_disable, channels_enable, channels_status, gateway_status, harness_run,
+    harness_smoke, providers_set, providers_test,
 };
 use crate::tui;
 
@@ -63,7 +64,7 @@ async fn dispatch_lightweight(cli: &Cli) -> Result<Option<()>> {
             llm,
             local_only,
         } => {
-            config::run_legacy_configure(
+            present::configure(
                 &cli.workspace,
                 &ConfigureOptions {
                     profile: profile.clone(),
@@ -82,7 +83,7 @@ async fn dispatch_lightweight(cli: &Cli) -> Result<Option<()>> {
         Commands::Harness {
             command: HarnessCommands::Run,
         } => {
-            cmd_harness_run(&cli.workspace).await?;
+            harness_run(&cli.workspace).await?;
             Ok(Some(()))
         }
         Commands::Daemon { command } => daemon::run(command.clone(), &cli.workspace).await,
@@ -219,7 +220,7 @@ async fn dispatch_facade(cli: &Cli, facade: &OrchestratorFacade) -> Result<()> {
                 skip_gateway,
                 skip_chat,
             } => {
-                cmd_harness_smoke(
+                harness_smoke(
                     facade,
                     &cli.workspace,
                     &HarnessSmokeOptions {

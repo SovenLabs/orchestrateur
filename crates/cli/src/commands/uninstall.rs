@@ -2,8 +2,8 @@
 
 use anyhow::Result;
 
-use crate::harness_ops::cmd_uninstall;
+use crate::present;
 
 pub fn run() -> Result<()> {
-    cmd_uninstall()
+    present::uninstall()
 }

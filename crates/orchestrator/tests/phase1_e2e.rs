@@ -98,6 +98,7 @@ async fn phase1_multi_turn_conversation_persists_and_searchable() {
             .run_turn(AgentTurnRequest {
                 session_key: session_key.clone(),
                 message: message.into(),
+                personality_prefix: None,
             })
             .await
             .expect("tour agent");
@@ -150,6 +151,7 @@ async fn phase1_auto_assimilation_writes_memory_markdown() {
         .run_turn(AgentTurnRequest {
             session_key: SessionKey::new("phase1-auto").unwrap(),
             message: message.into(),
+            personality_prefix: None,
         })
         .await
         .expect("tour avec auto-assimilation");

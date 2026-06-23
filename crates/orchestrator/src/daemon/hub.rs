@@ -396,6 +396,61 @@ impl TerritoryHub {
                     }),
                 });
             }
+            Response::AgentDetail { agent } => {
+                events.push(TerritoryBroadcast {
+                    event: "agent_status_changed".into(),
+                    source_session_id: source_session_id.into(),
+                    payload: json!({
+                        "agent_id": agent.id,
+                        "status": agent.status,
+                    }),
+                });
+            }
+            Response::AgentTurnReply {
+                reply,
+                tools_invoked,
+                auto_assimilated,
+                ..
+            } => {
+                events.push(TerritoryBroadcast {
+                    event: "chat_reply".into(),
+                    source_session_id: source_session_id.into(),
+                    payload: json!({
+                        "reply": reply,
+                        "request_id": request_id,
+                        "persistent_agent": true,
+                    }),
+                });
+                if !tools_invoked.is_empty() {
+                    events.push(TerritoryBroadcast {
+                        event: "tool_call".into(),
+                        source_session_id: source_session_id.into(),
+                        payload: json!({ "tools": tools_invoked }),
+                    });
+                }
+                if auto_assimilated.is_some() {
+                    events.push(TerritoryBroadcast {
+                        event: "memories_changed".into(),
+                        source_session_id: source_session_id.into(),
+                        payload: json!({}),
+                    });
+                }
+            }
+            Response::AgentMessageSent {
+                message_id,
+                from,
+                to,
+            } => {
+                events.push(TerritoryBroadcast {
+                    event: "agent_message".into(),
+                    source_session_id: source_session_id.into(),
+                    payload: json!({
+                        "message_id": message_id,
+                        "from": from,
+                        "to": to,
+                    }),
+                });
+            }
             Response::Error(err) => {
                 let degraded = err.kind == "degraded";
                 events.push(TerritoryBroadcast {

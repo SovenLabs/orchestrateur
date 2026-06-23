@@ -134,13 +134,40 @@ impl Tool for CronjobTool {
                 save_jobs(&store, &jobs).await?;
                 Ok(ok(&json!({"resumed": true})))
             }
-            "update" | "run" => Ok(ToolResult {
-                content: json_result(&json!({
-                    "status": "not_implemented",
-                    "action": action,
-                    "hint": "Brancher sur le scheduler daemon (tick cron).",
-                })),
-            }),
+            "update" => {
+                let id = arg_str(args, "job_id")?;
+                let job = jobs.iter_mut().find(|j| j.id == id).ok_or_else(|| {
+                    ToolError::ExecutionFailed {
+                        tool: self.name().into(),
+                        message: format!("job introuvable: {id}"),
+                    }
+                })?;
+                if let Some(v) = args.get("name").and_then(|v| v.as_str()) {
+                    job.name = v.to_string();
+                }
+                if let Some(v) = args.get("prompt").and_then(|v| v.as_str()) {
+                    job.prompt = v.to_string();
+                }
+                if let Some(v) = args.get("schedule").and_then(|v| v.as_str()) {
+                    job.schedule = v.to_string();
+                }
+                save_jobs(&store, &jobs).await?;
+                Ok(ok(&json!({"updated": id})))
+            }
+            "run" => {
+                let id = arg_str(args, "job_id")?;
+                let job = jobs.iter().find(|j| j.id == id).ok_or_else(|| {
+                    ToolError::ExecutionFailed {
+                        tool: self.name().into(),
+                        message: format!("job introuvable: {id}"),
+                    }
+                })?;
+                Ok(ok(&json!({
+                    "status": "scheduled",
+                    "job_id": job.id,
+                    "hint": "Exécution effective via worker tick (orch agent tick / daemon).",
+                })))
+            }
             other => Err(ToolError::InvalidArguments {
                 tool: self.name().into(),
                 message: format!("action inconnue: {other}"),

@@ -75,7 +75,7 @@ async fn phase2_create_agent_scaffolds_folder_and_registry() {
     assert!(registry_md.contains("researcher"));
     assert!(registry_md.contains("Chercheur"));
 
-    let listed = manager.list().unwrap();
+    let listed = manager.list().await.unwrap();
     assert_eq!(listed.len(), 1);
 }
 
@@ -108,7 +108,7 @@ async fn phase2_wake_sleep_lifecycle_persists_status() {
     assert_eq!(sleeping.status(), AgentStatus::Sleeping);
 
     let reloaded = AgentManager::new(deps).await.unwrap();
-    let agent = reloaded.get("worker").unwrap();
+    let agent = reloaded.get("worker").await.unwrap();
     assert_eq!(agent.status(), AgentStatus::Sleeping);
 }
 

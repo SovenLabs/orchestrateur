@@ -58,7 +58,35 @@ id: number,
 /**
  * Intensité.
  */
-intensity: number, } | { "event": "daemon_broadcast", 
+intensity: number, } | { "event": "agent_status_changed", 
+/**
+ * Identifiant agent.
+ */
+agent_id: string, 
+/**
+ * Nouveau statut (`sleeping`, `awake`, `background`).
+ */
+status: string, } | { "event": "agent_message_received", 
+/**
+ * Destinataire.
+ */
+to: string, 
+/**
+ * Émetteur.
+ */
+from: string, 
+/**
+ * Identifiant message.
+ */
+message_id: string, } | { "event": "delegation_completed", 
+/**
+ * Identifiant délégation.
+ */
+delegation_id: string, 
+/**
+ * Statut final (`done`, `failed`).
+ */
+status: string, } | { "event": "daemon_broadcast", 
 /**
  * Nom d'événement territorial.
  */

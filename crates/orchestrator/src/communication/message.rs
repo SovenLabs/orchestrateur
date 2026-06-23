@@ -28,7 +28,7 @@ impl AgentMessage {
     #[must_use]
     pub fn new(from: impl Into<String>, to: impl Into<String>, body: impl Into<String>) -> Self {
         Self {
-            id: Uuid::new_v4().to_string(),
+            id: Uuid::new_v7(uuid::Timestamp::now(uuid::NoContext)).to_string(),
             from: from.into(),
             to: to.into(),
             subject: String::new(),

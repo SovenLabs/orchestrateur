@@ -165,6 +165,7 @@ pub async fn serve_with_domain_events(
         });
     });
     crate::watcher::spawn_if_enabled(Arc::clone(&facade), Some(on_draft_ready));
+    crate::worker::spawn_agent_tick_if_enabled(Arc::clone(&facade));
 
     let state = Arc::new(DaemonState {
         facade,

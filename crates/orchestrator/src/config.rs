@@ -377,6 +377,30 @@ impl Default for McpServerConfig {
     }
 }
 
+/// Configuration agents persistants Phase 2b (TOML `[agents]`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentsConfig {
+    /// Active le worker tick (daemon).
+    pub enabled: bool,
+    /// Intervalle entre ticks (secondes).
+    pub tick_interval_secs: u64,
+    /// Déclenche un tour LLM pour chaque message inbox non lu.
+    pub auto_turn_on_inbox: bool,
+    /// Agent par défaut pour délégations / cron sans cible.
+    pub default_worker_id: String,
+}
+
+impl Default for AgentsConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            tick_interval_secs: 60,
+            auto_turn_on_inbox: false,
+            default_worker_id: "default".into(),
+        }
+    }
+}
+
 /// Configuration agent Phase 10 (persistée TOML `[agent]`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentSettingsConfig {
@@ -598,6 +622,8 @@ pub struct OrchestratorConfig {
     pub mcp: McpConfig,
     /// Configuration agent (Phase 10).
     pub agent: AgentSettingsConfig,
+    /// Agents persistants — worker tick (Phase 2b).
+    pub agents: AgentsConfig,
     /// Insights, dédup et extraction mémoire.
     pub memory: MemoryConfig,
     /// Watcher sessions → brouillons insight.
@@ -623,6 +649,7 @@ impl Default for OrchestratorConfig {
             provider_profiles: ProviderProfiles::default(),
             mcp: McpConfig::default(),
             agent: AgentSettingsConfig::default(),
+            agents: AgentsConfig::default(),
             memory: MemoryConfig::default(),
             watcher: WatcherConfig::default(),
             skills_hub: SkillsHubConfig::default(),
@@ -839,6 +866,9 @@ impl OrchestratorConfig {
         if let Some(a) = settings.agent {
             merge_agent(&mut self.agent, a);
         }
+        if let Some(a) = settings.agents {
+            merge_agents(&mut self.agents, a);
+        }
         if let Some(m) = settings.memory {
             merge_memory(&mut self.memory, m);
         }
@@ -847,6 +877,23 @@ impl OrchestratorConfig {
         }
         if let Some(h) = settings.skills_hub {
             merge_skills_hub(&mut self.skills_hub, h);
+        }
+    }
+}
+
+fn merge_agents(target: &mut AgentsConfig, section: AgentsSection) {
+    if let Some(v) = section.enabled {
+        target.enabled = v;
+    }
+    if let Some(v) = section.tick_interval_secs {
+        target.tick_interval_secs = v.max(10);
+    }
+    if let Some(v) = section.auto_turn_on_inbox {
+        target.auto_turn_on_inbox = v;
+    }
+    if let Some(v) = section.default_worker_id {
+        if !v.trim().is_empty() {
+            target.default_worker_id = v;
         }
     }
 }
@@ -1166,6 +1213,7 @@ struct SettingsToml {
     provider_profiles: Option<HashMap<String, ProviderProfileSection>>,
     mcp: Option<McpSection>,
     agent: Option<AgentSection>,
+    agents: Option<AgentsSection>,
     memory: Option<MemorySection>,
     watcher: Option<WatcherSection>,
     skills_hub: Option<SkillsHubSection>,
@@ -1206,6 +1254,14 @@ struct SkillsHubEntryToml {
     args: Option<Vec<String>>,
     stdin_json: Option<bool>,
     timeout_secs: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AgentsSection {
+    enabled: Option<bool>,
+    tick_interval_secs: Option<u64>,
+    auto_turn_on_inbox: Option<bool>,
+    default_worker_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

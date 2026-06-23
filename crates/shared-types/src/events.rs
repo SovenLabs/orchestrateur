@@ -61,6 +61,29 @@ pub enum BackendEvent {
         /// Intensité.
         intensity: f32,
     },
+    /// Changement de statut d'un agent persistant.
+    AgentStatusChanged {
+        /// Identifiant agent.
+        agent_id: String,
+        /// Nouveau statut (`sleeping`, `awake`, `background`).
+        status: String,
+    },
+    /// Message inter-agent reçu.
+    AgentMessageReceived {
+        /// Destinataire.
+        to: String,
+        /// Émetteur.
+        from: String,
+        /// Identifiant message.
+        message_id: String,
+    },
+    /// Délégation terminée.
+    DelegationCompleted {
+        /// Identifiant délégation.
+        delegation_id: String,
+        /// Statut final (`done`, `failed`).
+        status: String,
+    },
     /// Événement broadcast brut du daemon (fallback typé).
     DaemonBroadcast {
         /// Nom d'événement territorial.
@@ -179,6 +202,50 @@ impl BackendEvent {
                             .collect()
                     })
                     .unwrap_or_default(),
+            },
+            "agent_status_changed" => Self::AgentStatusChanged {
+                agent_id: payload
+                    .get("agent_id")
+                    .or_else(|| payload.get("id"))
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+                status: payload
+                    .get("status")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+            },
+            "agent_message" => Self::AgentMessageReceived {
+                to: payload
+                    .get("to")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+                from: payload
+                    .get("from")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+                message_id: payload
+                    .get("message_id")
+                    .or_else(|| payload.get("id"))
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+            },
+            "delegation_completed" => Self::DelegationCompleted {
+                delegation_id: payload
+                    .get("delegation_id")
+                    .or_else(|| payload.get("id"))
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
+                status: payload
+                    .get("status")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default()
+                    .to_string(),
             },
             "neuron_stimulated" => Self::NeuronStimulated {
                 id: payload

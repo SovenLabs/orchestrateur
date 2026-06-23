@@ -203,6 +203,76 @@ pub fn print_response(response: Response) -> Result<()> {
             println!("---");
             println!("{}", draft.draft.content);
         }
+        Response::AgentList { items } => {
+            if items.is_empty() {
+                println!("Aucun agent persistant.");
+                return Ok(());
+            }
+            for agent in items {
+                println!(
+                    "{} | {} | role={} | status={} | model={}",
+                    agent.id, agent.name, agent.role, agent.status, agent.model
+                );
+            }
+        }
+        Response::AgentDetail { agent } => {
+            println!("# agent {}", agent.id);
+            println!("name: {}", agent.name);
+            println!("role: {}", agent.role);
+            println!("model: {}", agent.model);
+            println!("status: {}", agent.status);
+            println!("session: {}", agent.session_key);
+            if let Some(hb) = &agent.last_heartbeat {
+                println!("last_heartbeat: {hb}");
+            }
+        }
+        Response::AgentTurnReply {
+            reply,
+            tools_invoked,
+            auto_assimilated,
+            auto_executed_skills,
+        } => {
+            println!("{reply}");
+            if !tools_invoked.is_empty() {
+                println!("# outils: {}", tools_invoked.join(", "));
+            }
+            if !auto_executed_skills.is_empty() {
+                println!(
+                    "# skills auto-exécutées: {}",
+                    auto_executed_skills.join(", ")
+                );
+            }
+            if let Some(summary) = auto_assimilated {
+                println!("# auto-assimilé: {summary}");
+            }
+        }
+        Response::AgentMessages { items } => {
+            if items.is_empty() {
+                println!("Inbox vide.");
+                return Ok(());
+            }
+            for msg in items {
+                let flag = if msg.read { "read" } else { "unread" };
+                println!("[{flag}] {} → {} : {}", msg.from, msg.to, msg.body);
+            }
+        }
+        Response::AgentMessageSent {
+            message_id,
+            from,
+            to,
+        } => {
+            println!("Message {from} → {to} (id={message_id})");
+        }
+        Response::AgentBackgroundReport {
+            inbox_count,
+            pending_tasks,
+            executed,
+        } => {
+            println!(
+                "Background — inbox={inbox_count} tasks={pending_tasks} executed={:?}",
+                executed
+            );
+        }
     }
     Ok(())
 }

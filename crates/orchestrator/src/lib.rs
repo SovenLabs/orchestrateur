@@ -54,6 +54,8 @@ pub mod communication;
 pub mod heartbeat;
 /// Gestion centralisée des agents persistants (Phase 2).
 pub mod manager;
+/// Worker tick agents persistants (Phase 2b).
+pub mod worker;
 /// Entités et dossier standard des agents persistants (Phase 2).
 pub mod persistent;
 /// Registre central des agents persistants (Phase 2).
@@ -78,7 +80,8 @@ pub use bridge::{
     OrchestratorHandle, OrchestratorThread, Response, SkillSummary, DraftSummary, WatcherStatus,
 };
 pub use config::{
-    AgentSettingsConfig, AuditConfig, BehavioralConfig, ConfigError, DaemonConfig, WatcherConfig,
+    AgentSettingsConfig, AgentsConfig, AuditConfig, BehavioralConfig, ConfigError, DaemonConfig,
+    WatcherConfig,
     GatewayChannelConfig, GatewayConfig, IntegrityConfig, McpConfig, McpServerConfig, OllamaConfig,
     OrchestratorConfig,
     MemoryConfig, ProvidersConfig, SecurityConfig, SkillsHubConfig, SkillsHubEntryConfig,
@@ -128,6 +131,7 @@ pub use persistent::{
     PersistentAgent, PersistentAgentConfig, PersistentAgentError,
 };
 pub use registry::AgentRegistry;
+pub use worker::{run_agent_tick, spawn_agent_tick_if_enabled, AgentTickReport};
 pub use harness::{
     ensure_daemon_token, install_scheduled_task, probe_daemon_status, probe_gateway_status,
     probe_health, probe_harness_services, probe_providers, run_configure, run_doctor, run_onboard,

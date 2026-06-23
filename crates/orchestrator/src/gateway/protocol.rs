@@ -17,8 +17,12 @@ pub enum GatewayClientMessage {
     AgentSend {
         /// Identifiant de corrélation client.
         request_id: String,
-        /// Clé de session.
-        session_key: String,
+        /// Clé de session (ignorée si `agent_id` est fourni).
+        #[serde(default)]
+        session_key: Option<String>,
+        /// Agent persistant cible (Phase 2b).
+        #[serde(default)]
+        agent_id: Option<String>,
         /// Message utilisateur.
         message: String,
         /// Canal source (ex. `webchat`, `telegram`).

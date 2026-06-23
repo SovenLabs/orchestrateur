@@ -209,6 +209,43 @@ pub struct AppError {
     pub message: String,
 }
 
+/// Résumé d'un agent persistant (bridge / WS).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AgentSummary {
+    /// Identifiant stable.
+    pub id: String,
+    /// Nom affiché.
+    pub name: String,
+    /// Rôle fonctionnel.
+    pub role: String,
+    /// Modèle LLM.
+    pub model: String,
+    /// Statut (`sleeping`, `awake`, `background`).
+    pub status: String,
+    /// Clé de session SQLite.
+    pub session_key: String,
+    /// Dernier heartbeat ISO-8601.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_heartbeat: Option<String>,
+}
+
+/// Résumé d'un message inter-agent.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AgentMessageSummary {
+    /// Identifiant message.
+    pub id: String,
+    /// Émetteur.
+    pub from: String,
+    /// Destinataire.
+    pub to: String,
+    /// Corps.
+    pub body: String,
+    /// Horodatage.
+    pub sent_at: String,
+    /// Lu.
+    pub read: bool,
+}
+
 impl AppError {
     /// Construit une erreur applicative depuis une [`OrchestratorError`].
     #[must_use]

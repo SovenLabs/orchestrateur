@@ -5,8 +5,9 @@ use crate::draft::StoredDraft;
 use crate::security::AuditEvent;
 
 use super::types::{
-    AppError, BridgeSearchHit, DraftSummary, HubIntegritySummary, HubSummary,
-    MarketplaceEntrySummary, MemorySummary, SkillSummary, WatcherStatus,
+    AgentMessageSummary, AgentSummary, AppError, BridgeSearchHit, DraftSummary,
+    HubIntegritySummary, HubSummary, MarketplaceEntrySummary, MemorySummary, SkillSummary,
+    WatcherStatus,
 };
 
 /// Réponse produite par le thread orchestrateur vers la couche présentation.
@@ -142,5 +143,39 @@ pub enum Response {
     DraftDiscarded {
         /// Identifiant supprimé.
         id: String,
+    },
+    /// Liste des agents persistants.
+    AgentList {
+        items: Vec<AgentSummary>,
+    },
+    /// Détail agent persistant.
+    AgentDetail {
+        agent: AgentSummary,
+    },
+    /// Réponse tour agent persistant.
+    AgentTurnReply {
+        reply: String,
+        #[serde(default)]
+        tools_invoked: Vec<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        auto_assimilated: Option<String>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        auto_executed_skills: Vec<String>,
+    },
+    /// Inbox agent.
+    AgentMessages {
+        items: Vec<AgentMessageSummary>,
+    },
+    /// Message inter-agent envoyé.
+    AgentMessageSent {
+        message_id: String,
+        from: String,
+        to: String,
+    },
+    /// Rapport tâches de fond.
+    AgentBackgroundReport {
+        inbox_count: usize,
+        pending_tasks: usize,
+        executed: Vec<String>,
     },
 }

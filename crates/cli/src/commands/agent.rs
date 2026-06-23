@@ -61,6 +61,8 @@ pub enum AgentCommands {
         #[arg(long)]
         mark_read: bool,
     },
+    /// Exécute un cycle worker (délégations, cron, background).
+    Tick,
 }
 
 pub async fn run(cmd: AgentCommands, workspace: &Path) -> Result<()> {
@@ -72,7 +74,7 @@ pub async fn run(cmd: AgentCommands, workspace: &Path) -> Result<()> {
 
     match cmd {
         AgentCommands::List => {
-            let agents = manager.list().map_err(|e| anyhow::anyhow!("{e}"))?;
+            let agents = manager.list().await.map_err(|e| anyhow::anyhow!("{e}"))?;
             if agents.is_empty() {
                 println!("Aucun agent persistant.");
                 return Ok(());
@@ -104,7 +106,7 @@ pub async fn run(cmd: AgentCommands, workspace: &Path) -> Result<()> {
             Ok(())
         }
         AgentCommands::Show { id } => {
-            let agent = manager.get(&id).map_err(|e| anyhow::anyhow!("{e}"))?;
+            let agent = manager.get(&id).await.map_err(|e| anyhow::anyhow!("{e}"))?;
             println!("# agent {}", agent.id());
             println!("name: {}", agent.name());
             println!("role: {}", agent.role());
@@ -160,6 +162,19 @@ pub async fn run(cmd: AgentCommands, workspace: &Path) -> Result<()> {
                 let flag = if msg.read { "read" } else { "unread" };
                 println!("[{flag}] {} → {} : {}", msg.from, msg.to, msg.body);
             }
+            Ok(())
+        }
+        AgentCommands::Tick => {
+            let report = orchestrator::run_agent_tick(&facade)
+                .await
+                .map_err(|e| anyhow::anyhow!("tick: {e}"))?;
+            println!(
+                "Tick — background={} inbox_turns={} delegations={} cron={}",
+                report.agents_background,
+                report.inbox_turns,
+                report.delegations_completed,
+                report.cron_ran
+            );
             Ok(())
         }
     }

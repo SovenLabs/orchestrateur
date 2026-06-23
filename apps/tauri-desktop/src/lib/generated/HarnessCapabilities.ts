@@ -3,13 +3,12 @@
 /**
  * Capacités harness déclarées par le client au handshake.
  */
-export type HarnessCapabilities = {
-  /**
-   * Peut écrire le Cortex (assimilate, publish draft, …).
-   */
-  can_write_cortex: boolean;
-  /**
-   * Peut exécuter des skills Esprit.
-   */
-  can_run_skills: boolean;
-};
+export type HarnessCapabilities = { 
+/**
+ * Peut écrire le Cortex (assimilate, publish draft, …).
+ */
+can_write_cortex: boolean, 
+/**
+ * Peut exécuter des skills Esprit.
+ */
+can_run_skills: boolean, };

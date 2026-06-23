@@ -238,6 +238,37 @@ impl OrchestratorFacade {
         AgentManager::new(self.deps.clone()).await
     }
 
+    /// Tour agent pour un agent persistant (Phase 2b) — personality + session `agent-{id}`.
+    ///
+    /// # Errors
+    ///
+    /// Propage [`AgentError`] si l'agent est introuvable ou si la boucle échoue.
+    pub async fn agent_turn_for(
+        &self,
+        agent_id: &str,
+        message: &str,
+    ) -> Result<AgentTurnResult, AgentError> {
+        let manager = self.agent_manager().await?;
+        manager
+            .run_turn(agent_id, message, Some(Arc::clone(&self.skills)))
+            .await
+            .map_err(AgentError::from)
+    }
+
+    /// Tour agent persistant avec streaming (gateway Phase 2b).
+    pub async fn agent_turn_for_with_stream(
+        &self,
+        agent_id: &str,
+        message: &str,
+        stream: AgentStreamSink,
+    ) -> Result<AgentTurnResult, AgentError> {
+        let manager = self.agent_manager().await?;
+        manager
+            .run_turn_with_stream(agent_id, message, Some(Arc::clone(&self.skills)), stream)
+            .await
+            .map_err(AgentError::from)
+    }
+
     /// Tour agent complet Phase 7 — contexte graphe + outils mémoire + session.
     ///
     /// # Errors
@@ -254,6 +285,7 @@ impl OrchestratorFacade {
             .run_turn(AgentTurnRequest {
                 session_key,
                 message: message.to_string(),
+                personality_prefix: None,
             })
             .await
     }
@@ -274,6 +306,7 @@ impl OrchestratorFacade {
             .run_turn(AgentTurnRequest {
                 session_key,
                 message: message.to_string(),
+                personality_prefix: None,
             })
             .await
     }
@@ -296,6 +329,7 @@ impl OrchestratorFacade {
                 AgentTurnRequest {
                     session_key,
                     message: message.to_string(),
+                    personality_prefix: None,
                 },
                 stream,
             )

@@ -15,7 +15,10 @@ use super::config::AgentConfig;
 use super::message_preprocessor::MessagePreprocessor;
 use super::stream::{AgentStreamEvent, AgentStreamSink};
 use super::adapters::{agent_exchange_turn, build_agent_adapters};
-use super::context::{base_system_prompt, format_agent_context, format_tool_definitions, skill_sections};
+use super::context::{
+    base_system_prompt_with_personality, format_agent_context, format_tool_definitions,
+    skill_sections,
+};
 use super::tool_parse::{extract_tool_call, has_tool_call};
 use super::AgentError;
 
@@ -26,6 +29,8 @@ pub struct AgentTurnRequest {
     pub session_key: SessionKey,
     /// Message utilisateur.
     pub message: String,
+    /// Contenu `personality.md` injecté dans le prompt système (agents persistants).
+    pub personality_prefix: Option<String>,
 }
 
 /// Résultat d'un tour agent.
@@ -166,7 +171,11 @@ impl AgentLoop {
         }
 
         let tool_section = format_tool_definitions(&self.tools);
-        let system_prompt = base_system_prompt(&tool_section, &context_section);
+        let system_prompt = base_system_prompt_with_personality(
+            request.personality_prefix.as_deref(),
+            &tool_section,
+            &context_section,
+        );
 
         let history = self
             .deps
@@ -403,6 +412,7 @@ mod tests {
             .run_turn(AgentTurnRequest {
                 session_key: SessionKey::default_chat(),
                 message: "Bonjour".into(),
+                personality_prefix: None,
             })
             .await
             .unwrap();
@@ -421,6 +431,7 @@ mod tests {
                 AgentTurnRequest {
                     session_key: SessionKey::default_chat(),
                     message: "Stream".into(),
+                    personality_prefix: None,
                 },
                 sink,
             )
@@ -454,6 +465,7 @@ mod tests {
             .run_turn(AgentTurnRequest {
                 session_key: SessionKey::new("test").unwrap(),
                 message: "Explique le rôle du Cortex dans l'orchestrateur.".into(),
+                personality_prefix: None,
             })
             .await
             .unwrap();

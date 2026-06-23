@@ -89,4 +89,51 @@ pub enum Command {
         /// Identifiant du brouillon.
         id: String,
     },
+    /// Liste les agents persistants (Phase 2b).
+    ListAgents,
+    /// Détail d'un agent persistant.
+    GetAgent {
+        /// Identifiant agent.
+        id: String,
+    },
+    /// Crée un agent persistant.
+    CreateAgent {
+        /// Identifiant stable.
+        id: String,
+        /// Nom affiché.
+        name: String,
+        /// Rôle.
+        role: String,
+        /// Modèle LLM optionnel.
+        model: Option<String>,
+    },
+    /// Réveille un agent persistant.
+    AgentWake {
+        id: String,
+    },
+    /// Met un agent en veille.
+    AgentSleep {
+        id: String,
+    },
+    /// Tâches de fond d'un agent.
+    AgentBackground {
+        id: String,
+    },
+    /// Tour LLM pour un agent persistant.
+    AgentTurn {
+        id: String,
+        message: String,
+    },
+    /// Envoie un message inter-agent.
+    AgentSendMessage {
+        from: String,
+        to: String,
+        body: String,
+    },
+    /// Lit l'inbox d'un agent.
+    AgentMessages {
+        id: String,
+        #[serde(default)]
+        mark_read: bool,
+    },
 }

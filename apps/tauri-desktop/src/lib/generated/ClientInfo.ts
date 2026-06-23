@@ -4,25 +4,24 @@ import type { HarnessCapabilities } from "./HarnessCapabilities";
 /**
  * Métadonnées fenêtre client — handshake `connect`.
  */
-export type ClientInfo = {
-  /**
-   * `main`, `extension`, `desktop` (Tauri), ou `sphere` (Godot standalone).
-   */
-  window_kind: string;
-  /**
-   * Identifiant stable côté client (optionnel).
-   */
-  window_id: string | null;
-  /**
-   * Panneaux affichés (`chat`, `memory`, `graph`, `monitoring`).
-   */
-  panels: Array<string>;
-  /**
-   * Topics broadcast explicites (fusionnés avec les défauts).
-   */
-  subscriptions: Array<string>;
-  /**
-   * Capacités harness (desktop et main : écriture par défaut).
-   */
-  harness: HarnessCapabilities;
-};
+export type ClientInfo = { 
+/**
+ * `main`, `extension`, `desktop` (Tauri), ou `sphere` (Godot standalone).
+ */
+window_kind: string, 
+/**
+ * Identifiant stable côté client (optionnel).
+ */
+window_id?: string | null, 
+/**
+ * Panneaux affichés (`chat`, `memory`, `graph`, `monitoring`).
+ */
+panels: Array<string>, 
+/**
+ * Topics broadcast explicites (fusionnés avec les défauts).
+ */
+subscriptions: Array<string>, 
+/**
+ * Capacités harness (desktop et main : écriture par défaut).
+ */
+harness: HarnessCapabilities, };

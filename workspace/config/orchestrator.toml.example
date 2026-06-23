@@ -60,6 +60,13 @@ honeypot_count = 3
 enabled = true
 path = "logs/audit.jsonl"
 
+# Agents persistants Phase 2b — worker tick, délégations, cron
+[agents]
+enabled = true
+tick_interval_secs = 60
+auto_turn_on_inbox = false
+default_worker_id = "default"
+
 # Daemon WebSocket local — Territoire Graphique (orchestrateur daemon run)
 [daemon]
 enabled = true

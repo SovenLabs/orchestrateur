@@ -277,6 +277,7 @@ async fn handle_ws_socket(state: Arc<GatewayState>, socket: WebSocket) {
             GatewayClientMessage::AgentSend {
                 request_id,
                 session_key: sk,
+                agent_id,
                 message,
                 channel,
             } => {
@@ -291,8 +292,18 @@ async fn handle_ws_socket(state: Arc<GatewayState>, socket: WebSocket) {
                     .await;
                     continue;
                 }
-                let parsed_key = match SessionKey::new(sk) {
-                    Ok(key) => key,
+                let route = if let Some(id) = agent_id.filter(|id| !id.trim().is_empty()) {
+                    Ok::<_, cortex::CortexError>((None, Some(id)))
+                } else {
+                    match sk.as_deref().filter(|s| !s.trim().is_empty()) {
+                        Some(sk_str) => SessionKey::new(sk_str).map(|key| (Some(key), None)),
+                        None => Err(cortex::CortexError::InvalidSessionKey(
+                            "session_key ou agent_id requis".into(),
+                        )),
+                    }
+                };
+                let route = match route {
+                    Ok(v) => v,
                     Err(err) => {
                         let _ = send_json(
                             &mut sink,
@@ -309,11 +320,13 @@ async fn handle_ws_socket(state: Arc<GatewayState>, socket: WebSocket) {
                 let (stream_tx, stream_rx) = flume::unbounded::<GatewayServerMessage>();
                 let runner = Arc::clone(&state.runner);
                 let req_id = request_id.clone();
+                let (session_key, persistent_id) = route;
                 let turn_handle = tokio::spawn(async move {
                     runner
                         .run_agent_turn(
                             &req_id,
-                            parsed_key,
+                            session_key,
+                            persistent_id.as_deref(),
                             &message,
                             &channel_id,
                             Some(stream_tx),

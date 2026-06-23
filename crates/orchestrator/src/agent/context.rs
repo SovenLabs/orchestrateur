@@ -96,9 +96,28 @@ pub fn format_tool_definitions(tools: &ToolRegistry) -> String {
 /// Prompt système de base pour la boucle agent.
 #[must_use]
 pub fn base_system_prompt(tool_section: &str, context_section: &str) -> String {
-    let mut prompt = String::from(
-        "Tu es l'agent Orchestrateur — second cerveau souverain avec accès au Cortex (mémoires persistantes).\n\
-         Utilise les outils via un bloc JSON exactement ainsi :\n\
+    base_system_prompt_with_personality(None, tool_section, context_section)
+}
+
+/// Prompt système avec personnalité agent persistant optionnelle (Phase 2b).
+#[must_use]
+pub fn base_system_prompt_with_personality(
+    personality: Option<&str>,
+    tool_section: &str,
+    context_section: &str,
+) -> String {
+    let mut prompt = String::new();
+    if let Some(p) = personality.filter(|s| !s.trim().is_empty()) {
+        prompt.push_str("## Personnalité agent\n");
+        prompt.push_str(p.trim());
+        prompt.push_str("\n\n");
+    } else {
+        prompt.push_str(
+            "Tu es l'agent Orchestrateur — second cerveau souverain avec accès au Cortex (mémoires persistantes).\n",
+        );
+    }
+    prompt.push_str(
+        "Utilise les outils via un bloc JSON exactement ainsi :\n\
          ```tool\n{\"name\":\"NOM_OUTIL\",\"arguments\":{...}}\n```\n\
          Tu peux enchaîner plusieurs outils. Quand tu as assez d'informations, réponds en français sans bloc tool.\n\n\
          ## Outils disponibles\n",

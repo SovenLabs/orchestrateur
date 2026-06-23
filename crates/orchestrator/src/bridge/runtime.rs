@@ -179,6 +179,180 @@ pub async fn execute_command(facade: &OrchestratorFacade, cmd: Command) -> Respo
         Command::GetDraft { id } => execute_get_draft(facade, &id).await,
         Command::PublishDraft { id } => execute_publish_draft(facade, &id).await,
         Command::DiscardDraft { id } => execute_discard_draft(facade, &id).await,
+        Command::ListAgents => execute_list_agents(facade).await,
+        Command::GetAgent { id } => execute_get_agent(facade, &id).await,
+        Command::CreateAgent {
+            id,
+            name,
+            role,
+            model,
+        } => execute_create_agent(facade, &id, &name, &role, model.as_deref()).await,
+        Command::AgentWake { id } => execute_agent_wake(facade, &id).await,
+        Command::AgentSleep { id } => execute_agent_sleep(facade, &id).await,
+        Command::AgentBackground { id } => execute_agent_background(facade, &id).await,
+        Command::AgentTurn { id, message } => execute_agent_turn(facade, &id, &message).await,
+        Command::AgentSendMessage { from, to, body } => {
+            execute_agent_send_message(facade, &from, &to, &body).await
+        }
+        Command::AgentMessages { id, mark_read } => {
+            execute_agent_messages(facade, &id, mark_read).await
+        }
+    }
+}
+
+fn agent_summary(agent: &crate::persistent::PersistentAgent) -> super::types::AgentSummary {
+    use crate::persistent::AgentIdentity;
+    super::types::AgentSummary {
+        id: agent.id().to_string(),
+        name: agent.name().to_string(),
+        role: agent.role().to_string(),
+        model: agent.model().to_string(),
+        status: agent.status().label().to_string(),
+        session_key: agent.config.session_key.clone(),
+        last_heartbeat: agent.config.last_heartbeat.clone(),
+    }
+}
+
+fn agent_error(err: crate::persistent::PersistentAgentError) -> Response {
+    Response::Error(AppError {
+        kind: "persistent_agent".to_string(),
+        message: err.to_string(),
+    })
+}
+
+async fn execute_list_agents(facade: &OrchestratorFacade) -> Response {
+    match facade.agent_manager().await {
+        Ok(manager) => match manager.list().await {
+            Ok(agents) => Response::AgentList {
+                items: agents.iter().map(agent_summary).collect(),
+            },
+            Err(err) => agent_error(err),
+        },
+        Err(err) => agent_error(err),
+    }
+}
+
+async fn execute_get_agent(facade: &OrchestratorFacade, id: &str) -> Response {
+    match facade.agent_manager().await {
+        Ok(manager) => match manager.get(id).await {
+            Ok(agent) => Response::AgentDetail {
+                agent: agent_summary(&agent),
+            },
+            Err(err) => agent_error(err),
+        },
+        Err(err) => agent_error(err),
+    }
+}
+
+async fn execute_create_agent(
+    facade: &OrchestratorFacade,
+    id: &str,
+    name: &str,
+    role: &str,
+    model: Option<&str>,
+) -> Response {
+    match facade.agent_manager().await {
+        Ok(manager) => match manager.create_agent(id, name, role, model).await {
+            Ok(agent) => Response::AgentDetail {
+                agent: agent_summary(&agent),
+            },
+            Err(err) => agent_error(err),
+        },
+        Err(err) => agent_error(err),
+    }
+}
+
+async fn execute_agent_wake(facade: &OrchestratorFacade, id: &str) -> Response {
+    match facade.agent_manager().await {
+        Ok(manager) => match manager.wake(id).await {
+            Ok(agent) => Response::AgentDetail {
+                agent: agent_summary(&agent),
+            },
+            Err(err) => agent_error(err),
+        },
+        Err(err) => agent_error(err),
+    }
+}
+
+async fn execute_agent_sleep(facade: &OrchestratorFacade, id: &str) -> Response {
+    match facade.agent_manager().await {
+        Ok(manager) => match manager.sleep(id).await {
+            Ok(agent) => Response::AgentDetail {
+                agent: agent_summary(&agent),
+            },
+            Err(err) => agent_error(err),
+        },
+        Err(err) => agent_error(err),
+    }
+}
+
+async fn execute_agent_background(facade: &OrchestratorFacade, id: &str) -> Response {
+    match facade.agent_manager().await {
+        Ok(manager) => match manager.background(id).await {
+            Ok(report) => Response::AgentBackgroundReport {
+                inbox_count: report.inbox_count,
+                pending_tasks: report.pending_tasks,
+                executed: report.executed,
+            },
+            Err(err) => agent_error(err),
+        },
+        Err(err) => agent_error(err),
+    }
+}
+
+async fn execute_agent_turn(facade: &OrchestratorFacade, id: &str, message: &str) -> Response {
+    match facade.agent_turn_for(id, message).await {
+        Ok(result) => Response::AgentTurnReply {
+            reply: result.reply,
+            tools_invoked: result.tools_invoked,
+            auto_assimilated: result.auto_assimilated,
+            auto_executed_skills: result.auto_executed_skills,
+        },
+        Err(err) => Response::Error(AppError {
+            kind: "agent".to_string(),
+            message: err.to_string(),
+        }),
+    }
+}
+
+async fn execute_agent_send_message(
+    facade: &OrchestratorFacade,
+    from: &str,
+    to: &str,
+    body: &str,
+) -> Response {
+    match facade.agent_manager().await {
+        Ok(manager) => match manager.send_message(from, to, body).await {
+            Ok(msg) => Response::AgentMessageSent {
+                message_id: msg.id,
+                from: msg.from,
+                to: msg.to,
+            },
+            Err(err) => agent_error(err),
+        },
+        Err(err) => agent_error(err),
+    }
+}
+
+async fn execute_agent_messages(facade: &OrchestratorFacade, id: &str, mark_read: bool) -> Response {
+    match facade.agent_manager().await {
+        Ok(manager) => match manager.receive_messages(id, mark_read).await {
+            Ok(messages) => Response::AgentMessages {
+                items: messages
+                    .into_iter()
+                    .map(|m| super::types::AgentMessageSummary {
+                        id: m.id,
+                        from: m.from,
+                        to: m.to,
+                        body: m.body,
+                        sent_at: m.sent_at,
+                        read: m.read,
+                    })
+                    .collect(),
+            },
+            Err(err) => agent_error(err),
+        },
+        Err(err) => agent_error(err),
     }
 }
 

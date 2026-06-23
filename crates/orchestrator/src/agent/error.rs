@@ -39,4 +39,8 @@ pub enum AgentError {
     /// Erreur d'assimilation Cortex.
     #[error(transparent)]
     Assimilation(#[from] cortex::AssimilationError),
+
+    /// Erreur agent persistant (Phase 2b).
+    #[error(transparent)]
+    PersistentAgent(#[from] crate::persistent::PersistentAgentError),
 }

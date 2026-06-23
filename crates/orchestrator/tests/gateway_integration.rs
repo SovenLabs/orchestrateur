@@ -30,7 +30,8 @@ async fn gateway_runner_agent_turn_returns_reply() {
     let reply = runner
         .run_agent_turn(
             "req-1",
-            SessionKey::default_chat(),
+            Some(SessionKey::default_chat()),
+            None,
             "Bonjour gateway",
             "webchat",
             None,

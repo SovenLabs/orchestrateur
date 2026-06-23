@@ -110,12 +110,17 @@ impl GatewayRunner {
     pub async fn run_agent_turn(
         &self,
         request_id: &str,
-        session_key: SessionKey,
+        session_key: Option<SessionKey>,
+        agent_id: Option<&str>,
         message: &str,
         channel: &str,
         stream_tx: Option<Sender<GatewayServerMessage>>,
     ) -> Result<String, GatewayError> {
-        self.audit_inbound(channel, session_key.as_str(), message);
+        let audit_session = agent_id
+            .map(str::to_string)
+            .or_else(|| session_key.as_ref().map(|k| k.as_str().to_string()))
+            .unwrap_or_else(|| "unknown".into());
+        self.audit_inbound(channel, &audit_session, message);
 
         let (event_tx, event_rx) = flume::unbounded::<AgentStreamEvent>();
         let stream_sink = AgentStreamSink::from_sender(event_tx);
@@ -138,20 +143,31 @@ impl GatewayRunner {
             });
         }
 
-        let agent = AgentLoop::new(
-            self.facade.deps().clone(),
-            self.agent_config.clone(),
-            Some(self.facade.skills_registry()),
-        );
-        let result = agent
-            .run_turn_with_stream(
-                AgentTurnRequest {
-                    session_key,
-                    message: message.to_string(),
-                },
-                stream_sink,
-            )
-            .await?;
+        let result = if let Some(id) = agent_id.filter(|s| !s.trim().is_empty()) {
+            self.facade
+                .agent_turn_for_with_stream(id, message, stream_sink)
+                .await
+                .map_err(GatewayError::from)?
+        } else {
+            let session_key = session_key.ok_or_else(|| {
+                GatewayError::Config("session_key ou agent_id requis".into())
+            })?;
+            let agent = AgentLoop::new(
+                self.facade.deps().clone(),
+                self.agent_config.clone(),
+                Some(self.facade.skills_registry()),
+            );
+            agent
+                .run_turn_with_stream(
+                    AgentTurnRequest {
+                        session_key,
+                        message: message.to_string(),
+                        personality_prefix: None,
+                    },
+                    stream_sink,
+                )
+                .await?
+        };
 
         let outbound = OutboundMessage {
             channel_id: channel.to_string(),
@@ -222,6 +238,7 @@ impl InboundHandler for GatewayInboundHandler {
             .run_turn(AgentTurnRequest {
                 session_key,
                 message: message.text.clone(),
+                personality_prefix: None,
             })
             .await?;
 

@@ -72,6 +72,63 @@ fn draft_discarded_maps_correctly() {
 }
 
 #[test]
+fn agent_status_changed_maps_correctly() {
+    let payload = serde_json::json!({
+        "agent_id": "researcher",
+        "status": "awake"
+    });
+    let event = BackendEvent::from_territory_broadcast("agent_status_changed", &payload);
+    match event {
+        BackendEvent::AgentStatusChanged { agent_id, status } => {
+            assert_eq!(agent_id, "researcher");
+            assert_eq!(status, "awake");
+        }
+        _ => panic!("expected agent_status_changed"),
+    }
+}
+
+#[test]
+fn agent_message_received_maps_correctly() {
+    let payload = serde_json::json!({
+        "to": "beta",
+        "from": "alpha",
+        "message_id": "msg-1"
+    });
+    let event = BackendEvent::from_territory_broadcast("agent_message", &payload);
+    match event {
+        BackendEvent::AgentMessageReceived {
+            to,
+            from,
+            message_id,
+        } => {
+            assert_eq!(to, "beta");
+            assert_eq!(from, "alpha");
+            assert_eq!(message_id, "msg-1");
+        }
+        _ => panic!("expected agent_message"),
+    }
+}
+
+#[test]
+fn delegation_completed_maps_correctly() {
+    let payload = serde_json::json!({
+        "delegation_id": "del-9",
+        "status": "done"
+    });
+    let event = BackendEvent::from_territory_broadcast("delegation_completed", &payload);
+    match event {
+        BackendEvent::DelegationCompleted {
+            delegation_id,
+            status,
+        } => {
+            assert_eq!(delegation_id, "del-9");
+            assert_eq!(status, "done");
+        }
+        _ => panic!("expected delegation_completed"),
+    }
+}
+
+#[test]
 fn unknown_broadcast_becomes_daemon_broadcast() {
     let payload = serde_json::json!({ "foo": "bar" });
     let event = BackendEvent::from_territory_broadcast("custom_event", &payload);

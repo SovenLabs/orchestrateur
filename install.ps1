@@ -164,8 +164,11 @@ if (-not (Test-Path $SetupPath)) {
 }
 
 Write-Host "Lancement de l'installeur Inno Setup..."
-$setupArgs = if ($Silent) { "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART" } else { @() }
-$proc = Start-Process -FilePath $SetupPath -ArgumentList $setupArgs -PassThru -Wait
+if ($Silent) {
+    $proc = Start-Process -FilePath $SetupPath -ArgumentList @("/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART") -PassThru -Wait
+} else {
+    $proc = Start-Process -FilePath $SetupPath -PassThru -Wait
+}
 if ($proc.ExitCode -ne 0) {
     throw "Installeur termine avec le code $($proc.ExitCode)"
 }

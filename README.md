@@ -61,7 +61,6 @@ Carte spatiale et priorités P0–P6 : **[`docs/project-hierarchy.md`](docs/proj
 orchestrateur/
 ├── crates/
 │   ├── shared-types/     # Protocole WS + export TypeScript
-│   ├── orchestrator-core/# Placeholder (fusion prévue avant gel noyau)
 │   ├── cortex/           # P0 — domaine + ports
 │   ├── orchestrator/     # P2/P3 — facade, agent, daemon, gateway
 │   ├── infrastructure/   # P1 — LanceDB, Ollama, xAI, filesystem

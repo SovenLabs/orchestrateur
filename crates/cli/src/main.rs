@@ -25,6 +25,7 @@ use orchestrator::ChannelCatalog;
 use harness_ops::{
     channels_disable, channels_enable, channels_status, cmd_configure, cmd_doctor, cmd_harness_run,
     cmd_harness_smoke, cmd_onboard, cmd_uninstall, daemon_install, daemon_status, daemon_stop,
+    HarnessSmokeOptions,
     gateway_status, providers_set, providers_test, ConfigureOptions, OnboardOptions,
 };
 use update::{cmd_update, UpdateOptions};
@@ -354,8 +355,15 @@ enum DraftCommands {
 
 #[derive(Subcommand)]
 enum HarnessCommands {
-    /// Enchaîne health, graph, drafts, watcher (sans LLM obligatoire).
-    Smoke,
+    /// Enchaîne health, graph, drafts, watcher, chat agent (sans LLM obligatoire).
+    Smoke {
+        /// N'exige pas le gateway messaging.
+        #[arg(long)]
+        skip_gateway: bool,
+        /// Ignore l'étape chat agent.
+        #[arg(long)]
+        skip_chat: bool,
+    },
     /// Démarre daemon + gateway si absents, attend Ctrl+C.
     Run,
 }
@@ -509,7 +517,20 @@ async fn main() -> Result<()> {
             }
         },
         Commands::Harness { command } => match command {
-            HarnessCommands::Smoke => cmd_harness_smoke(&facade).await?,
+            HarnessCommands::Smoke {
+                skip_gateway,
+                skip_chat,
+            } => {
+                cmd_harness_smoke(
+                    &facade,
+                    &cli.workspace,
+                    &HarnessSmokeOptions {
+                        skip_gateway,
+                        skip_chat,
+                    },
+                )
+                .await?
+            }
             HarnessCommands::Run => unreachable!("géré par dispatch_lightweight"),
         },
         Commands::Mcp { command } => match command {

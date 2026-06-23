@@ -6,9 +6,9 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use orchestrator::{
-    assert_llm_egress_allowed, execute_command, health::probe_services, set_channel_enabled,
-    set_primary_llm, set_security_profile, ChannelCatalog, Command as BridgeCommand,
-    OrchestratorConfig, OrchestratorFacade, Response,
+    assert_llm_egress_allowed, execute_command, health::probe_services, probe_harness_services,
+    set_channel_enabled, set_primary_llm, set_security_profile, ChannelCatalog,
+    Command as BridgeCommand, OrchestratorConfig, OrchestratorFacade, Response, ServiceHealth,
 };
 use orchestrator::gateway::resolve_channel_config;
 use reqwest::Client;
@@ -74,22 +74,33 @@ impl ServiceProbeState {
     }
 }
 
+fn map_health(h: ServiceHealth) -> ServiceProbeState {
+    match h {
+        ServiceHealth::Alive => ServiceProbeState::Alive,
+        ServiceHealth::Down => ServiceProbeState::Down,
+    }
+}
+
+fn map_probe_status(s: &str) -> ServiceProbeState {
+    match s {
+        "alive" => ServiceProbeState::Alive,
+        "skipped" => ServiceProbeState::Alive,
+        "down" => ServiceProbeState::Down,
+        _ => ServiceProbeState::Unknown,
+    }
+}
+
 /// Sonde HTTP /health du daemon.
 pub async fn probe_daemon_health(url: &str) -> ServiceProbeState {
-    probe_health_url(url).await
+    map_health(
+        orchestrator::probe_health(&http_client(), url)
+            .await,
+    )
 }
 
 /// Sonde HTTP /health du gateway.
 pub async fn probe_gateway_health(url: &str) -> ServiceProbeState {
-    probe_health_url(url).await
-}
-
-async fn probe_health_url(url: &str) -> ServiceProbeState {
-    match http_client().get(url).send().await {
-        Ok(resp) if resp.status().is_success() => ServiceProbeState::Alive,
-        Ok(_) => ServiceProbeState::Down,
-        Err(_) => ServiceProbeState::Down,
-    }
+    probe_daemon_health(url).await
 }
 
 /// Badges daemon + gateway pour les menus setup.
@@ -97,14 +108,10 @@ pub async fn harness_service_badges(workspace: &Path) -> (ServiceProbeState, Ser
     let Ok(config) = OrchestratorConfig::load_workspace(workspace) else {
         return (ServiceProbeState::Unknown, ServiceProbeState::Unknown);
     };
-    let daemon_url = format!("http://{}:{}/health", config.daemon.bind, config.daemon.port);
-    let gateway_url = format!(
-        "http://{}:{}/health",
-        config.gateway.bind, config.gateway.port
-    );
-    tokio::join!(
-        probe_daemon_health(&daemon_url),
-        probe_gateway_health(&gateway_url)
+    let probe = probe_harness_services(&config, &http_client()).await;
+    (
+        map_probe_status(&probe.daemon),
+        map_probe_status(&probe.gateway),
     )
 }
 
@@ -637,10 +644,36 @@ pub fn providers_set(workspace: &Path, provider: &str) -> Result<()> {
     Ok(())
 }
 
-/// Smoke harness (health, graph, watcher, drafts, memories).
-pub async fn cmd_harness_smoke(facade: &OrchestratorFacade) -> Result<()> {
+/// Options smoke harness.
+#[derive(Debug, Clone, Default)]
+pub struct HarnessSmokeOptions {
+    /// Ignore l'absence du gateway messaging.
+    pub skip_gateway: bool,
+    /// Ignore l'étape chat agent.
+    pub skip_chat: bool,
+}
+
+/// Smoke harness (health, graph, watcher, drafts, memories, chat optionnel).
+pub async fn cmd_harness_smoke(
+    facade: &OrchestratorFacade,
+    workspace: &Path,
+    opts: &HarnessSmokeOptions,
+) -> Result<()> {
     println!("harness smoke…");
-    let steps: &[(&str, BridgeCommand)] = &[
+    if !opts.skip_gateway {
+        let config = OrchestratorConfig::load_workspace(workspace)?;
+        if config.gateway.enabled {
+            let probe = probe_harness_services(&config, &http_client()).await;
+            if probe.gateway != "alive" && probe.gateway != "skipped" {
+                anyhow::bail!(
+                    "gateway injoignable ({}) — relancez harness run ou --skip-gateway",
+                    probe.gateway_url
+                );
+            }
+            println!("  ✓ gateway probe");
+        }
+    }
+    let mut steps: Vec<(&str, BridgeCommand)> = vec![
         ("health", BridgeCommand::HealthCheck),
         ("graph", BridgeCommand::Graph),
         ("watcher", BridgeCommand::WatcherStatus),
@@ -654,8 +687,16 @@ pub async fn cmd_harness_smoke(facade: &OrchestratorFacade) -> Result<()> {
             },
         ),
     ];
+    if !opts.skip_chat {
+        steps.push((
+            "chat",
+            BridgeCommand::Chat {
+                message: "smoke harness — ping agent".into(),
+            },
+        ));
+    }
     for (name, cmd) in steps {
-        let response = execute_command(facade, cmd.clone()).await;
+        let response = execute_command(facade, cmd).await;
         if matches!(response, Response::Error(_)) {
             print_response(response)?;
             anyhow::bail!("harness smoke échoué à l'étape: {name}");

@@ -6,7 +6,7 @@ semantic_min = 0.75
 max_links = 10
 
 [providers]
-primary_llm = "xai"
+primary_llm = "ollama"
 fallback_llm = ["ollama"]
 primary_embedding = "ollama"
 fallback_embedding = []

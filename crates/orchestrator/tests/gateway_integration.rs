@@ -7,7 +7,7 @@ use std::sync::Arc;
 use cortex::SessionKey;
 use orchestrator::gateway::build_gateway_stack;
 use orchestrator::testing::MockBundle;
-use orchestrator::{GatewayRunner, OrchestratorConfig, OrchestratorFacade};
+use orchestrator::{OrchestratorConfig, OrchestratorFacade};
 
 fn test_facade() -> Arc<OrchestratorFacade> {
     Arc::new(OrchestratorFacade::new(MockBundle::new().into_deps()))

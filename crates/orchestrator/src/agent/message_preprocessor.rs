@@ -1,4 +1,4 @@
-//! Prétraitement bidirectionnel des messages utilisateur avant [`super::context::build_context`] (PR-6).
+//! Prétraitement bidirectionnel des messages utilisateur avant construction du contexte agent (PR-6).
 
 use crate::deps::AppDependencies;
 use crate::llm::ChatMessage;

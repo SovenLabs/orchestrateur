@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 use cortex::DomainEvent;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::mpsc;
 use uuid::Uuid;
@@ -50,7 +50,7 @@ impl WindowKind {
 }
 
 /// Répartition des clients WS connectés par type de fenêtre.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ConnectedWindows {
     /// Fenêtre principale Godot.
     pub main: usize,

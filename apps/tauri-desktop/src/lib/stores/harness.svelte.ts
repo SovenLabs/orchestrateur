@@ -17,6 +17,7 @@ class HarnessStore {
 
   workspacePath = $state("");
   configExists = $state(false);
+  gatewayEnabled = $state(true);
 
   bootstrapPercent = $state(0);
   bootstrapStatus = $state("En attente…");
@@ -37,6 +38,7 @@ class HarnessStore {
     if (!info) return;
     this.workspacePath = info.path;
     this.configExists = info.config_exists;
+    this.gatewayEnabled = info.gateway_enabled;
     const dismissed = localStorage.getItem(SETUP_DISMISSED_KEY) === "1";
     this.setupOpen = !info.config_exists || !dismissed;
     await this.refreshServices();
@@ -94,17 +96,27 @@ class HarnessStore {
       await new Promise((r) => setTimeout(r, 750));
     }
 
-    for (let i = 0; i < 24; i++) {
-      this.bootstrapPercent = Math.min(56 + i * 2, 95);
-      this.bootstrapStatus = "Attente du gateway messaging…";
-      await this.refreshServices();
-      if (this.services?.gateway === "alive") break;
-      await new Promise((r) => setTimeout(r, 750));
+    const needsGateway = this.gatewayEnabled;
+    if (needsGateway) {
+      for (let i = 0; i < 24; i++) {
+        this.bootstrapPercent = Math.min(56 + i * 2, 95);
+        this.bootstrapStatus = "Attente du gateway messaging…";
+        await this.refreshServices();
+        if (this.services?.gateway === "alive") break;
+        await new Promise((r) => setTimeout(r, 750));
+      }
+    } else {
+      this.bootstrapPercent = 95;
+      this.bootstrapStatus = "Gateway désactivé — daemon seul";
     }
 
     this.bootstrapPercent = 100;
-    const ok =
-      this.services?.daemon === "alive" && this.services?.gateway === "alive";
+    const daemonOk = this.services?.daemon === "alive";
+    const gatewayOk =
+      !needsGateway ||
+      this.services?.gateway === "alive" ||
+      this.services?.gateway === "skipped";
+    const ok = daemonOk && gatewayOk;
     this.bootstrapStatus = ok
       ? "Harness prêt"
       : "Services partiels — lancez orchestrateur harness run";

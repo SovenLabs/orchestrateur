@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use cortex::{ConversationTurn, SessionKey, TurnRole};
+use cortex::{
+    AssimilationPolicy, AssimilationService, ContextProvider, ConversationTurn, SessionKey,
+    TurnRole,
+};
 use crate::deps::AppDependencies;
 use crate::skills::best_skill_match;
 use crate::skills::{SkillContext, SkillRegistry};
@@ -11,7 +14,8 @@ use tracing::{debug, info};
 use super::config::AgentConfig;
 use super::message_preprocessor::MessagePreprocessor;
 use super::stream::{AgentStreamEvent, AgentStreamSink};
-use super::context::{base_system_prompt, build_context, format_tool_definitions};
+use super::adapters::{agent_exchange_turn, build_agent_adapters};
+use super::context::{base_system_prompt, format_agent_context, format_tool_definitions, skill_sections};
 use super::tool_parse::{extract_tool_call, has_tool_call};
 use super::AgentError;
 
@@ -39,12 +43,14 @@ pub struct AgentTurnResult {
     pub auto_executed_skills: Vec<String>,
 }
 
-/// Boucle agent Phase 7 — LLM + outils mémoire + contexte graphe.
+/// Boucle agent — LLM, outils mémoire, ports Cortex (`ContextProvider`, `AssimilationService`).
 pub struct AgentLoop {
     deps: AppDependencies,
     tools: ToolRegistry,
     config: AgentConfig,
     skills: Option<Arc<SkillRegistry>>,
+    context_provider: Arc<dyn ContextProvider>,
+    assimilation_service: Arc<dyn AssimilationService>,
 }
 
 impl AgentLoop {
@@ -56,11 +62,15 @@ impl AgentLoop {
         skills: Option<Arc<SkillRegistry>>,
     ) -> Self {
         let tools = ToolRegistry::build_for_agent(&deps, &config, skills.clone());
+        let (context_provider, assimilation_service, _) =
+            build_agent_adapters(deps.clone(), config.clone());
         Self {
             deps,
             tools,
             config,
             skills,
+            context_provider,
+            assimilation_service,
         }
     }
 
@@ -72,11 +82,15 @@ impl AgentLoop {
         config: AgentConfig,
         skills: Option<Arc<SkillRegistry>>,
     ) -> Self {
+        let (context_provider, assimilation_service, _) =
+            build_agent_adapters(deps.clone(), config.clone());
         Self {
             deps,
             tools,
             config,
             skills,
+            context_provider,
+            assimilation_service,
         }
     }
 
@@ -116,19 +130,32 @@ impl AgentLoop {
             .await?;
         let effective_message = preprocessed.effective_message;
 
-        let built = build_context(
-            &self.deps,
-            &self.tools,
-            &self.config,
-            &effective_message,
-            self.skills.as_deref(),
-        )
-        .await?;
+        let agent_ctx = self
+            .context_provider
+            .build_context(
+                &effective_message,
+                Some(session_key.clone()),
+                self.config.proactive_search_limit,
+            )
+            .await?;
 
         let (auto_executed_skills, auto_execute_section) =
             try_auto_execute_skill(&self.config, self.skills.as_deref(), &effective_message).await;
 
-        let mut context_section = built.system_context;
+        let mut context_section = format_agent_context(&agent_ctx);
+        let skill_block = skill_sections(
+            &self.config,
+            self.skills.as_deref(),
+            &effective_message,
+        );
+        if !skill_block.is_empty() {
+            if context_section.is_empty() {
+                context_section = skill_block;
+            } else {
+                context_section.push_str("\n\n");
+                context_section.push_str(&skill_block);
+            }
+        }
         if !auto_execute_section.is_empty() {
             if context_section.is_empty() {
                 context_section = auto_execute_section;
@@ -250,13 +277,22 @@ impl AgentLoop {
             .await?;
 
         let auto_assimilated = if self.config.auto_assimilate_turn {
-            let summary = format!(
-                "Tour agent session {} — utilisateur: {}\nassistant: {}",
-                session_key, user_message, reply
-            );
-            let args = serde_json::json!({ "text": summary, "tags": ["agent-turn"] });
-            match self.tools.execute(&tool_ctx, "memory_assimilate", &args).await {
-                Ok(r) => Some(r.content),
+            let turn = agent_exchange_turn(&user_message, &reply);
+            match self
+                .assimilation_service
+                .assimilate_turn(&turn, AssimilationPolicy::AutoIfChange)
+                .await
+            {
+                Ok(result) if !result.created.is_empty() => {
+                    Some(format!("mémoires créées: {:?}", result.created))
+                }
+                Ok(result) if result.has_pending_approval() => {
+                    Some("brouillon en attente d'approbation".into())
+                }
+                Ok(_) => None,
+                Err(cortex::AssimilationError::UserApprovalRequired(_)) => {
+                    Some("brouillon en attente d'approbation".into())
+                }
                 Err(e) => {
                     debug!(%e, "auto-assimilation échouée");
                     None

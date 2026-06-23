@@ -5168,7 +5168,6 @@ name = "orchestrateur-desktop"
 version = "0.27.0"
 dependencies = [
  "orchestrator",
- "orchestrator-core",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -5226,15 +5225,6 @@ dependencies = [
  "orchestrator",
  "thiserror 2.0.18",
  "tokio",
- "tracing",
-]
-
-[[package]]
-name = "orchestrator-core"
-version = "0.28.0"
-dependencies = [
- "serde_json",
- "shared-types",
  "tracing",
 ]
 

@@ -5,7 +5,8 @@ use std::process::Command as OsCommand;
 
 use orchestrator::gateway::resolve_channel_config;
 use orchestrator::{
-    set_channel_enabled, set_primary_llm, set_security_profile, ChannelCatalog, OrchestratorConfig,
+    probe_harness_services, set_channel_enabled, set_primary_llm, set_security_profile,
+    ChannelCatalog, HarnessServiceProbe, OrchestratorConfig,
 };
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -20,15 +21,7 @@ const DAEMON_TOKEN_ENV: &str = "ORCHESTRATEUR_DAEMON_TOKEN";
 pub struct HarnessWorkspaceInfo {
     pub path: String,
     pub config_exists: bool,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub struct HarnessServiceProbe {
-    pub daemon: String,
-    pub gateway: String,
-    pub daemon_url: String,
-    pub gateway_url: String,
+    pub gateway_enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -77,14 +70,6 @@ fn harness_workspace() -> Result<PathBuf, String> {
 
 fn config_path(workspace: &Path) -> PathBuf {
     workspace.join("config").join("orchestrator.toml")
-}
-
-async fn probe_url(client: &Client, url: &str) -> String {
-    match client.get(url).send().await {
-        Ok(r) if r.status().is_success() => "alive".into(),
-        Ok(_) => "down".into(),
-        Err(_) => "down".into(),
-    }
 }
 
 fn channel_meta(id: &str) -> (&'static str, &'static str) {
@@ -224,9 +209,13 @@ fn ensure_daemon_token() -> Result<(), String> {
 pub fn harness_workspace_info() -> Result<HarnessWorkspaceInfo, String> {
     let path = harness_workspace()?;
     let cfg = config_path(&path);
+    let gateway_enabled = OrchestratorConfig::load_workspace(&path)
+        .map(|c| c.gateway.enabled)
+        .unwrap_or(true);
     Ok(HarnessWorkspaceInfo {
         path: path.display().to_string(),
         config_exists: cfg.is_file(),
+        gateway_enabled,
     })
 }
 
@@ -234,26 +223,11 @@ pub fn harness_workspace_info() -> Result<HarnessWorkspaceInfo, String> {
 pub async fn harness_probe_services() -> Result<HarnessServiceProbe, String> {
     let workspace = harness_workspace()?;
     let config = OrchestratorConfig::load_workspace(&workspace).map_err(|e| e.to_string())?;
-    let daemon_url = format!(
-        "http://{}:{}/health",
-        config.daemon.bind, config.daemon.port
-    );
-    let gateway_url = format!(
-        "http://{}:{}/health",
-        config.gateway.bind, config.gateway.port
-    );
     let client = Client::builder()
         .user_agent("Orchestrateur-Desktop")
         .build()
         .map_err(|e| e.to_string())?;
-    let daemon = probe_url(&client, &daemon_url).await;
-    let gateway = probe_url(&client, &gateway_url).await;
-    Ok(HarnessServiceProbe {
-        daemon,
-        gateway,
-        daemon_url,
-        gateway_url,
-    })
+    Ok(probe_harness_services(&config, &client).await)
 }
 
 #[tauri::command]

@@ -21,7 +21,7 @@ pub struct HarnessCapabilities {
 }
 
 /// Métadonnées fenêtre client — handshake `connect`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "../../../apps/tauri-desktop/src/lib/generated/")]
 pub struct ClientInfo {
     /// `main`, `extension`, `desktop` (Tauri), ou `sphere` (Godot standalone).
@@ -43,6 +43,18 @@ pub struct ClientInfo {
 
 fn default_window_kind() -> String {
     "main".to_string()
+}
+
+impl Default for ClientInfo {
+    fn default() -> Self {
+        Self {
+            window_kind: default_window_kind(),
+            window_id: None,
+            panels: Vec::new(),
+            subscriptions: Vec::new(),
+            harness: HarnessCapabilities::default(),
+        }
+    }
 }
 
 fn default_protocol_version() -> String {

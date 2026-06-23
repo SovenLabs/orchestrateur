@@ -1,7 +1,6 @@
 mod harness_commands;
 mod territory_launcher;
 
-use orchestrator_core::init as init_core;
 use tauri::Manager;
 use harness_commands::{
     harness_apply_onboard, harness_list_channels, harness_probe_services, harness_save_channel,
@@ -21,8 +20,6 @@ pub fn run() {
                 .unwrap_or_else(|_| "info".into()),
         )
         .init();
-
-    init_core();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())

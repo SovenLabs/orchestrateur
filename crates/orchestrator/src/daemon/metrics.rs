@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Compteurs atomiques du daemon WebSocket (observabilité Phase 23).
 #[derive(Debug, Default)]
@@ -74,7 +74,7 @@ impl DaemonMetrics {
 }
 
 /// Instantané des métriques daemon (JSON `/health`).
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DaemonMetricsSnapshot {
     /// Messages JSON reçus.
     pub messages_received: u64,

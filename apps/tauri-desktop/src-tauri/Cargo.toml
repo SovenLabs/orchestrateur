@@ -15,7 +15,6 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 orchestrator = { workspace = true, features = ["gateway"] }
-orchestrator-core.workspace = true
 shared-types.workspace = true
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"

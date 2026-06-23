@@ -35,7 +35,14 @@ jobs:
           RUSTFLAGS: "-D warnings"
         run: cargo build -p orchestrateur-cli --bin orch --features gateway,websocket-server --release
       - name: cargo test daemon (websocket-server)
-        run: cargo test -p orchestrator --features websocket-server daemon_integration
+        run: cargo test -p orchestrator --features websocket-server daemon_integration daemon_ws_live
+      - name: cargo test gateway
+        run: cargo test -p orchestrator --features gateway gateway_integration
+      - name: desktop vitest
+        run: |
+          cd apps/tauri-desktop
+          npm ci
+          npm test
 
   test-heavy:
     name: Tests sécurité et charge

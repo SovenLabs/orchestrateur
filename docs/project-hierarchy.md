@@ -106,7 +106,6 @@ Référence skills : [`workspace/skills/RESOLVER.md`](../workspace/skills/RESOLV
 orchestrateur/
 ├── crates/
 │   ├── shared-types/       # Protocole WS, BackendEvent, export TS
-│   ├── orchestrator-core/  # Placeholder Phase 21 (à fusionner avant gel)
 │   ├── cortex/             # P0
 │   ├── orchestrator/       # P2 + P3 (gateway, daemon)
 │   ├── infrastructure/     # P1
@@ -138,7 +137,6 @@ orchestrateur/
 ### Écarts connus (doc / install)
 
 - README historique : `Orchestre/` → corrigé en `orchestrateur/`
-- `orchestrator-core` : placeholder quasi vide — pas une couche P distincte sur la carte
 - MCP : `crates/mcp` (impl) vs `orchestrator/src/mcp/` (ports) — même nom, rôles différents
 - Anciennes installs : peuvent encore avoir `orchestre.exe` / `orchestrateur.exe` — supprimer manuellement si présents
 
@@ -221,7 +219,7 @@ Après validation, le noyau (P0–P5) est **scellé**. Seules les **skills (P6)*
 
 Actions pré-gel techniques :
 
-- [ ] Fusionner ou supprimer `orchestrator-core` (placeholder)
+- [x] Fusionner ou supprimer `orchestrator-core` (placeholder) — supprimé, logique dans `orchestrator`
 - [x] PR-G : binaire CLI unique (`orch.exe`)
 - [ ] Documenter version schéma hub / marketplace
 
@@ -235,7 +233,6 @@ Actions pré-gel techniques :
 | B | `apps/tauri-desktop/` → `apps/desktop-tauri/` |
 | C | `workspace/` → `data/default/` (compat `--workspace`) |
 | D | Consolider `stage-release.ps1` / `stage-release-v2.ps1` |
-| E | Résoudre `orchestrator-core` |
 | G | Un seul binaire `orch` + install simplifiée | **Fait** |
 
 ---

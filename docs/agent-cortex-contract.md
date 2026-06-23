@@ -18,7 +18,7 @@ L'agent **ne persiste jamais directement** : il passe par des **outils** ou des 
 
 ---
 
-## 1. Ports Agent ↔ Cortex (contrat v2)
+## 1. Ports Agent ↔ Cortex
 
 Définis dans `crates/cortex/src/ports/agent_ports.rs` — interface **vue agent** :
 
@@ -196,7 +196,7 @@ Use case avec LLM : `AssimilateFromText` = `GenerateInsightDraft` (LLM structure
 | Type | Rôle |
 |------|------|
 | `Memory` | Entité persistée (id, title, content, kind, tags, backlinks) |
-| `MemoryKind` | `insight`, `context`, `decision`, `reference`, `person`, `project` |
+| `MemoryKind` | `decision`, `dead_end`, `pattern`, `context`, `progress`, `business` |
 | `MemoryDraft` | Brouillon avant validation (LLM ou watcher) |
 | `MemoryId` | Identifiant stable (UUID) |
 | `KnowledgeGraph` | Graphe dérivé du corpus (hubs, validation) |
@@ -287,7 +287,7 @@ Clients : Tauri (`window_kind: desktop`), Godot (`main`, `sphere`). Voir `shared
 | `CortexAssimilationService` | ✅ | `orchestrator/src/agent/adapters/assimilation_service.rs` |
 | `CortexSemanticSearch` | ✅ | `orchestrator/src/agent/adapters/semantic_search.rs` |
 | `ChangeDetector` (`AutoIfChange`) | ✅ v1 | Longueur min, salutations triviales, score sémantique |
-| `AgentLoopV2` | ✅ | `orchestrator/src/agent/loop_v2.rs` — sans tool-calling |
+| `AgentLoop` + adapters | ✅ | `loop_impl.rs` utilise `ContextProvider` + `AssimilationService` |
 | `LlmProvider` + xAI | ✅ existant | Trait : `orchestrator::llm` ; impl : `infrastructure::XaiGrokProvider` |
 | `TurnLogger` dédié | Partiel | Audit `workspace/logs/turns/` si replay requis |
 | `WorkspaceValidator` | Partiel | Extraire `doctor` du CLI vers `orchestrator` |
@@ -299,14 +299,14 @@ Clients : Tauri (`window_kind: desktop`), Godot (`main`, `sphere`). Voir `shared
 | Élément | Chemin |
 |---------|--------|
 | AgentLoop (tools) | `crates/orchestrator/src/agent/loop_impl.rs` |
-| AgentLoopV2 (ports) | `crates/orchestrator/src/agent/loop_v2.rs` |
+
 | Adapters agent | `crates/orchestrator/src/agent/adapters/` |
 | XaiGrokProvider | `crates/infrastructure/src/llm/xai_grok.rs` |
 | build_context | `crates/orchestrator/src/agent/context.rs` |
 | AssimilateFromDraft | `crates/orchestrator/src/use_cases/assimilate_from_draft.rs` |
 | AssimilateFromText | `crates/orchestrator/src/use_cases/assimilate_from_text.rs` |
 | Wiring production | `crates/infrastructure/src/wiring.rs` |
-| Agent ports (v2) | `crates/cortex/src/ports/agent_ports.rs` |
+| Agent ports | `crates/cortex/src/ports/agent_ports.rs` |
 | Ports infra | `crates/cortex/src/ports/` |
 | FileMemoryRepository | `crates/infrastructure/src/memory_repository.rs` |
 | LancedbVectorStore | `crates/infrastructure/src/vector_store/lancedb_store.rs` |

@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 export type HarnessWorkspaceInfo = {
   path: string;
   config_exists: boolean;
+  gateway_enabled: boolean;
 };
 
 export type HarnessServiceProbe = {
@@ -10,6 +11,7 @@ export type HarnessServiceProbe = {
   gateway: string;
   daemon_url: string;
   gateway_url: string;
+  gateway_enabled: boolean;
 };
 
 export type ChannelRow = {

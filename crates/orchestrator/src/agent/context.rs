@@ -1,126 +1,74 @@
-use cortex::{KnowledgeGraph, Memory};
-use crate::deps::AppDependencies;
+use cortex::AgentContext;
 use crate::skills::suggest_skills;
 use crate::skills::SkillRegistry;
-use crate::tools::{ToolContext, ToolRegistry};
-use crate::use_cases::ListMemories;
+use crate::tools::ToolRegistry;
 
 use super::config::AgentConfig;
-use super::AgentError;
 
-/// Contexte enrichi injecté dans le prompt système.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BuiltContext {
-    /// Bloc texte pour le prompt système.
-    pub system_context: String,
-    /// Résultat de la recherche proactive (si exécutée).
-    pub proactive_search: Option<String>,
-}
-
-/// Construit le contexte graphe + recherche proactive.
-pub async fn build_context(
-    deps: &AppDependencies,
-    tools: &ToolRegistry,
-    config: &AgentConfig,
-    user_message: &str,
-    skills: Option<&SkillRegistry>,
-) -> Result<BuiltContext, AgentError> {
+/// Formate un [`AgentContext`] en sections texte pour le prompt système.
+#[must_use]
+pub fn format_agent_context(ctx: &AgentContext) -> String {
     let mut sections = Vec::new();
-
-    if config.graph_context_enabled {
-        if let Some(graph_section) = build_graph_section(deps, config.graph_hub_limit).await? {
-            sections.push(graph_section);
-        }
+    if let Some(graph) = &ctx.graph_context {
+        sections.push(format!("## Graphe de connaissances\n{graph}"));
     }
-
-    let mut proactive_search = None;
-    if config.proactive_memory_search {
-        let ctx = ToolContext::new(deps.clone());
-        let args = serde_json::json!({
-            "query": user_message,
-            "limit": config.proactive_search_limit
-        });
-        match tools.execute(&ctx, "memory_search", &args).await {
-            Ok(result) => {
-                proactive_search = Some(result.content.clone());
-                sections.push(format!(
-                    "## Souvenirs pertinents (recherche proactive)\n{}",
-                    result.content
-                ));
-            }
-            Err(err) => {
-                sections.push(format!(
-                    "## Souvenirs pertinents\n(recherche indisponible: {err})"
-                ));
-            }
-        }
+    if !ctx.memories.is_empty() {
+        let lines: Vec<String> = ctx
+            .memories
+            .iter()
+            .map(|m| format!("- [{}] {}: {}", m.id, m.title, truncate_memory(&m.content, 200)))
+            .collect();
+        sections.push(format!(
+            "## Souvenirs pertinents (recherche proactive)\n{}",
+            lines.join("\n")
+        ));
     }
-
-    if config.skill_auto_suggest {
-        if let Some(registry) = skills {
-            let catalog = format_skill_catalog(registry);
-            if !catalog.is_empty() {
-                sections.push(format!("## Skills disponibles\n{catalog}"));
-            }
-            let suggested = suggest_skills(&registry.list(), user_message, 3);
-            if !suggested.is_empty() {
-                let lines: Vec<String> = suggested
-                    .iter()
-                    .map(|s| format!("- {} — {}", s.name, s.description))
-                    .collect();
-                sections.push(format!(
-                    "## Skills suggérées pour ce message\n{}",
-                    lines.join("\n")
-                ));
-            }
-        }
-    }
-
-    let system_context = if sections.is_empty() {
+    if sections.is_empty() {
         String::new()
     } else {
         sections.join("\n\n")
-    };
-
-    Ok(BuiltContext {
-        system_context,
-        proactive_search,
-    })
+    }
 }
 
-async fn build_graph_section(
-    deps: &AppDependencies,
-    hub_limit: usize,
-) -> Result<Option<String>, AgentError> {
-    let memories = ListMemories::new(deps.clone()).execute().await?;
-    if memories.is_empty() {
-        return Ok(None);
+fn truncate_memory(text: &str, max: usize) -> String {
+    if text.chars().count() <= max {
+        return text.to_string();
     }
+    let mut out: String = text.chars().take(max).collect();
+    out.push_str("…");
+    out
+}
 
-    let graph = KnowledgeGraph::from_memories(&memories);
-    let title_by_id: std::collections::HashMap<_, _> = memories
-        .iter()
-        .map(|m: &Memory| (m.id, m.title.as_str()))
-        .collect();
-
-    let hubs = graph
-        .hub_ranking()
-        .into_iter()
-        .take(hub_limit)
-        .map(|(id, inbound)| {
-            let title = title_by_id
-                .get(&id)
-                .map_or_else(|| id.to_string(), |t| (*t).to_string());
-            format!("- {title} ({inbound} liens entrants)")
-        })
-        .collect::<Vec<_>>();
-
-    Ok(Some(format!(
-        "## Graphe de connaissances\nNœuds: {}, arêtes: {}\n\n### Hubs\n{}",
-        graph.node_count(),
-        graph.edge_count(),
-        hubs.join("\n")
-    )))
+/// Sections skills pour enrichir le contexte agent.
+#[must_use]
+pub fn skill_sections(
+    config: &AgentConfig,
+    skills: Option<&SkillRegistry>,
+    user_message: &str,
+) -> String {
+    if !config.skill_auto_suggest {
+        return String::new();
+    }
+    let Some(registry) = skills else {
+        return String::new();
+    };
+    let mut sections = Vec::new();
+    let catalog = format_skill_catalog(registry);
+    if !catalog.is_empty() {
+        sections.push(format!("## Skills disponibles\n{catalog}"));
+    }
+    let suggested = suggest_skills(&registry.list(), user_message, 3);
+    if !suggested.is_empty() {
+        let lines: Vec<String> = suggested
+            .iter()
+            .map(|s| format!("- {} — {}", s.name, s.description))
+            .collect();
+        sections.push(format!(
+            "## Skills suggérées pour ce message\n{}",
+            lines.join("\n")
+        ));
+    }
+    sections.join("\n\n")
 }
 
 fn format_skill_catalog(registry: &SkillRegistry) -> String {
@@ -166,16 +114,19 @@ pub fn base_system_prompt(tool_section: &str, context_section: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agent::adapters::CortexContextProvider;
     use crate::testing::MockBundle;
+    use cortex::ContextProvider;
 
     #[tokio::test]
-    async fn build_context_empty_graph() {
+    async fn context_provider_returns_agent_context() {
         let deps = MockBundle::new().into_deps();
-        let tools = ToolRegistry::with_memory_tools();
         let config = AgentConfig::default();
-        let ctx = build_context(&deps, &tools, &config, "hello", None)
+        let provider = CortexContextProvider::new(deps, config);
+        let ctx = provider
+            .build_context("hello", None, 5)
             .await
-            .unwrap();
-        assert!(ctx.system_context.contains("recherche") || ctx.proactive_search.is_some());
+            .expect("contexte agent");
+        assert!(ctx.session_turns.is_empty());
     }
 }

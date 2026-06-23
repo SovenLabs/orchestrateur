@@ -25,6 +25,8 @@ pub mod error;
 pub mod events;
 /// Facade publique stable (`OrchestratorFacade`).
 pub mod facade;
+/// Sondes harness partagées CLI / desktop.
+pub mod harness;
 /// Sondes de disponibilité providers (health bridge).
 pub mod health;
 /// Ports LLM — génération de [`MemoryDraft`] et chat.
@@ -105,9 +107,10 @@ pub use skills::{NativePluginError, NativePluginSkill};
 #[cfg(feature = "websocket-server")]
 pub use daemon::{run_daemon, run_daemon_with_domain_events, DaemonError};
 pub use agent::{
-    AgentConfig, AgentError, AgentLoop, AgentStreamEvent, AgentStreamSink, AgentTurnRequest,
-    AgentTurnResult,
+    build_agent_adapters, AgentConfig, AgentError, AgentLoop, AgentStreamEvent, AgentStreamSink,
+    AgentTurnRequest, AgentTurnResult,
 };
+pub use harness::{probe_health, probe_harness_services, HarnessServiceProbe, ServiceHealth};
 #[cfg(feature = "gateway")]
 pub use gateway::{run_gateway, GatewayError, GatewayRunner};
 pub use tools::{

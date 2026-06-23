@@ -2,7 +2,6 @@
 resolver = "2"
 members = [
     "crates/shared-types",
-    "crates/orchestrator-core",
     "crates/cortex",
     "crates/orchestrator",
     "crates/infrastructure",
@@ -37,7 +36,6 @@ blake3 = "1"
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 shared-types = { path = "crates/shared-types" }
-orchestrator-core = { path = "crates/orchestrator-core" }
 cortex = { path = "crates/cortex" }
 orchestrator = { path = "crates/orchestrator" }
 orchestrator-client = { path = "crates/client" }

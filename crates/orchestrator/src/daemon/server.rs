@@ -11,7 +11,7 @@ use axum::{
     Json, Router,
 };
 use futures_util::{SinkExt, StreamExt};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
@@ -50,7 +50,7 @@ impl DaemonState {
 }
 
 /// Réponse HTTP santé daemon.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HealthResponse {
     /// Statut.
     pub status: String,

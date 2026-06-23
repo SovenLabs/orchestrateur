@@ -11,10 +11,10 @@ default = []
 heavy-tests = []
 cli = []
 http = ["dep:axum", "dep:tower-http"]
-gateway = ["dep:axum", "dep:tower-http", "dep:futures-util", "dep:reqwest", "dep:tokio-tungstenite"]
+gateway = ["dep:axum", "dep:tower-http", "dep:futures-util", "dep:tokio-tungstenite"]
 websocket-server = ["dep:axum", "dep:tower-http", "dep:futures-util"]
 plugins-native = ["dep:libloading"]
-skills-marketplace = ["dep:reqwest"]
+skills-marketplace = []
 
 [dependencies]
 shared-types.workspace = true
@@ -33,7 +33,7 @@ uuid.workspace = true
 axum = { workspace = true, optional = true }
 tower-http = { workspace = true, optional = true }
 futures-util = { workspace = true, optional = true }
-reqwest = { workspace = true, optional = true }
+reqwest = { workspace = true, features = ["json", "rustls-tls"] }
 tokio-tungstenite = { workspace = true, optional = true }
 libloading = { workspace = true, optional = true }
 notify = { workspace = true }

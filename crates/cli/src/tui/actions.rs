@@ -14,6 +14,7 @@ use tokio::runtime::Handle;
 use crate::harness_ops::{
     channels_status, cmd_configure, cmd_doctor,
     cmd_harness_run, cmd_harness_smoke, cmd_uninstall, daemon_install, daemon_status,
+    HarnessSmokeOptions,
     daemon_stop, gateway_status, providers_set, providers_test, ConfigureOptions,
 };
 use crate::output::print_response;
@@ -48,7 +49,7 @@ pub async fn run_harness_action(workspace: &Path, action: HarnessAction) -> Resu
         HarnessAction::GatewayStatus => gateway_status(workspace).await?,
         HarnessAction::HarnessSmoke => {
             let facade = bootstrap_facade(workspace).await?;
-            cmd_harness_smoke(&facade).await?;
+            cmd_harness_smoke(&facade, workspace, &HarnessSmokeOptions::default()).await?;
         }
         HarnessAction::HarnessRun => cmd_harness_run(workspace).await?,
         HarnessAction::Health => {

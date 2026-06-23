@@ -150,39 +150,47 @@ async fn health_endpoint_exposes_metrics() {
     assert_eq!(resp.connected_windows.total, 0);
 }
 
+type WsStream = futures_util::stream::SplitStream<
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+>;
+type WsSink = futures_util::stream::SplitSink<
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+    Message,
+>;
+
+async fn connect_as(kind: &str, port: u16) -> (WsSink, WsStream) {
+    use orchestrator::daemon::ClientInfo;
+
+    let url = format!("ws://127.0.0.1:{port}/ws");
+    let (ws, _) = connect_async(&url).await.expect("connect ws");
+    let (mut write, mut read) = ws.split();
+    let connect = DaemonClientMessage::Connect {
+        token: "phase23-test".into(),
+        protocol_version: PROTOCOL_VERSION.into(),
+        client: ClientInfo {
+            window_kind: kind.into(),
+            ..Default::default()
+        },
+    };
+    write
+        .send(Message::Text(
+            serde_json::to_string(&connect).expect("json").into(),
+        ))
+        .await
+        .expect("send connect");
+    match recv_json(&mut read).await {
+        DaemonServerMessage::ConnectOk { .. } => {}
+        other => panic!("expected connect_ok, got {other:?}"),
+    }
+    (write, read)
+}
+
 #[tokio::test]
 async fn multi_window_kinds_reported_in_health() {
-    use orchestrator::daemon::protocol::ClientInfo;
-
     let (port, _) = spawn_test_daemon().await;
 
-    async fn connect_as(kind: &str, port: u16) {
-        let url = format!("ws://127.0.0.1:{port}/ws");
-        let (ws, _) = connect_async(&url).await.expect("connect ws");
-        let (mut write, mut read) = ws.split();
-        let connect = DaemonClientMessage::Connect {
-            token: "phase23-test".into(),
-            protocol_version: PROTOCOL_VERSION.into(),
-            client: ClientInfo {
-                window_kind: kind.into(),
-                ..Default::default()
-            },
-        };
-        write
-            .send(Message::Text(
-                serde_json::to_string(&connect).expect("json").into(),
-            ))
-            .await
-            .expect("send connect");
-        match recv_json(&mut read).await {
-            DaemonServerMessage::ConnectOk { .. } => {}
-            other => panic!("expected connect_ok, got {other:?}"),
-        }
-        tokio::time::sleep(Duration::from_millis(30)).await;
-    }
-
-    connect_as("desktop", port).await;
-    connect_as("sphere", port).await;
+    let (_desktop_write, _desktop_read) = connect_as("desktop", port).await;
+    let (_sphere_write, _sphere_read) = connect_as("sphere", port).await;
 
     let url = format!("http://127.0.0.1:{port}/health");
     let client = reqwest::Client::new();

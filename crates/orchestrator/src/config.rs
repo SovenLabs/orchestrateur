@@ -25,7 +25,7 @@ impl Default for ProvidersConfig {
     fn default() -> Self {
         Self {
             primary_llm: "ollama".into(),
-            fallback_llm: vec!["xai".into()],
+            fallback_llm: vec![],
             primary_embedding: "ollama".into(),
             fallback_embedding: vec![],
         }

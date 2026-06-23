@@ -9,11 +9,13 @@ use cortex::MemoryId;
 fn daemon_protocol_roundtrip_connect() {
     let msg = DaemonClientMessage::Connect {
         token: "secret".into(),
+        protocol_version: shared_types::PROTOCOL_VERSION.into(),
         client: ClientInfo {
             window_kind: "main".into(),
             window_id: Some("win-1".into()),
             panels: vec!["chat".into()],
             subscriptions: vec!["chat".into()],
+            harness: Default::default(),
         },
     };
     let json = serde_json::to_string(&msg).expect("serialize");
@@ -28,7 +30,7 @@ fn daemon_protocol_connect_backward_compat() {
     let json = r#"{"type":"connect","token":"dev"}"#;
     let msg: DaemonClientMessage = serde_json::from_str(json).expect("deserialize");
     match msg {
-        DaemonClientMessage::Connect { token, client } => {
+        DaemonClientMessage::Connect { token, client, .. } => {
             assert_eq!(token, "dev");
             assert_eq!(client.window_kind, "main");
         }
@@ -58,7 +60,10 @@ fn daemon_protocol_connect_ok_with_sessions() {
     };
     let json = serde_json::to_string(&msg).expect("serialize");
     assert!(json.contains("\"session_id\":\"sess-a\""));
-    assert!(json.contains("\"protocol_version\":\"1.1.0\""));
+    assert!(json.contains(&format!(
+        "\"protocol_version\":\"{}\"",
+        shared_types::PROTOCOL_VERSION
+    )));
     let back: DaemonServerMessage = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(back, msg);
 }

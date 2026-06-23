@@ -14,7 +14,6 @@ flowchart TB
     end
 
     subgraph Rust["Cœur Souverain Rust"]
-        Core["orchestrator-core<br/>(placeholder)"]
         Orch["orchestrator<br/>Cortex + AgentLoop + Daemon"]
         Types["shared-types<br/>Protocole 1.2.0 + événements UI"]
     end
@@ -25,7 +24,6 @@ flowchart TB
     Orch --> Daemon
     Types --> Tauri
     Types --> Orch
-    Core --> Types
 ```
 
 ## Séparation des responsabilités
@@ -33,8 +31,7 @@ flowchart TB
 | Composant | Rôle | Source de vérité |
 |-----------|------|------------------|
 | `shared-types` | Protocole WS, `BackendEvent`, export TS | Rust + `ts-rs` |
-| `orchestrator` | Cortex, bridge, daemon WS, gateway | Logique métier |
-| `orchestrator-core` | Future extraction AgentLoop/Cortex runtime | Placeholder — fusionner avant gel |
+| `orchestrator` | Cortex, AgentLoop, bridge, daemon WS, gateway | Logique métier |
 | `apps/tauri-desktop` | Apparence 2 cosmique (trou noir chat) + lancement Godot | Svelte 5 + Tauri commands |
 | `territoire-graphique` | Boule de Pixels Vivante + territoire 3D | Client Godot réactif |
 

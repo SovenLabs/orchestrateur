@@ -2,6 +2,7 @@
   import GlowCard from "$lib/components/GlowCard.svelte";
   import MetricBadge from "$lib/components/MetricBadge.svelte";
   import { connectionStore } from "$lib/stores/connection.svelte";
+  import { navigationStore } from "$lib/stores/navigation.svelte";
   import { uiStore } from "$lib/stores/ui.svelte";
 
   const activityPercent = $derived(Math.round(connectionStore.agentActivity * 100));
@@ -58,11 +59,19 @@
       </button>
       <button
         type="button"
+        class="rounded-md border border-[var(--accent-cyan)]/30 px-3 py-1.5 text-xs text-[var(--accent-cyan)] hover:border-[var(--accent-cyan)] disabled:opacity-40"
+        onclick={() => navigationStore.openTerritoryOverlay()}
+        disabled={connectionStore.status !== "connected"}
+      >
+        ◎ Territoire embed
+      </button>
+      <button
+        type="button"
         class="rounded-md border border-[var(--border-subtle)] px-3 py-1.5 text-xs hover:border-[var(--border-focus)] disabled:opacity-40"
         onclick={() => void uiStore.openTerritory()}
         disabled={connectionStore.status !== "connected"}
       >
-        Territoire Godot
+        Territoire natif
       </button>
       <span class="self-center text-[10px] text-[var(--text-muted)]">
         {uiStore.sphereLaunchState === "running" ? "Sphère lancée" : "Prêt"}

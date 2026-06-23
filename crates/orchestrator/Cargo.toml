@@ -30,6 +30,7 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "sync", "time", "net", "process", "io-util"] }
 toml.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true
 uuid.workspace = true
 axum = { workspace = true, optional = true }
 tower-http = { workspace = true, optional = true }
@@ -43,6 +44,7 @@ walkdir = "2"
 [dev-dependencies]
 b212 = { workspace = true }
 infrastructure = { workspace = true }
+orchestrateur-plugins = { workspace = true }
 reqwest = { workspace = true }
 serde_json = "1"
 tempfile = "3"

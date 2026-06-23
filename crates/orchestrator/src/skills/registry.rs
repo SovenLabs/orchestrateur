@@ -7,10 +7,12 @@ use crate::config::OrchestratorConfig;
 use crate::deps::AppDependencies;
 use crate::error::SkillError;
 use crate::skills::assimilate::AssimilateSkill;
-use crate::skills::hub::SkillsHub;
+
 use crate::skills::list_memories::ListMemoriesSkill;
 use crate::skills::search::SearchMemoriesSkill;
-use crate::skills::skill::{Skill, SkillContext, SkillEntry, SkillOutput, SkillSource};
+use crate::skills::loader::SkillLoader;
+use crate::skills::r#trait::Skill;
+use crate::skills::skill::{SkillContext, SkillEntry, SkillOutput, SkillSource};
 
 /// Registre centralisé des Skills disponibles.
 pub struct SkillRegistry {
@@ -50,7 +52,7 @@ impl SkillRegistry {
         let config = deps.config.clone();
         let mut registry = Self::with_operational_skills(deps);
         if config.skills_hub.enabled && config.skills_hub.auto_load {
-            match SkillsHub::load_into(&mut registry, &config) {
+            match SkillLoader::load_into(&mut registry, &config) {
                 Ok(count) => {
                     if count > 0 {
                         tracing::info!(count, "skills hub chargées");
@@ -73,12 +75,7 @@ impl SkillRegistry {
         let mut entries: Vec<_> = self
             .skills
             .values()
-            .map(|skill| SkillEntry {
-                name: skill.name().to_string(),
-                description: skill.description().to_string(),
-                source: skill.source(),
-                version: skill.version().map(str::to_string),
-            })
+            .map(|skill| SkillEntry::from_metadata(&skill.metadata()))
             .collect();
         entries.sort_by(|a, b| a.name.cmp(&b.name));
         entries
@@ -89,10 +86,13 @@ impl SkillRegistry {
     /// # Errors
     ///
     /// Propage les erreurs de scan hub.
-    pub fn reload_hub(&mut self, config: &OrchestratorConfig) -> Result<usize, crate::skills::hub::HubError> {
+    pub fn reload_hub(
+        &mut self,
+        config: &OrchestratorConfig,
+    ) -> Result<usize, crate::skills::loader::LoaderError> {
         self.skills
             .retain(|_, skill| skill.source() == SkillSource::Builtin);
-        SkillsHub::load_into(self, config)
+        SkillLoader::load_into(self, config)
     }
 
     /// Exécute une skill par son nom.

@@ -1,18 +1,23 @@
-//! `orch skill` — skills opérationnelles et hub.
+//! `orch skill` — hub, marketplace, exécution.
+
+mod create;
+mod install;
+mod list;
 
 use anyhow::Result;
 use clap::Subcommand;
-use orchestrator::{
-    BridgeSkillContext, Command, MarketplaceCatalog, OrchestratorFacade, SkillsHub,
-    SkillsMarketplace,
-};
+use orchestrateur_plugins::SkillUpdater;
+use orchestrator::{BridgeSkillContext, Command, OrchestratorFacade, SkillsHub, SkillsMarketplace};
 
 use crate::context::run_bridge_command;
+
+pub use install::{from_directory as install_from_dir, from_marketplace as install_skill};
+pub use list::run as list_skills;
 
 /// Sous-commandes skills.
 #[derive(Debug, Clone, Subcommand)]
 pub enum SkillCommands {
-    /// Liste les skills enregistrées.
+    /// Liste les skills installées.
     List,
     /// Exécute une skill par nom.
     Run {
@@ -32,20 +37,35 @@ pub enum SkillCommands {
     },
     /// Synchronise toutes les skills du catalogue marketplace.
     Update,
-    /// Chemin du répertoire hub.
+    /// Génère un nouveau skill (template skill.toml + SKILL.md).
+    Create {
+        id: String,
+        #[arg(long, default_value = "Nouvelle skill Orchestrateur")]
+        description: String,
+        #[arg(long, default_value = "subprocess")]
+        kind: String,
+        #[arg(long, default_value = "generic")]
+        skill_type: String,
+        #[arg(long)]
+        author: Option<String>,
+    },
+    /// Installe depuis un dossier local contenant skill.toml.
+    InstallDir {
+        path: std::path::PathBuf,
+        #[arg(long)]
+        id: Option<String>,
+    },
     #[command(hide = true)]
     Path,
-    /// Catalogue marketplace.
     #[command(hide = true)]
     Marketplace,
-    /// Vérifie les empreintes BLAKE3 du hub.
     #[command(hide = true)]
     Verify,
 }
 
 pub async fn run(cmd: SkillCommands, facade: &OrchestratorFacade) -> Result<()> {
     match cmd {
-        SkillCommands::List => run_bridge_command(facade, Command::ListSkills).await,
+        SkillCommands::List => list_skills(facade).await,
         SkillCommands::Run {
             name,
             query,
@@ -68,7 +88,24 @@ pub async fn run(cmd: SkillCommands, facade: &OrchestratorFacade) -> Result<()> 
             .await
         }
         SkillCommands::Install { name } => install_skill(facade, &name).await,
+        SkillCommands::InstallDir { path, id } => {
+            install_from_dir(facade, &path, id.as_deref()).await
+        }
         SkillCommands::Update => sync_marketplace(facade).await,
+        SkillCommands::Create {
+            id,
+            description,
+            kind,
+            skill_type,
+            author,
+        } => create::run(
+            facade,
+            &id,
+            &description,
+            &kind,
+            &skill_type,
+            author.as_deref(),
+        ),
         SkillCommands::Path => {
             println!("{}", facade.deps().config.skills_hub_dir().display());
             Ok(())
@@ -78,40 +115,14 @@ pub async fn run(cmd: SkillCommands, facade: &OrchestratorFacade) -> Result<()> 
     }
 }
 
-async fn install_skill(facade: &OrchestratorFacade, name: &str) -> Result<()> {
-    let config = &facade.deps().config;
-    let catalog = SkillsMarketplace::load_catalog_auto(config)
-        .await
-        .map_err(anyhow::Error::msg)?;
-    if !catalog.skills.iter().any(|s| s.id == name) {
-        anyhow::bail!("skill `{name}` absente du catalogue marketplace");
-    }
-    let filtered: Vec<_> = catalog
-        .skills
-        .iter()
-        .filter(|s| s.id == name)
-        .cloned()
-        .collect();
-    let mini = MarketplaceCatalog {
-        version: catalog.version,
-        catalog_hash: catalog.catalog_hash,
-        skills: filtered,
-    };
-    let result = SkillsMarketplace::sync_to_hub(config, &mini).map_err(anyhow::Error::msg)?;
-    println!("Installé : {:?}", result.installed);
-    Ok(())
-}
-
 async fn sync_marketplace(facade: &OrchestratorFacade) -> Result<()> {
-    let config = &facade.deps().config;
-    let catalog = SkillsMarketplace::load_catalog_auto(config)
+    let report = SkillUpdater::update_all(&facade.deps().config)
         .await
         .map_err(anyhow::Error::msg)?;
-    let result = SkillsMarketplace::sync_to_hub(config, &catalog).map_err(anyhow::Error::msg)?;
     println!(
-        "Sync : {} installée(s), {} ignorée(s)",
-        result.installed.len(),
-        result.skipped.len()
+        "Sync : {} mise(s) à jour, {} ignorée(s)",
+        report.updated.len(),
+        report.skipped.len()
     );
     Ok(())
 }
@@ -121,7 +132,11 @@ async fn print_marketplace(facade: &OrchestratorFacade) -> Result<()> {
     let catalog = SkillsMarketplace::load_catalog_auto(config)
         .await
         .map_err(anyhow::Error::msg)?;
-    println!("# Marketplace v{} ({} skills)", catalog.version, catalog.skills.len());
+    println!(
+        "# Marketplace v{} ({} skills)",
+        catalog.version,
+        catalog.skills.len()
+    );
     for entry in &catalog.skills {
         println!("{} — {}", entry.id, entry.description);
     }

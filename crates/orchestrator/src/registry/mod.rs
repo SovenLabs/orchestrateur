@@ -75,6 +75,20 @@ impl AgentRegistry {
         self.agents.is_empty()
     }
 
+    /// Retire un agent du registre et supprime son dossier sur disque.
+    pub async fn remove_agent(&mut self, id: &str) -> Result<(), PersistentAgentError> {
+        let agent = self
+            .agents
+            .remove(id)
+            .ok_or_else(|| PersistentAgentError::NotFound(id.to_string()))?;
+        if agent.root.exists() {
+            fs::remove_dir_all(&agent.root)
+                .await
+                .map_err(|e| PersistentAgentError::Io(e.to_string()))?;
+        }
+        Ok(())
+    }
+
     /// Persiste la config d'un agent sur disque.
     pub async fn persist_agent(&self, id: &str) -> Result<(), PersistentAgentError> {
         let agent = self

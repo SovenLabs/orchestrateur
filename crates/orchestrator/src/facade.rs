@@ -18,7 +18,8 @@ use crate::b212::{
 use crate::bridge::DraftSummary;
 use crate::draft::{DraftError, DraftStatus, StoredDraft};
 use crate::manager::AgentManager;
-use crate::persistent::PersistentAgentError;
+use crate::persistent::{AgentSkillInjector, PersistentAgent, PersistentAgentError};
+use crate::cortex_extensions::CortexExtensionRegistry;
 use crate::use_cases::{
     AssimilateFromDraft, AssimilateFromText, AssimilationResult, GetMemory, ImportMemories,
     ImportResult, ListMemories, SaveMemory, SearchMemories,
@@ -30,6 +31,7 @@ use crate::use_cases::{
 pub struct OrchestratorFacade {
     deps: AppDependencies,
     skills: Arc<SkillRegistry>,
+    cortex_extensions: Arc<CortexExtensionRegistry>,
 }
 
 impl OrchestratorFacade {
@@ -37,7 +39,11 @@ impl OrchestratorFacade {
     #[must_use]
     pub fn new(deps: AppDependencies) -> Self {
         let skills = Arc::new(SkillRegistry::with_operational_skills_and_hub(deps.clone()));
-        Self { deps, skills }
+        Self {
+            deps,
+            skills,
+            cortex_extensions: Arc::new(CortexExtensionRegistry::new()),
+        }
     }
 
     /// Construit la facade avec un registre de skills personnalisé.
@@ -46,6 +52,7 @@ impl OrchestratorFacade {
         Self {
             deps,
             skills: Arc::new(skills),
+            cortex_extensions: Arc::new(CortexExtensionRegistry::new()),
         }
     }
 
@@ -104,9 +111,28 @@ impl OrchestratorFacade {
         query: &str,
         filter: &SearchFilter,
     ) -> Result<Vec<SearchHit>, OrchestratorError> {
+        let effective_query = self.cortex_extensions.apply_search_transforms(query.to_string());
         SearchMemories::new(self.deps.clone())
-            .execute(query, filter)
+            .execute(&effective_query, filter)
             .await
+    }
+
+    /// Registre des extensions Cortex (skills type `cortex`).
+    #[must_use]
+    pub fn cortex_extensions(&self) -> &CortexExtensionRegistry {
+        &self.cortex_extensions
+    }
+
+    /// Skills applicables à un agent persistant (hub global + dossier agent).
+    ///
+    /// # Errors
+    ///
+    /// Propage [`PersistentAgentError`] si le scan disque échoue.
+    pub fn list_agent_skills(
+        &self,
+        agent: &PersistentAgent,
+    ) -> Result<Vec<crate::SkillHubDescriptor>, PersistentAgentError> {
+        AgentSkillInjector::list_for_agent(agent, &self.deps.config)
     }
 
     /// Assimile un brouillon pré-construit (sans appel LLM).

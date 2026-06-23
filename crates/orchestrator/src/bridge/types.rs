@@ -334,6 +334,7 @@ impl AppError {
             OrchestratorError::InsightSkipped { .. } => "insight_skipped",
             OrchestratorError::Internal(_) => "internal",
             OrchestratorError::Draft(_) => "draft",
+            OrchestratorError::Skill(_) => "skill",
         };
         Self {
             kind: kind.to_string(),

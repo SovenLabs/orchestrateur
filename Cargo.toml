@@ -9,6 +9,7 @@ members = [
     "crates/mcp",
     "crates/cli",
     "crates/client",
+    "crates/plugins",
     "apps/tauri-desktop/src-tauri",
     "plugins/pong-native",
     "territoire-graphique/rust-gdextension",
@@ -40,6 +41,7 @@ shared-types = { path = "crates/shared-types" }
 cortex = { path = "crates/cortex" }
 b212 = { path = "crates/b212" }
 orchestrator = { path = "crates/orchestrator" }
+orchestrateur-plugins = { path = "crates/plugins" }
 orchestrator-client = { path = "crates/client" }
 infrastructure = { path = "crates/infrastructure" }
 mcp = { path = "crates/mcp" }

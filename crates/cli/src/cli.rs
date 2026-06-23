@@ -5,8 +5,8 @@ use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 
 use crate::commands::{
-    AgentCommands, B212Commands, ConfigCommands, DaemonCommands, MemoryCommands, OnboardArgs,
-    SessionCommands, SkillCommands, UpdateArgs,
+    AgentCommands, BackupCommands, B212Commands, ConfigCommands, DaemonCommands, MemoryCommands,
+    OnboardArgs, SessionCommands, SkillCommands, UpdateArgs,
 };
 
 /// Orchestrateur — second cerveau local souverain.
@@ -80,6 +80,12 @@ pub enum Commands {
     Skill {
         #[command(subcommand)]
         command: SkillCommands,
+    },
+
+    /// Sauvegarde et restauration du workspace.
+    Backup {
+        #[command(subcommand)]
+        command: BackupCommands,
     },
 
     /// Santé rapide du bridge.

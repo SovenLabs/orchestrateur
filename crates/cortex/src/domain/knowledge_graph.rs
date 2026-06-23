@@ -33,7 +33,13 @@ impl KnowledgeGraph {
     /// Complexité : **O(n × b)** — une passe par mémoire avec insertion incrémentale.
     #[must_use]
     pub fn from_memories(memories: &[Memory]) -> Self {
-        let mut graph = Self::new();
+        let capacity = memories.len().saturating_mul(2).max(16);
+        let mut graph = Self {
+            nodes: HashSet::with_capacity(capacity),
+            edges: HashMap::with_capacity(memories.len().max(16)),
+            inbound_index: HashMap::with_capacity(memories.len().max(16)),
+            inbound_cache: HashMap::with_capacity(memories.len().max(16)),
+        };
         for memory in memories {
             graph.insert_memory(memory);
         }

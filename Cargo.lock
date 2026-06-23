@@ -3332,6 +3332,7 @@ dependencies = [
  "arrow-schema",
  "async-trait",
  "b212",
+ "blake3",
  "chrono",
  "cortex",
  "futures",
@@ -5165,6 +5166,7 @@ dependencies = [
  "dialoguer",
  "infrastructure",
  "mcp",
+ "orchestrateur-plugins",
  "orchestrator",
  "reqwest 0.12.28",
  "rusqlite",
@@ -5204,6 +5206,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "orchestrateur-plugins"
+version = "0.28.0"
+dependencies = [
+ "orchestrator",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "orchestrator"
 version = "0.28.0"
 dependencies = [
@@ -5218,6 +5232,7 @@ dependencies = [
  "infrastructure",
  "libloading 0.8.9",
  "notify",
+ "orchestrateur-plugins",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -5229,6 +5244,7 @@ dependencies = [
  "toml 0.8.2",
  "tower-http",
  "tracing",
+ "tracing-subscriber",
  "uuid",
  "walkdir",
 ]

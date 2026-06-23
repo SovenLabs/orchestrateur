@@ -95,6 +95,7 @@ pub fn format_tool_definitions(tools: &ToolRegistry) -> String {
 
 /// Prompt système de base pour la boucle agent.
 #[must_use]
+#[allow(dead_code)]
 pub fn base_system_prompt(tool_section: &str, context_section: &str) -> String {
     base_system_prompt_with_personality(None, tool_section, context_section)
 }

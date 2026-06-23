@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Territoire — placeholder embed</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --void: #0a0f1e;
+        --cyan: #00e5ff;
+        --core: #ff6b00;
+        --text: #8ba1c7;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(ellipse 80% 60% at 50% 40%, #121a2e, var(--void));
+        color: var(--text);
+        font-family: system-ui, sans-serif;
+      }
+      .card {
+        max-width: 28rem;
+        padding: 2rem;
+        border: 1px solid rgba(0, 229, 255, 0.2);
+        border-radius: 1rem;
+        background: rgba(10, 15, 30, 0.72);
+        backdrop-filter: blur(12px);
+        text-align: center;
+      }
+      h1 {
+        margin: 0 0 0.75rem;
+        font-size: 1rem;
+        color: var(--cyan);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      p {
+        margin: 0.5rem 0;
+        font-size: 0.875rem;
+        line-height: 1.5;
+      }
+      code {
+        font-size: 0.8em;
+        color: var(--core);
+      }
+      .ring {
+        width: 4rem;
+        height: 4rem;
+        margin: 0 auto 1rem;
+        border-radius: 999px;
+        border: 2px solid rgba(255, 107, 0, 0.45);
+        box-shadow: 0 0 24px rgba(255, 107, 0, 0.25);
+        animation: spin 12s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="ring" aria-hidden="true"></div>
+      <h1>Territoire Embed</h1>
+      <p>
+        Placeholder HTML5 — exécutez
+        <code>scripts/export-godot-web.ps1</code>
+        pour remplacer par l'export WASM Godot (<code>TerritoryEmbed.tscn</code>).
+      </p>
+      <p id="token-hint"></p>
+    </div>
+    <script>
+      const key = "orchestrateur_daemon_token";
+      const token = localStorage.getItem(key) || "dev";
+      document.getElementById("token-hint").textContent =
+        "Token daemon injecté : " + token.slice(0, 4) + "…";
+    </script>
+  </body>
+</html>

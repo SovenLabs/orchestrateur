@@ -25,9 +25,10 @@ just desktop-dev
 
 ```powershell
 # Installation (une fois) — installateur unique
-.\install.ps1 -Dev
-.\install.ps1 -Dev -InstallDaemon    # + tâche planifiée daemon à la connexion
-# Release : irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 | iex
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Dev
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Dev -InstallDaemon
+# Release (nécessite une GitHub Release publiée) :
+# powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 | iex"
 
 # Menus interactifs (navigation ↑↓, hints entre parenthèses)
 orchestrateur setup       # centre de commande harness

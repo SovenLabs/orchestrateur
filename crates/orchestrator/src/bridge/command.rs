@@ -109,32 +109,47 @@ pub enum Command {
     },
     /// Réveille un agent persistant.
     AgentWake {
+        /// Identifiant agent.
         id: String,
     },
     /// Met un agent en veille.
     AgentSleep {
+        /// Identifiant agent.
         id: String,
     },
     /// Tâches de fond d'un agent.
     AgentBackground {
+        /// Identifiant agent.
         id: String,
     },
     /// Tour LLM pour un agent persistant.
     AgentTurn {
+        /// Identifiant agent.
         id: String,
+        /// Message utilisateur.
         message: String,
     },
     /// Envoie un message inter-agent.
     AgentSendMessage {
+        /// Expéditeur.
         from: String,
+        /// Destinataire.
         to: String,
+        /// Corps du message.
         body: String,
     },
     /// Lit l'inbox d'un agent.
     AgentMessages {
+        /// Identifiant agent.
         id: String,
         #[serde(default)]
+        /// Marquer les messages comme lus.
         mark_read: bool,
+    },
+    /// Supprime un agent persistant (dossier + registre).
+    AgentDelete {
+        /// Identifiant agent.
+        id: String,
     },
     /// Initialise les 6 agents domaine B212 (idempotent).
     B212InitAgents,

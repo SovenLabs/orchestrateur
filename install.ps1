@@ -99,7 +99,27 @@ if ($Dev) {
 function Get-LatestReleaseVersion {
     $headers = @{ "User-Agent" = "Orchestrateur-Install-Script" }
     $api = "https://api.github.com/repos/$Repo/releases/latest"
-    $release = Invoke-RestMethod -Uri $api -Headers $headers -UseBasicParsing
+    try {
+        $release = Invoke-RestMethod -Uri $api -Headers $headers -UseBasicParsing
+    } catch {
+        throw @"
+Aucune release GitHub publiee pour $Repo (API: $api).
+Le mode 'irm | iex' telecharge Orchestrateur-vVERSION-Setup-win64.exe depuis GitHub Releases.
+
+Options :
+  1) Clone + build local :
+       git clone https://github.com/$Repo.git
+       cd orchestrateur
+       powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Dev
+  2) Publier une release (maintainers) :
+       .\scripts\build-installer.ps1 -InstallInno
+       .\scripts\publish-github-release.ps1
+  3) Version fixe si une release existe deja :
+       `$env:ORCHESTRATEUR_VERSION = '0.28.0'; irm ... | iex
+
+Releases : https://github.com/$Repo/releases
+"@
+    }
     $tag = [string]$release.tag_name
     if ($tag.StartsWith("v")) { return $tag.Substring(1) }
     return $tag

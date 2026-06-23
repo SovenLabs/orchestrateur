@@ -1,4 +1,5 @@
 import type { AgentInfo, MemoryItem } from "$lib/types/ui";
+import { isAgentAwake } from "$lib/ws/bridge";
 
 export type OrbitalNodeKind = "agent" | "memory" | "skill";
 
@@ -43,7 +44,7 @@ export function buildOrbitalNodes(
       id: `agent-${agent.id}`,
       kind: "agent",
       label: agent.name.split(" ")[0],
-      activity: agent.status === "active" ? Math.max(0.55, agent.activity) : agent.activity * 0.5,
+      activity: isAgentAwake(agent.status) ? Math.max(0.55, agent.activity) : agent.activity * 0.5,
       angle: 0,
       orbitFactor: 1,
     });

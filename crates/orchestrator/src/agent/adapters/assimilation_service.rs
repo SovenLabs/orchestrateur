@@ -67,6 +67,9 @@ impl CortexAssimilationService {
             OrchestratorError::Draft(e) => AssimilationError::PersistenceFailed(
                 cortex::CortexError::GraphError(e.to_string()),
             ),
+            OrchestratorError::Skill(e) => AssimilationError::PersistenceFailed(
+                cortex::CortexError::GraphError(e.to_string()),
+            ),
         }
     }
 }

@@ -2,7 +2,9 @@
 
 **Version Cargo workspace : 0.28.0** · **Protocole WS : 1.2.0** · **Rust 1.80+** · **Juin 2026**
 
-> Hiérarchie : [`docs/project-hierarchy.md`](docs/project-hierarchy.md) · Architecture : [`docs/architecture.md`](docs/architecture.md) · Protocole : [`docs/protocol-ws.md`](docs/protocol-ws.md) · Harness : [`docs/harness-integral.md`](docs/harness-integral.md)
+> Hiérarchie : [`docs/project-hierarchy.md`](docs/project-hierarchy.md) · Architecture : [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · Protocole : [`docs/protocol-ws.md`](docs/protocol-ws.md) · Harness : [`docs/harness-integral.md`](docs/harness-integral.md)
+>
+> **Phase 7** : [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) · [`docs/DEVELOPER_GUIDE.md`](docs/DEVELOPER_GUIDE.md) · [`docs/B212_INTEGRATION.md`](docs/B212_INTEGRATION.md) · [`docs/agent-tools.md`](docs/agent-tools.md)
 
 ---
 
@@ -135,16 +137,42 @@ Configurer `type = "lancedb"` dans `[vector_store]`. Les providers IA (xAI, Olla
 
 Un seul script — deux modes. Binaires release sur **[GitHub Releases](https://github.com/SovenLabs/orchestrateur/releases)**.
 
-| Mode | Commande |
-|------|----------|
-| **Release** | `irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 \| iex` |
-| **Release + daemon auto** | `irm … \| iex;` puis relancer avec `-InstallDaemon` ou `$env:ORCHESTRATEUR_INSTALL_DAEMON='1'` |
-| **Dev** | `cd` vers le dépôt, puis `.\install.ps1 -Dev` |
-| **Dev + daemon** | `.\install.ps1 -Dev -InstallDaemon` |
+> **État Juin 2026 :** le dépôt est en **0.28.0** mais **aucune release GitHub n’est encore publiée** (`Orchestrateur-v*-Setup-win64.exe`).  
+> En attendant, utilisez le **mode dev** depuis un clone. Le one-liner `irm | iex` fonctionnera dès qu’une release sera publiée via `scripts/publish-github-release.ps1`.
+
+### Windows — politique d’exécution
+
+Si PowerShell **refuse** `irm | iex` (« exécution de scripts désactivée »), utilisez l’une de ces formes :
+
+```powershell
+# Recommandé (bypass session uniquement)
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 | iex"
+
+# Ou depuis un clone
+powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Dev
+```
+
+### Modes d’installation
+
+| Mode | Commande | Quand l’utiliser |
+|------|----------|------------------|
+| **Release** | `powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 \| iex"` | Après publication d’une release GitHub |
+| **Release + daemon auto** | `$env:ORCHESTRATEUR_INSTALL_DAEMON='1';` puis commande release ci-dessus | Post-install avec tâche planifiée daemon |
+| **Dev (recommandé aujourd’hui)** | `git clone …` puis `.\install.ps1 -Dev` avec `-ExecutionPolicy Bypass` | Contributeurs, version courante non packagée |
+| **Dev + daemon** | `.\install.ps1 -Dev -InstallDaemon` | Dev + daemon au logon |
 
 Après l’install release, le script exécute **`orch doctor`**, initialise le workspace `%APPDATA%\Orchestrateur\workspace`, génère `ORCHESTRATEUR_DAEMON_TOKEN` si absent, et affiche le snippet MCP.
 
-Version fixe release : `$env:ORCHESTRATEUR_VERSION = "0.28.0"`
+Version fixe release (quand disponible) : `$env:ORCHESTRATEUR_VERSION = "0.28.0"`
+
+### Dépannage rapide
+
+| Symptôme | Cause probable | Action |
+|----------|----------------|--------|
+| « exécution de scripts désactivée » | `ExecutionPolicy` Windows | `-ExecutionPolicy Bypass` (voir ci-dessus) |
+| « Aucune release GitHub publiée » | 0 release sur le dépôt | `git clone` + `.\install.ps1 -Dev` |
+| `orch` / `just` introuvable | PATH ou mauvais répertoire | Nouveau terminal après install ; `cd` vers le clone |
+| `npm` / `npm.ps1` refusé | Même politique PowerShell | `npm.cmd` au lieu de `npm` |
 
 ---
 
@@ -202,16 +230,23 @@ L’application **démarre toujours** même si xAI/Ollama sont absents ou hors l
 
 ---
 
-## 8. Tests
+## 8. Tests (Phase 7)
 
 ```powershell
-cargo test -p cortex
-cargo test -p orchestrator --lib
+cargo test -p orchestrator --test phase7_agent_loop
+cargo test -p orchestrator --test integration_multi_agents_b212
+cargo test -p orchestrator --test phase6_skills
+cargo test -p cortex --test property
 cargo test -p orchestrator --features gateway
 cargo test -p orchestrator --features websocket-server
 ```
 
-Les tests **sécurité** et **charge** sont marqués `#[ignore]` — `cargo test -- --ignored` pour la suite complète.
+| Suite | Emplacement |
+|-------|-------------|
+| Intégration multi-agents + B212 | `crates/orchestrator/tests/integration_multi_agents_b212.rs` |
+| Charge (10k mémoires, 100 agents) | `crates/orchestrator/tests/load_workspace_scale.rs` — voir [`tests/load/README.md`](tests/load/README.md) |
+
+Les tests **sécurité** et **charge** sont marqués `#[ignore]` — `cargo test -- --ignored` pour la suite complète (job CI `test-heavy`).
 
 ---
 
@@ -219,10 +254,18 @@ Les tests **sécurité** et **charge** sont marqués `#[ignore]` — `cargo test
 
 | Document | Contenu |
 |----------|---------|
-| [`docs/architecture.md`](docs/architecture.md) | Architecture v2, fenêtres WS, daemon |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Vue d'ensemble système (Phase 7) |
+| [`docs/DEVELOPER_GUIDE.md`](docs/DEVELOPER_GUIDE.md) | Contribuer, skills, agents, tests |
+| [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) | CLI, dashboard, usage quotidien |
+| [`docs/B212_INTEGRATION.md`](docs/B212_INTEGRATION.md) | Framework trading desk |
+| [`docs/architecture.md`](docs/architecture.md) | Historique phases 21–27 |
 | [`docs/protocol-ws.md`](docs/protocol-ws.md) | Protocole 1.2.0, handshake, événements drafts |
+| [`docs/agent-tools.md`](docs/agent-tools.md) | Outils agent et profils de capacités |
+| [`docs/UI_EVENT_HORIZON.md`](docs/UI_EVENT_HORIZON.md) | Design System Event Horizon (UI + Godot) |
 | [`apps/tauri-desktop/README.md`](apps/tauri-desktop/README.md) | Desktop Tauri + Svelte |
 | [`territoire-graphique/README.md`](territoire-graphique/README.md) | Client Godot |
+
+**Ops :** `orch backup create` · `scripts/release.sh` · `scripts/profile.sh`
 
 ---
 

@@ -2,6 +2,8 @@
   import StatusIndicator from "$lib/components/StatusIndicator.svelte";
   import { blackholeStore } from "$lib/stores/blackhole.svelte";
   import { connectionStore } from "$lib/stores/connection.svelte";
+  import { agentsStore } from "$lib/stores/agents.svelte";
+  import { agentStatusIndicator, isAgentAwake } from "$lib/ws/bridge";
   import { navigationStore } from "$lib/stores/navigation.svelte";
   import { uiStore } from "$lib/stores/ui.svelte";
   import { harnessStore } from "$lib/stores/harness.svelte";
@@ -68,6 +70,12 @@
 
   const godotActions = $derived<CommandAction[]>([
     {
+      id: "territory-embed",
+      label: "◎ Territoire (embed iframe)",
+      action: () => navigationStore.openTerritoryOverlay(),
+      disabled: !canLaunch,
+    },
+    {
       id: "sphere",
       label: "Sphère Godot",
       action: () => void uiStore.openSphere(),
@@ -75,7 +83,7 @@
     },
     {
       id: "territory",
-      label: "Territoire Godot",
+      label: "Territoire Godot (fenêtre native)",
       action: () => void uiStore.openTerritory(),
       disabled: !canLaunch,
     },
@@ -171,15 +179,15 @@
         </section>
 
         <section class="border-b border-[var(--glass-border)] p-4">
-          <h3 class="mb-2 text-xs uppercase tracking-wider text-[var(--text-muted)]">Agents</h3>
+          <h3 class="mb-2 text-xs uppercase tracking-wider text-[var(--text-muted)]">Sub-Agents</h3>
           <ul class="max-h-40 space-y-2 overflow-auto scroll-thin text-sm">
-            {#each connectionStore.agents as agent (agent.id)}
+            {#each agentsStore.agents as agent (agent.id)}
               <li class="flex items-center justify-between rounded-lg bg-[var(--bg-input)] px-3 py-2">
                 <span>{agent.name}</span>
                 <StatusIndicator
-                  status={agent.status === "active" ? "ok" : agent.status === "error" ? "error" : "idle"}
+                  status={agentStatusIndicator(agent.status)}
                   label={agent.status}
-                  pulse={agent.status === "active"}
+                  pulse={isAgentAwake(agent.status)}
                 />
               </li>
             {:else}

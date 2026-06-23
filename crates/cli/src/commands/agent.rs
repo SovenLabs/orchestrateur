@@ -1,4 +1,9 @@
-//! `orch agent` — agents persistants (Phase 2).
+//! `orch agent` — agents persistants (Phase 2 / Phase 4 CLI).
+
+#[path = "agent_display.rs"]
+mod agent_display;
+#[path = "agent_interactive.rs"]
+mod agent_interactive;
 
 use std::path::Path;
 
@@ -6,17 +11,39 @@ use anyhow::{Context, Result};
 use clap::Subcommand;
 use orchestrator::AgentIdentity;
 
+use agent_display::{print_agent_list, print_agent_status};
+use agent_interactive::{confirm_kill, ensure_id_present, run_create_wizard};
+
 use crate::context::bootstrap_facade;
 
 /// Sous-commandes agent persistant.
 #[derive(Debug, Clone, Subcommand)]
+#[command(
+    after_long_help = "EXEMPLES:\n  \
+  orch agent list\n  \
+  orch agent status\n  \
+  orch agent status researcher\n  \
+  orch agent create researcher --name Chercheur --role analyste\n  \
+  orch agent create --interactive\n  \
+  orch agent show researcher\n  \
+  orch agent wake researcher\n  \
+  orch agent kill researcher --yes\n  \
+  orch agent send --from alpha beta \"Mission du jour\"\n  \
+  orch agent messages beta\n  \
+  orch agent tick"
+)]
 pub enum AgentCommands {
-    /// Liste tous les agents persistants.
+    /// Liste tous les agents persistants (tableau).
     List,
+    /// Statut opérationnel (tous ou un agent, inbox non lus).
+    Status {
+        /// Identifiant agent (optionnel — tous si omis).
+        id: Option<String>,
+    },
     /// Crée un nouvel agent avec dossier et identité.
     Create {
-        /// Identifiant stable (nom de dossier).
-        id: String,
+        /// Identifiant stable (nom de dossier). Omis avec `--interactive`.
+        id: Option<String>,
         /// Nom affiché.
         #[arg(long)]
         name: Option<String>,
@@ -26,6 +53,9 @@ pub enum AgentCommands {
         /// Modèle LLM (défaut : config xAI).
         #[arg(long)]
         model: Option<String>,
+        /// Assistant guidé (dialoguer).
+        #[arg(long, short = 'i')]
+        interactive: bool,
     },
     /// Affiche le détail d'un agent.
     Show {
@@ -42,6 +72,13 @@ pub enum AgentCommands {
     /// Exécute les tâches de fond (heartbeat).
     Background {
         id: String,
+    },
+    /// Supprime un agent (dossier + registre).
+    Kill {
+        id: String,
+        /// Confirme sans invite interactive.
+        #[arg(long)]
+        yes: bool,
     },
     /// Envoie un message inter-agent.
     Send {
@@ -73,25 +110,26 @@ pub async fn run(cmd: AgentCommands, workspace: &Path) -> Result<()> {
         .map_err(|e| anyhow::anyhow!("agents: {e}"))?;
 
     match cmd {
-        AgentCommands::List => {
-            let agents = manager.list().await.map_err(|e| anyhow::anyhow!("{e}"))?;
-            if agents.is_empty() {
-                println!("Aucun agent persistant.");
-                return Ok(());
-            }
-            for agent in agents {
-                println!(
-                    "{}  name={}  role={}  status={}  model={}",
-                    agent.id(),
-                    agent.name(),
-                    agent.role(),
-                    agent.status().label(),
-                    agent.model(),
-                );
-            }
+        AgentCommands::List => print_agent_list(&manager).await,
+        AgentCommands::Status { id } => {
+            let snapshots = manager
+                .status_snapshots(id.as_deref())
+                .await
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
+            print_agent_status(&snapshots);
             Ok(())
         }
-        AgentCommands::Create { id, name, role, model } => {
+        AgentCommands::Create {
+            id,
+            name,
+            role,
+            model,
+            interactive,
+        } => {
+            if interactive {
+                return run_create_wizard(&manager).await;
+            }
+            let id = ensure_id_present(id, false)?;
             let display_name = name.unwrap_or_else(|| id.clone());
             let agent = manager
                 .create_agent(&id, &display_name, &role, model.as_deref())
@@ -135,6 +173,18 @@ pub async fn run(cmd: AgentCommands, workspace: &Path) -> Result<()> {
                 "Background {} — inbox={} tasks={} executed={:?}",
                 id, report.inbox_count, report.pending_tasks, report.executed
             );
+            Ok(())
+        }
+        AgentCommands::Kill { id, yes } => {
+            if !yes && !confirm_kill(&id)? {
+                println!("Suppression annulée.");
+                return Ok(());
+            }
+            manager
+                .delete_agent(&id)
+                .await
+                .context("suppression agent")?;
+            println!("Agent `{id}` supprimé.");
             Ok(())
         }
         AgentCommands::Send {

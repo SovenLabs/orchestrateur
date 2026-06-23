@@ -13,6 +13,8 @@
   import { harnessStore } from "$lib/stores/harness.svelte";
   import SetupOverlay from "$lib/harness/SetupOverlay.svelte";
   import MessagingDrawer from "$lib/harness/MessagingDrawer.svelte";
+  import NotificationToast from "$lib/components/NotificationToast.svelte";
+  import TerritoryView from "$lib/views/TerritoryView.svelte";
 
   onMount(() => {
     void harnessStore.init();
@@ -48,7 +50,9 @@
         cosmicCameraStore.reset();
         return;
       }
-      if (navigationStore.escMenuOpen) {
+      if (navigationStore.territoryOverlayOpen) {
+        navigationStore.closeTerritoryOverlay();
+      } else if (navigationStore.escMenuOpen) {
         navigationStore.closeEscMenu();
       } else if (navigationStore.leftDrawerOpen || navigationStore.insightsPanelOpen) {
         navigationStore.closeAllOverlays();
@@ -89,3 +93,5 @@
 <EscMenu />
 <SetupOverlay />
 <MessagingDrawer />
+<TerritoryView />
+<NotificationToast />

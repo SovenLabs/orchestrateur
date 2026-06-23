@@ -109,6 +109,61 @@ impl LlmProvider for ScriptedLlmProvider {
     }
 }
 
+/// Provider LLM scripté pour la boucle outils — file de réponses `chat`.
+pub struct ToolScriptLlmProvider {
+    script: Mutex<VecDeque<String>>,
+    calls: AtomicUsize,
+}
+
+impl ToolScriptLlmProvider {
+    /// Crée un provider avec une séquence de réponses assistant.
+    #[must_use]
+    pub fn new(responses: Vec<String>) -> Arc<Self> {
+        Arc::new(Self {
+            script: Mutex::new(responses.into()),
+            calls: AtomicUsize::new(0),
+        })
+    }
+
+    /// Nombre d'appels `chat` effectués.
+    pub fn call_count(&self) -> usize {
+        self.calls.load(Ordering::SeqCst)
+    }
+}
+
+#[async_trait]
+impl LlmProvider for ToolScriptLlmProvider {
+    fn name(&self) -> &'static str {
+        "tool-script"
+    }
+
+    fn capabilities(&self) -> LlmCapabilities {
+        LlmCapabilities::default()
+    }
+
+    async fn generate_memory_draft(
+        &self,
+        _system: &str,
+        user: &str,
+    ) -> Result<MemoryDraft, LlmError> {
+        Ok(MemoryDraft::new("Script", user))
+    }
+
+    async fn chat(&self, _messages: &[ChatMessage]) -> Result<String, LlmError> {
+        self.calls.fetch_add(1, Ordering::SeqCst);
+        let next = self
+            .script
+            .lock()
+            .map_err(|e| LlmError::ProviderError {
+                provider: self.name().into(),
+                message: e.to_string(),
+            })?
+            .pop_front()
+            .unwrap_or_else(|| "Réponse finale scriptée.".into());
+        Ok(next)
+    }
+}
+
 /// Provider Ollama mock stable (succès systématique).
 pub struct StableOllamaLlmProvider;
 

@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 50bb8d0ee260e58e11a44adc4ee76e514fe5858b630eba2b2928109160078f73 # shrinks to hub_title = "\u{2000}", spoke_count = 1
+cc f5dee0b76216b22e0a9a11d4870b1fda51c208e58192747ecafce79c8934657e # shrinks to count = 4, titles = [" "]

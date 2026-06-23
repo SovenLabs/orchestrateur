@@ -25,9 +25,11 @@ export function drawAgentBelt(ctx: CanvasRenderingContext2D, p: AgentBeltParams)
     const size = 4 + agent.activity * 5;
     const alpha = (0.45 + agent.activity * 0.4) * visibility;
     const color =
-      agent.id === "esprit"
+      agent.status === "awake" || agent.status === "active"
         ? { r: 200, g: 168, b: 208 }
-        : { r: 160, g: 196, b: 224 };
+        : agent.status === "background"
+          ? { r: 196, g: 168, b: 120 }
+          : { r: 160, g: 196, b: 224 };
 
     const grad = ctx.createRadialGradient(x, y, 0, x, y, size * 2.2);
     grad.addColorStop(0, `rgba(${color.r},${color.g},${color.b},${alpha})`);

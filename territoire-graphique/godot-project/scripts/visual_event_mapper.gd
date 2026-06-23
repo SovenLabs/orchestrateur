@@ -79,7 +79,10 @@ func _should_apply(effect: Dictionary) -> bool:
 	var now := Time.get_ticks_msec() / 1000.0
 	if now - _last_applied < THROTTLE_SECS:
 		var kind: String = str(effect.get("kind", ""))
-		if kind not in ["assimilation", "error", "degraded", "tool_call", "thought_propagation", "neuron_stimulated"]:
+		if kind not in [
+			"assimilation", "error", "degraded", "tool_call", "thought_propagation",
+			"neuron_stimulated", "agent_message", "agent_wake",
+		]:
 			return false
 	_last_applied = now
 	return true
@@ -177,6 +180,31 @@ func _build_effect(event_type: String, payload: Dictionary) -> Dictionary:
 				"pulse_duration": 0.35,
 				"swirl": false,
 				"stress": 0.0,
+				"particle_mode": "idle",
+			}
+		"agent_message":
+			return {
+				"kind": "agent_message",
+				"intensity": 0.45,
+				"pulse_boost": 0.32,
+				"pulse_duration": 0.5,
+				"swirl": true,
+				"stress": 0.0,
+				"flash_rotation": 0.04,
+				"particle_mode": "idle",
+			}
+		"agent_status_changed":
+			var status := str(payload.get("status", ""))
+			if status != "awake":
+				return {}
+			return {
+				"kind": "agent_wake",
+				"intensity": 0.4,
+				"pulse_boost": 0.28,
+				"pulse_duration": 0.4,
+				"swirl": false,
+				"stress": 0.0,
+				"flash_rotation": 0.05,
 				"particle_mode": "idle",
 			}
 		"system_error", "error_occurred":

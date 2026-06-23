@@ -1,0 +1,20 @@
+[package]
+name = "orchestrateur-plugins"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Marketplace et gestion locale des skills Orchestrateur (Phase 6)"
+
+[dependencies]
+orchestrator = { workspace = true, features = ["skills-marketplace"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["fs", "macros", "rt-multi-thread"] }
+tracing.workspace = true
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"

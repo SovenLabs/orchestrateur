@@ -1,8 +1,9 @@
 import type { AgentInfo } from "$lib/types/ui";
+import { isAgentAwake } from "$lib/ws/bridge";
 
 export function computeAgentsSync(agents: AgentInfo[]): { active: number; total: number; label: string } {
   const total = agents.length;
-  const active = agents.filter((a) => a.status === "active").length;
+  const active = agents.filter((a) => isAgentAwake(a.status)).length;
   return { active, total, label: `${active}/${total}` };
 }
 

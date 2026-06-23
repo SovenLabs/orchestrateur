@@ -1,3 +1,5 @@
+//! Erreurs typées du protocole B212.
+
 use thiserror::Error;
 
 /// Erreurs du protocole B212.

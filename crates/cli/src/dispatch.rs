@@ -16,8 +16,8 @@ use crate::cli::{
 };
 use crate::cli::Cli;
 use crate::commands::{
-    agent, b212, config, daemon, doctor, health, memory, onboard, session, skill, uninstall,
-    update, DaemonCommands, MemoryCommands, SkillCommands,
+    agent, backup, b212, config, daemon, doctor, health, memory, onboard, session, skill,
+    uninstall, update, DaemonCommands, MemoryCommands, SkillCommands,
 };
 use crate::context::{bootstrap_facade, run_bridge_command};
 use orchestrator::{ConfigureOptions, HarnessSmokeOptions};
@@ -76,6 +76,10 @@ async fn dispatch_lightweight(cli: &Cli) -> Result<Option<()>> {
         }
         Commands::Config { command } => {
             config::run(command.clone(), &cli.workspace)?;
+            Ok(Some(()))
+        }
+        Commands::Backup { command } => {
+            backup::run(command.clone(), &cli.workspace)?;
             Ok(Some(()))
         }
         Commands::Doctor => Ok(None),
@@ -304,6 +308,7 @@ async fn dispatch_facade(cli: &Cli, facade: &OrchestratorFacade) -> Result<()> {
         | Commands::Settings
         | Commands::Configure { .. }
         | Commands::Config { .. }
+        | Commands::Backup { .. }
         | Commands::Session { .. }
         | Commands::Agent { .. }
         | Commands::B212 { .. } => unreachable!("lightweight"),
@@ -400,6 +405,7 @@ fn print_provider_table(descriptors: &[orchestrator::ProviderDescriptor]) {
 
 #[cfg(feature = "http")]
 async fn run_http_server(facade: OrchestratorFacade, bind: &str, port: u16) -> Result<()> {
+    use anyhow::Context;
     use axum::{
         extract::State,
         http::{header::AUTHORIZATION, StatusCode},
@@ -407,6 +413,7 @@ async fn run_http_server(facade: OrchestratorFacade, bind: &str, port: u16) -> R
         routing::post,
         Json, Router,
     };
+    use orchestrator::{execute_command, Response};
     use tower_http::trace::TraceLayer;
 
     struct HttpState {

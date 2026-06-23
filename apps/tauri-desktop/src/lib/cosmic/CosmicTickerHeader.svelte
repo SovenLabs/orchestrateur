@@ -2,10 +2,11 @@
   import { computeAgentsSync, computeCoherence } from "$lib/cosmic/cosmic-metrics";
   import { blackholeStore } from "$lib/stores/blackhole.svelte";
   import { connectionStore } from "$lib/stores/connection.svelte";
+  import { agentsStore } from "$lib/stores/agents.svelte";
 
   const collapsed = $derived(blackholeStore.state === "docked");
   const nuancePct = $derived(Math.round(blackholeStore.nuanceDepth * 100));
-  const agents = $derived(computeAgentsSync(connectionStore.agents));
+  const agents = $derived(computeAgentsSync(agentsStore.agents));
   const coherence = $derived(
     computeCoherence({
       connected: connectionStore.status === "connected",
@@ -43,7 +44,7 @@
       </span>
       <span class="cosmic-ticker__sep" aria-hidden="true">·</span>
       <span class="cosmic-ticker__metric">
-        <span class="cosmic-ticker__label">Agents</span>
+        <span class="cosmic-ticker__label">Sub-Agents</span>
         <span class="cosmic-ticker__value">{agents.label}</span>
       </span>
       <span class="cosmic-ticker__sep" aria-hidden="true">·</span>

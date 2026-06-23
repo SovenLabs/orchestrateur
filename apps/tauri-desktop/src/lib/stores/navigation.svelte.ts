@@ -5,6 +5,7 @@ class NavigationStore {
   leftDrawerOpen = $state(false);
   insightsPanelOpen = $state(false);
   escMenuOpen = $state(false);
+  territoryOverlayOpen = $state(false);
 
   navigate(panel: PanelId): void {
     this.activePanel = panel;
@@ -32,10 +33,20 @@ class NavigationStore {
     this.escMenuOpen = !this.escMenuOpen;
   }
 
+  openTerritoryOverlay(): void {
+    this.territoryOverlayOpen = true;
+    this.escMenuOpen = false;
+  }
+
+  closeTerritoryOverlay(): void {
+    this.territoryOverlayOpen = false;
+  }
+
   closeAllOverlays(): void {
     this.leftDrawerOpen = false;
     this.insightsPanelOpen = false;
     this.escMenuOpen = false;
+    this.territoryOverlayOpen = false;
   }
 }
 

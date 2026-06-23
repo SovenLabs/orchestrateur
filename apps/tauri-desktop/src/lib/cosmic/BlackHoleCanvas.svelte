@@ -24,6 +24,7 @@
   import { cosmicCameraStore } from "$lib/stores/cosmic-camera.svelte";
   import { cosmicStore } from "$lib/stores/cosmic-store.svelte";
   import { connectionStore } from "$lib/stores/connection.svelte";
+  import { agentsStore } from "$lib/stores/agents.svelte";
 
   let {
     class: className = "",
@@ -308,7 +309,7 @@
         time,
         dockT,
         scale,
-        agents: connectionStore.agents,
+        agents: agentsStore.agents,
       });
 
       if (!useWebGl) {

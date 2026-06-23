@@ -1,4 +1,11 @@
-import type { DraftItem, HealthStatus, MemoryItem, WatcherStatus } from "$lib/types/ui";
+import type {
+  AgentInfo,
+  AgentMessage,
+  DraftItem,
+  HealthStatus,
+  MemoryItem,
+  WatcherStatus,
+} from "$lib/types/ui";
 
 export const PROTOCOL_VERSION = "1.2.0";
 
@@ -129,6 +136,74 @@ export function parseWatcherStatus(response: Record<string, unknown>): WatcherSt
     last_activity_at: s.last_activity_at ? String(s.last_activity_at) : null,
     last_error: s.last_error ? String(s.last_error) : null,
   };
+}
+
+export function agentStatusToActivity(status: string): number {
+  switch (status) {
+    case "awake":
+    case "active":
+      return 0.85;
+    case "background":
+      return 0.65;
+    case "error":
+      return 0.2;
+    default:
+      return 0.18;
+  }
+}
+
+export function agentStatusIndicator(
+  status: string,
+): "ok" | "warn" | "error" | "idle" {
+  if (status === "awake" || status === "active") return "ok";
+  if (status === "background") return "warn";
+  if (status === "error") return "error";
+  return "idle";
+}
+
+export function mapAgentSummary(raw: Record<string, unknown>): AgentInfo {
+  const status = String(raw.status ?? "sleeping");
+  return {
+    id: String(raw.id ?? ""),
+    name: String(raw.name ?? raw.id ?? "Agent"),
+    role: String(raw.role ?? ""),
+    model: String(raw.model ?? ""),
+    status: status as AgentInfo["status"],
+    activity: agentStatusToActivity(status),
+    lastHeartbeat: raw.last_heartbeat ? String(raw.last_heartbeat) : null,
+    sessionKey: String(raw.session_key ?? ""),
+    unreadInbox: 0,
+  };
+}
+
+export function parseAgentList(response: Record<string, unknown>): AgentInfo[] {
+  if (response.response !== "AgentList" || !response.payload) return [];
+  const payload = response.payload as { items?: Array<Record<string, unknown>> };
+  return (payload.items ?? []).map(mapAgentSummary);
+}
+
+export function parseAgentDetail(response: Record<string, unknown>): AgentInfo | null {
+  if (response.response !== "AgentDetail" || !response.payload) return null;
+  const payload = response.payload as { agent?: Record<string, unknown> };
+  if (!payload.agent) return null;
+  return mapAgentSummary(payload.agent);
+}
+
+export function parseAgentMessages(response: Record<string, unknown>): AgentMessage[] {
+  if (response.response !== "AgentMessages" || !response.payload) return [];
+  const payload = response.payload as { items?: Array<Record<string, unknown>> };
+  return (payload.items ?? []).map((m) => ({
+    id: String(m.id ?? ""),
+    from: String(m.from ?? ""),
+    to: String(m.to ?? ""),
+    body: String(m.body ?? ""),
+    sent_at: String(m.sent_at ?? ""),
+    read: Boolean(m.read),
+  }));
+}
+
+export function isAgentAwake(status: string): boolean {
+  return status === "awake" || status === "background" || status === "active";
 }
 
 export async function fetchServerHealth(baseUrl: string): Promise<ServerHealth | null> {

@@ -1,7 +1,16 @@
 //! Affichage des réponses bridge CLI.
 
 use anyhow::Result;
+use console::style;
 use orchestrator::Response;
+
+fn print_success(message: &str) {
+    println!("{} {message}", style("✓").green().bold());
+}
+
+fn print_warning(message: &str) {
+    println!("{} {message}", style("!").yellow().bold());
+}
 
 /// Affiche une [`Response`] bridge sur stdout.
 pub fn print_response(response: Response) -> Result<()> {
@@ -54,7 +63,7 @@ pub fn print_response(response: Response) -> Result<()> {
             }
         }
         Response::Assimilated { memory_id, title } => {
-            println!("Assimilé : {title} ({memory_id})");
+            print_success(&format!("Assimilé : {title} ({memory_id})"));
         }
         Response::GraphSummary {
             node_count,
@@ -75,7 +84,11 @@ pub fn print_response(response: Response) -> Result<()> {
             chain_intact,
         } => {
             let status = if chain_intact { "intacte" } else { "ROMPUE" };
-            println!("Chaîne d'audit : {status}");
+            if chain_intact {
+                print_success(&format!("Chaîne d'audit : {status}"));
+            } else {
+                print_warning(&format!("Chaîne d'audit : {status}"));
+            }
             for entry in entries {
                 println!(
                     "{} | {} | {} | {}",
@@ -87,7 +100,7 @@ pub fn print_response(response: Response) -> Result<()> {
             anyhow::bail!("[{}] {}", err.kind, err.message);
         }
         Response::Success { message } => {
-            println!("{message}");
+            print_success(&message);
         }
         Response::ChatReply {
             reply,
@@ -273,6 +286,49 @@ pub fn print_response(response: Response) -> Result<()> {
                 executed
             );
         }
+        Response::AgentDeleted { id } => {
+            println!("Agent `{id}` supprimé.");
+        }
+        Response::B212AgentsReady { agent_ids } => {
+            println!("Agents B212 prêts ({}):", agent_ids.len());
+            for agent_id in agent_ids {
+                println!("  - {agent_id}");
+            }
+        }
+        Response::B212Workflow { result } => {
+            println!(
+                "B212 {} {} — {} étapes, cardinal={}",
+                result.symbol,
+                result.session,
+                result.step_count,
+                if result.cardinal_passed { "OK" } else { "BLOQUÉ" }
+            );
+        }
+        Response::B212ProposalList { items } => {
+            if items.is_empty() {
+                println!("Aucune proposition B212 en attente.");
+                return Ok(());
+            }
+            for item in items {
+                println!(
+                    "{} | {} | {} | {} | TLS={}",
+                    item.id, item.symbol, item.side, item.status, item.trade_location_score
+                );
+            }
+        }
+        Response::B212ProposalUpdated { proposal } => {
+            println!(
+                "Proposition {} — {} ({})",
+                proposal.id, proposal.status, proposal.symbol
+            );
+        }
+        Response::B212SimExecuted { proposal, fill } => {
+            println!(
+                "Sim fill {} — {} @ {} (PnL {:.2} USD)",
+                fill.id, proposal.symbol, fill.entry_price, fill.realized_pnl_usd
+            );
+        }
+        Response::B212Event(_) => {}
     }
     Ok(())
 }

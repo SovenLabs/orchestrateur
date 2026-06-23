@@ -147,37 +147,55 @@ pub enum Response {
     },
     /// Liste des agents persistants.
     AgentList {
+        /// Résumés agents.
         items: Vec<AgentSummary>,
     },
     /// Détail agent persistant.
     AgentDetail {
+        /// Résumé agent.
         agent: AgentSummary,
     },
     /// Réponse tour agent persistant.
     AgentTurnReply {
+        /// Texte de réponse LLM.
         reply: String,
         #[serde(default)]
+        /// Outils invoqués pendant le tour.
         tools_invoked: Vec<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
+        /// ID mémoire auto-assimilée.
         auto_assimilated: Option<String>,
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        /// Skills auto-exécutées.
         auto_executed_skills: Vec<String>,
     },
     /// Inbox agent.
     AgentMessages {
+        /// Messages reçus.
         items: Vec<AgentMessageSummary>,
     },
     /// Message inter-agent envoyé.
     AgentMessageSent {
+        /// Identifiant message.
         message_id: String,
+        /// Expéditeur.
         from: String,
+        /// Destinataire.
         to: String,
     },
     /// Rapport tâches de fond.
     AgentBackgroundReport {
+        /// Messages en attente.
         inbox_count: usize,
+        /// Tâches planifiées.
         pending_tasks: usize,
+        /// Actions exécutées.
         executed: Vec<String>,
+    },
+    /// Agent persistant supprimé.
+    AgentDeleted {
+        /// Identifiant supprimé.
+        id: String,
     },
     /// Agents domaine B212 initialisés.
     B212AgentsReady {

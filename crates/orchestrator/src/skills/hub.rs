@@ -107,7 +107,8 @@ impl SkillsHub {
     }
 }
 
-fn register_manifest(registry: &mut SkillRegistry, manifest: SkillManifest) -> bool {
+/// Enregistre un manifeste dans le registre (subprocess ou natif).
+pub fn register_manifest(registry: &mut SkillRegistry, manifest: SkillManifest) -> bool {
     match manifest.plugin {
         SkillPluginConfig::Subprocess(_) => {
             registry.register(std::sync::Arc::new(SubprocessPluginSkill::from_manifest(

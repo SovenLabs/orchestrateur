@@ -10,13 +10,16 @@ use tokio::time::timeout;
 use crate::config::SkillsHubEntryConfig;
 use crate::error::SkillError;
 use crate::skills::manifest::{SkillManifest, SkillPluginConfig, SubprocessPluginConfig};
-use crate::skills::skill::{Skill, SkillContext, SkillOutput, SkillSource};
+use crate::skills::metadata::SkillMetadata;
+use crate::skills::r#trait::Skill;
+use crate::skills::skill::{SkillContext, SkillOutput, SkillSource};
 
 /// Skill chargée dynamiquement depuis le hub (subprocess).
 pub struct SubprocessPluginSkill {
     id: String,
     description: String,
     version: String,
+    metadata: SkillMetadata,
     config: SubprocessPluginConfig,
     working_dir: Option<PathBuf>,
 }
@@ -25,14 +28,15 @@ impl SubprocessPluginSkill {
     /// Construit une skill depuis un manifeste hub subprocess.
     #[must_use]
     pub fn from_manifest(manifest: SkillManifest) -> Self {
-        let config = match manifest.plugin {
-            SkillPluginConfig::Subprocess(cfg) => cfg,
+        let config = match &manifest.plugin {
+            SkillPluginConfig::Subprocess(cfg) => cfg.clone(),
             SkillPluginConfig::Native(_) => SubprocessPluginConfig::default(),
         };
         Self {
-            id: manifest.id,
-            description: manifest.description,
-            version: manifest.version,
+            id: manifest.id.clone(),
+            description: manifest.description.clone(),
+            version: manifest.version.clone(),
+            metadata: metadata_from_manifest(&manifest, SkillSource::Hub),
             config,
             working_dir: Some(manifest.root),
         }
@@ -42,9 +46,20 @@ impl SubprocessPluginSkill {
     #[must_use]
     pub fn from_entry(entry: SkillsHubEntryConfig) -> Self {
         Self {
-            id: entry.id,
-            description: entry.description,
+            id: entry.id.clone(),
+            description: entry.description.clone(),
             version: "inline".into(),
+            metadata: SkillMetadata::from_manifest(
+                &entry.id,
+                &entry.id,
+                &entry.description,
+                "inline",
+                None,
+                crate::skills::metadata::SkillType::Generic,
+                Vec::new(),
+                Vec::new(),
+                SkillSource::Hub,
+            ),
             config: SubprocessPluginConfig {
                 command: entry.command,
                 args: entry.args,
@@ -72,6 +87,10 @@ impl Skill for SubprocessPluginSkill {
 
     fn version(&self) -> Option<&str> {
         Some(&self.version)
+    }
+
+    fn metadata(&self) -> SkillMetadata {
+        self.metadata.clone()
     }
 
     async fn execute(&self, ctx: &SkillContext) -> Result<SkillOutput, SkillError> {
@@ -138,4 +157,19 @@ async fn run_subprocess(
     }
 
     Ok(SkillOutput { message: stdout })
+}
+
+/// Construit les métadonnées depuis un manifeste hub.
+pub(crate) fn metadata_from_manifest(manifest: &SkillManifest, source: SkillSource) -> SkillMetadata {
+    SkillMetadata::from_manifest(
+        &manifest.id,
+        &manifest.name,
+        &manifest.description,
+        &manifest.version,
+        manifest.author.clone(),
+        manifest.skill_type,
+        manifest.dependencies.clone(),
+        manifest.agent_ids.clone(),
+        source,
+    )
 }

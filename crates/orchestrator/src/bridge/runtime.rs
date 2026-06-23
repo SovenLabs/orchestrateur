@@ -197,6 +197,7 @@ pub async fn execute_command(facade: &OrchestratorFacade, cmd: Command) -> Respo
         Command::AgentMessages { id, mark_read } => {
             execute_agent_messages(facade, &id, mark_read).await
         }
+        Command::AgentDelete { id } => execute_agent_delete(facade, &id).await,
         Command::B212InitAgents => crate::b212::execute_b212_init_agents(facade).await,
         Command::B212Analyze {
             symbol,
@@ -366,6 +367,16 @@ async fn execute_agent_messages(facade: &OrchestratorFacade, id: &str, mark_read
                     })
                     .collect(),
             },
+            Err(err) => agent_error(err),
+        },
+        Err(err) => agent_error(err),
+    }
+}
+
+async fn execute_agent_delete(facade: &OrchestratorFacade, id: &str) -> Response {
+    match facade.agent_manager().await {
+        Ok(manager) => match manager.delete_agent(id).await {
+            Ok(()) => Response::AgentDeleted { id: id.to_string() },
             Err(err) => agent_error(err),
         },
         Err(err) => agent_error(err),

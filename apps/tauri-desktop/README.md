@@ -2,7 +2,7 @@
 
 Application desktop hybride (Phases 21–26). Interface J.A.R.V.I.S. branchée sur le daemon `ws://127.0.0.1:28790/ws`, avec lancement Godot intégré.
 
-**Design system :** [`docs/design-system.md`](docs/design-system.md)  
+**Design system :** [`../../docs/UI_EVENT_HORIZON.md`](../../docs/UI_EVENT_HORIZON.md)  
 **Architecture v2 :** [`../../docs/architecture.md`](../../docs/architecture.md)
 
 ## Prérequis

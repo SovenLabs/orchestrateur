@@ -22,12 +22,23 @@ jobs:
         run: cargo check --workspace
       - name: cargo test (défaut)
         run: cargo test --workspace
+      - name: cargo test phase7
+        run: |
+          cargo test -p orchestrator --test phase7_agent_loop
+          cargo test -p orchestrator --test integration_multi_agents_b212
+          cargo test -p cortex --test property
       - name: validate skills schema (P6 workspace fixture)
         run: cargo test -p orchestrator workspace_fixture
       - name: clippy cortex
         run: cargo clippy -p cortex -- -D warnings
       - name: clippy orchestrator
         run: cargo clippy -p orchestrator -- -D warnings
+      - name: clippy infrastructure
+        run: cargo clippy -p infrastructure -- -D warnings
+      - name: clippy orchestrateur-cli
+        run: cargo clippy -p orchestrateur-cli --features gateway,websocket-server -- -D warnings
+      - name: clippy orchestrateur-plugins
+        run: cargo clippy -p orchestrateur-plugins -- -D warnings
       - name: clippy shared-types
         run: cargo clippy -p shared-types -- -D warnings
       - name: clippy mcp

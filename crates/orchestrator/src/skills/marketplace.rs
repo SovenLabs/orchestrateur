@@ -403,18 +403,28 @@ mod tests {
     #[test]
     fn suggest_skills_ranks_by_relevance() {
         let skills = vec![
-            SkillEntry {
-                name: "pong".into(),
-                description: "Plugin démo pong".into(),
-                source: SkillSource::Hub,
-                version: None,
-            },
-            SkillEntry {
-                name: "search".into(),
-                description: "Recherche mémoire".into(),
-                source: SkillSource::Builtin,
-                version: None,
-            },
+            SkillEntry::from_metadata(&crate::skills::metadata::SkillMetadata::from_manifest(
+                "pong",
+                "pong",
+                "Plugin démo pong",
+                "0.1.0",
+                None,
+                crate::skills::metadata::SkillType::Generic,
+                Vec::new(),
+                Vec::new(),
+                SkillSource::Hub,
+            )),
+            SkillEntry::from_metadata(&crate::skills::metadata::SkillMetadata::from_manifest(
+                "search",
+                "search",
+                "Recherche mémoire",
+                "builtin",
+                None,
+                crate::skills::metadata::SkillType::Cortex,
+                Vec::new(),
+                Vec::new(),
+                SkillSource::Builtin,
+            )),
         ];
         let hits = suggest_skills(&skills, "pong plugin", 5);
         assert_eq!(hits.first().map(|s| s.name.as_str()), Some("pong"));

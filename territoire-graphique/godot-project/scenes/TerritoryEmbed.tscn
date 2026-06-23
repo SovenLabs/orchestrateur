@@ -1,0 +1,31 @@
+[gd_scene load_steps=5 format=3 uid="uid://territory_embed_p2"]
+
+[ext_resource type="Script" path="res://scripts/territory_embed.gd" id="1_embed"]
+[ext_resource type="PackedScene" uid="uid://territory_agents_p5" path="res://scenes/Territory.tscn" id="2_territory"]
+[ext_resource type="Script" path="res://scripts/daemon_client.gd" id="3_daemon"]
+
+[sub_resource type="Environment" id="Environment_embed"]
+background_mode = 1
+background_color = Color(0.02, 0.03, 0.08, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.35, 0.42, 0.62, 1)
+ambient_light_energy = 0.45
+
+[node name="TerritoryEmbed" type="Node3D"]
+script = ExtResource("1_embed")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_embed")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 2, 4, 2)
+light_energy = 0.4
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.94, 0.342, 0, -0.342, 0.94, 0, 0.5, 9.5)
+fov = 55.0
+
+[node name="Territory" parent="." instance=ExtResource("2_territory")]
+
+[node name="DaemonClient" type="Node" parent="."]
+script = ExtResource("3_daemon")

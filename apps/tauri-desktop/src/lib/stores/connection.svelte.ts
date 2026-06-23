@@ -12,7 +12,15 @@ import {
   type ServerHealth,
   type ServerHealthMetrics,
 } from "$lib/ws/bridge";
-import type { AgentInfo, ChatMessage, DraftItem, HealthStatus, MemoryItem, WatcherStatus } from "$lib/types/ui";
+import type {
+  ChatMessage,
+  DraftItem,
+  HealthStatus,
+  MemoryItem,
+  WatcherStatus,
+} from "$lib/types/ui";
+import { agentsStore } from "$lib/stores/agents.svelte";
+import { notificationsStore } from "$lib/stores/notifications.svelte";
 
 export type UiConnectionStatus = "disconnected" | "connecting" | "connected" | "reconnecting";
 
@@ -51,28 +59,15 @@ class ConnectionStore {
   queuedMessages = $state(0);
   pendingRequests = $state(0);
 
-  agents = $state<AgentInfo[]>([
-    {
-      id: "esprit",
-      name: "Esprit (AgentLoop)",
-      status: "idle",
-      activity: 0.35,
-      lastAction: "En attente de commande",
-    },
-    {
-      id: "cortex",
-      name: "Cortex Bridge",
-      status: "idle",
-      activity: 0.1,
-      lastAction: "Mémoires & graphe",
-    },
-  ]);
-
   private client: DaemonWebSocketClient | null = null;
   private lastPingAt: number | null = null;
   private eventTimestamps: number[] = [];
   private healthPollTimer: ReturnType<typeof setInterval> | null = null;
   private config = resolveConfig();
+
+  constructor() {
+    agentsStore.bindClient(() => this.client);
+  }
 
   connect(): void {
     if (this.client) return;
@@ -86,6 +81,7 @@ class ConnectionStore {
         if (status === "connected") this.onConnected();
         if (status !== "connected") {
           this.stopHealthPolling();
+          agentsStore.stopPolling();
         }
       },
       onResult: (requestId, response) => this.handleResult(requestId, response),
@@ -96,6 +92,7 @@ class ConnectionStore {
 
   disconnect(): void {
     this.stopHealthPolling();
+    agentsStore.stopPolling();
     this.client?.disconnect();
     this.client = null;
     this.status = "disconnected";
@@ -127,6 +124,31 @@ class ConnectionStore {
     this.syncClientCounters();
   }
 
+  /** @deprecated Utiliser agentsStore.fetchAll() */
+  fetchAgents(): void {
+    agentsStore.fetchAll();
+  }
+
+  /** @deprecated Utiliser agentsStore.select() */
+  selectAgent(id: string | null): void {
+    agentsStore.select(id);
+  }
+
+  /** @deprecated Utiliser agentsStore.wake() */
+  async wakeAgent(id: string): Promise<void> {
+    await agentsStore.wake(id);
+  }
+
+  /** @deprecated Utiliser agentsStore.sleep() */
+  async sleepAgent(id: string): Promise<void> {
+    await agentsStore.sleep(id);
+  }
+
+  /** @deprecated Utiliser agentsStore.refreshSelected() */
+  refreshSelectedAgent(): void {
+    agentsStore.refreshSelected();
+  }
+
   async publishDraft(id: string): Promise<void> {
     if (!this.client) return;
     await this.client.executeAsync({ command: "PublishDraft", payload: { id } });
@@ -150,7 +172,7 @@ class ConnectionStore {
       { id, role: "user", content: message, timestamp: Date.now() },
     ];
     this.chatPending = true;
-    this.setAgentActive(`Chat: ${message.slice(0, 48)}…`);
+    this.bumpActivity(`Chat: ${message.slice(0, 48)}…`);
     try {
       const response = await this.client.executeAsync({
         command: "Chat",
@@ -159,6 +181,7 @@ class ConnectionStore {
       this.applyChatResponse(response);
     } catch (err) {
       this.chatPending = false;
+      notificationsStore.push("error", err instanceof Error ? err.message : "Erreur chat");
       this.chatMessages = [
         ...this.chatMessages,
         {
@@ -190,6 +213,8 @@ class ConnectionStore {
     this.fetchDrafts();
     this.refreshWatcher();
     this.client?.listSkills();
+    agentsStore.fetchAll();
+    agentsStore.startPolling();
     this.pollServerHealth();
     this.startHealthPolling();
     this.syncClientCounters();
@@ -246,6 +271,8 @@ class ConnectionStore {
     const watcher = parseWatcherStatus(response);
     if (watcher) this.watcher = watcher;
 
+    agentsStore.handleBridgeResponse(response);
+
     if (response.response === "DraftPublished" || response.response === "DraftDiscarded") {
       this.fetchDrafts();
       if (response.response === "DraftPublished") this.fetchMemories();
@@ -258,12 +285,14 @@ class ConnectionStore {
     if (response.response === "Error") {
       this.chatPending = false;
       const p = response.payload as Record<string, unknown> | undefined;
+      const msg = String(p?.message ?? "Erreur bridge");
+      notificationsStore.push("error", msg);
       this.chatMessages = [
         ...this.chatMessages,
         {
           id: crypto.randomUUID(),
           role: "system",
-          content: String(p?.message ?? "Erreur bridge"),
+          content: msg,
           timestamp: Date.now(),
         },
       ];
@@ -284,24 +313,14 @@ class ConnectionStore {
         timestamp: Date.now(),
       },
     ];
-    this.setAgentActive("Réponse chat reçue");
+    this.bumpActivity("Réponse chat reçue");
   }
 
-  private setAgentActive(action: string): void {
-    this.agents = this.agents.map((a) =>
-      a.id === "esprit"
-        ? {
-            ...a,
-            status: "active" as const,
-            activity: Math.min(1, a.activity + 0.15),
-            lastAction: action,
-          }
-        : a,
-    );
+  private bumpActivity(action: string): void {
+    this.agentActivity = Math.min(1, this.agentActivity + 0.22);
+    agentsStore.bumpActivity(action);
     setTimeout(() => {
-      this.agents = this.agents.map((a) =>
-        a.id === "esprit" ? { ...a, status: "idle" as const, activity: 0.25 } : a,
-      );
+      this.agentActivity = Math.max(0.12, this.agentActivity - 0.18);
     }, 2400);
   }
 
@@ -317,24 +336,23 @@ class ConnectionStore {
 
     if (event.event === "agent_activity") {
       this.agentActivity = event.level;
-      this.agents = this.agents.map((a) =>
-        a.id === "esprit"
-          ? {
-              ...a,
-              activity: event.level,
-              status: event.level > 0.5 ? "active" : "idle",
-            }
-          : a,
-      );
+    }
+
+    if (event.event === "agent_status_changed") {
+      agentsStore.applyStatus(event.agent_id, event.status);
+    }
+
+    if (event.event === "agent_message_received") {
+      agentsStore.onMessageReceived(event.from, event.to, event.message_id);
     }
 
     if (event.event === "memory_assimilated") {
-      this.setAgentActive(`Mémoire assimilée: ${event.memory_id}`);
+      this.bumpActivity(`Mémoire assimilée: ${event.memory_id}`);
       this.fetchMemories();
     }
 
     if (event.event === "draft_created") {
-      this.setAgentActive(`Brouillon prêt: ${event.title}`);
+      this.bumpActivity(`Brouillon prêt: ${event.title}`);
       this.fetchDrafts();
       this.refreshWatcher();
     }
@@ -356,9 +374,23 @@ class ConnectionStore {
       this.agentActivity = Math.max(this.agentActivity, event.intensity);
     }
 
-    if (event.event === "daemon_broadcast" && event.name === "pong" && this.lastPingAt) {
-      this.latencyMs = Date.now() - this.lastPingAt;
-      this.lastPingAt = null;
+    if (event.event === "system_status" && event.status.includes("error")) {
+      notificationsStore.push("error", event.status);
+    }
+
+    if (event.event === "daemon_broadcast") {
+      if (event.name === "agent_message") {
+        const p = event.payload;
+        agentsStore.onMessageReceived(
+          String(p.from ?? ""),
+          String(p.to ?? ""),
+          String(p.message_id ?? ""),
+        );
+      }
+      if (event.name === "pong" && this.lastPingAt) {
+        this.latencyMs = Date.now() - this.lastPingAt;
+        this.lastPingAt = null;
+      }
     }
 
     this.syncClientCounters();

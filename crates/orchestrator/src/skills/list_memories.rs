@@ -2,7 +2,9 @@ use async_trait::async_trait;
 
 use crate::deps::AppDependencies;
 use crate::error::SkillError;
-use crate::skills::skill::{map_orchestrator_error, Skill, SkillContext, SkillOutput};
+use crate::skills::metadata::{SkillMetadata, SkillType};
+use crate::skills::r#trait::Skill;
+use crate::skills::skill::{map_orchestrator_error, SkillContext, SkillOutput};
 use crate::use_cases::ListMemories;
 
 /// Skill : liste toutes les mémoires persistées.
@@ -26,6 +28,12 @@ impl Skill for ListMemoriesSkill {
 
     fn description(&self) -> &'static str {
         "Liste les mémoires persistées (titre et identifiant)."
+    }
+
+    fn metadata(&self) -> SkillMetadata {
+        let mut meta = SkillMetadata::minimal(self.name(), self.description());
+        meta.skill_type = SkillType::Cortex;
+        meta
     }
 
     async fn execute(&self, _ctx: &SkillContext) -> Result<SkillOutput, SkillError> {

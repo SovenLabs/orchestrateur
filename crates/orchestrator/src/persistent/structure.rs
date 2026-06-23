@@ -36,6 +36,7 @@ impl AgentStructure {
             root.clone(),
             root.join("tasks"),
             root.join("memories"),
+            root.join("skills"),
             root.join("messages"),
             root.join("messages").join("inbox"),
             root.join("messages").join("outbox"),

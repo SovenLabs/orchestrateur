@@ -3,11 +3,13 @@
 mod cortex_bridge;
 mod identity;
 mod memory;
+mod skill_injection;
 mod structure;
 
 pub use cortex_bridge::CortexAgentBridge;
 pub use identity::{AgentIdentity, AgentStatus};
 pub use memory::AgentMemoryStore;
+pub use skill_injection::AgentSkillInjector;
 pub use structure::AgentStructure;
 
 use std::path::PathBuf;

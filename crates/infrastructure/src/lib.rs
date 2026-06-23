@@ -26,8 +26,8 @@ pub use b212::{
 };
 pub use bootstrap::{bootstrap_workspace, BootstrapError, MEMORY_MODE_HINT};
 pub use embedding::{
-    build_embedding_provider, ChainedEmbeddingProvider, EmbeddingFactoryError,
-    OllamaEmbeddingProvider,
+    build_embedding_provider, CachedEmbeddingProvider, ChainedEmbeddingProvider,
+    EmbeddingFactoryError, OllamaEmbeddingProvider,
 };
 pub use llm::{
     build_llm_provider, ChainedLlmProvider, LlmFactoryError, OllamaLlmProvider, XaiGrokProvider,

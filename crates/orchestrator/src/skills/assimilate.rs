@@ -2,7 +2,9 @@ use async_trait::async_trait;
 
 use crate::deps::AppDependencies;
 use crate::error::SkillError;
-use crate::skills::skill::{map_orchestrator_error, Skill, SkillContext, SkillOutput};
+use crate::skills::metadata::{SkillMetadata, SkillType};
+use crate::skills::r#trait::Skill;
+use crate::skills::skill::{map_orchestrator_error, SkillContext, SkillOutput};
 use crate::use_cases::AssimilateFromText;
 
 /// Skill : assimile du texte brut via le provider LLM configuré.
@@ -26,6 +28,12 @@ impl Skill for AssimilateSkill {
 
     fn description(&self) -> &'static str {
         "Assimile du texte brut (paramètre text requis, tags optionnels)."
+    }
+
+    fn metadata(&self) -> SkillMetadata {
+        let mut meta = SkillMetadata::minimal(self.name(), self.description());
+        meta.skill_type = SkillType::Cortex;
+        meta
     }
 
     async fn execute(&self, ctx: &SkillContext) -> Result<SkillOutput, SkillError> {

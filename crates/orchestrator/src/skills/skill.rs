@@ -1,14 +1,15 @@
-use async_trait::async_trait;
-
 use crate::error::{OrchestratorError, SkillError};
+
+use crate::bridge::BridgeSkillContext;
+
+use super::metadata::SkillMetadata;
+use super::r#trait::Skill;
 
 /// Convertit une erreur orchestrateur en erreur skill.
 #[must_use]
 pub(crate) fn map_orchestrator_error(err: &OrchestratorError) -> SkillError {
     SkillError::ExecutionFailed(err.to_string())
 }
-
-use crate::bridge::BridgeSkillContext;
 
 /// Paramètres optionnels passés aux skills opérationnelles.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
@@ -63,32 +64,28 @@ pub struct SkillEntry {
     pub source: SkillSource,
     /// Version optionnelle (plugins hub).
     pub version: Option<String>,
+    /// Type fonctionnel (Phase 6).
+    pub skill_type: super::metadata::SkillType,
+    /// Auteur optionnel.
+    pub author: Option<String>,
+    /// Dépendances déclarées.
+    pub dependencies: Vec<String>,
 }
 
-/// Contrat d'une capacité extensible de l'orchestrateur.
-///
-/// `name` et `description` sont synchrones (métadonnées statiques).
-/// `execute` est asynchrone (préparation aux appels réseau / IA futurs).
-#[async_trait]
-pub trait Skill: Send + Sync {
-    /// Identifiant unique de la skill.
-    fn name(&self) -> &str;
-
-    /// Description lisible pour l'utilisateur ou l'UI.
-    fn description(&self) -> &str;
-
-    /// Origine de la skill (builtin par défaut).
-    fn source(&self) -> SkillSource {
-        SkillSource::Builtin
+impl SkillEntry {
+    /// Construit depuis les métadonnées complètes d'une skill.
+    #[must_use]
+    pub fn from_metadata(meta: &SkillMetadata) -> Self {
+        Self {
+            name: meta.id.clone(),
+            description: meta.description.clone(),
+            source: meta.source,
+            version: Some(meta.version.clone()),
+            skill_type: meta.skill_type,
+            author: meta.author.clone(),
+            dependencies: meta.dependencies.clone(),
+        }
     }
-
-    /// Version optionnelle (plugins hub).
-    fn version(&self) -> Option<&str> {
-        None
-    }
-
-    /// Exécute la skill.
-    async fn execute(&self, ctx: &SkillContext) -> Result<SkillOutput, SkillError>;
 }
 
 /// Skill de démonstration sans effet de bord.
@@ -108,7 +105,7 @@ impl Default for NoopSkill {
     }
 }
 
-#[async_trait]
+#[async_trait::async_trait]
 impl Skill for NoopSkill {
     fn name(&self) -> &'static str {
         "noop"
@@ -116,6 +113,10 @@ impl Skill for NoopSkill {
 
     fn description(&self) -> &'static str {
         "Skill de démonstration sans effet."
+    }
+
+    fn metadata(&self) -> SkillMetadata {
+        SkillMetadata::minimal("noop", "Skill de démonstration sans effet.")
     }
 
     async fn execute(&self, _ctx: &SkillContext) -> Result<SkillOutput, SkillError> {

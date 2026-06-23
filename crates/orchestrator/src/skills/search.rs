@@ -3,7 +3,9 @@ use cortex::{SearchFilter, Tag};
 
 use crate::deps::AppDependencies;
 use crate::error::SkillError;
-use crate::skills::skill::{map_orchestrator_error, Skill, SkillContext, SkillOutput};
+use crate::skills::metadata::{SkillMetadata, SkillType};
+use crate::skills::r#trait::Skill;
+use crate::skills::skill::{map_orchestrator_error, SkillContext, SkillOutput};
 use crate::use_cases::SearchMemories;
 
 /// Limite par défaut des résultats de recherche via skill.
@@ -30,6 +32,12 @@ impl Skill for SearchMemoriesSkill {
 
     fn description(&self) -> &'static str {
         "Recherche sémantique (paramètre query requis, limit et tags optionnels)."
+    }
+
+    fn metadata(&self) -> SkillMetadata {
+        let mut meta = SkillMetadata::minimal(self.name(), self.description());
+        meta.skill_type = SkillType::Cortex;
+        meta
     }
 
     async fn execute(&self, ctx: &SkillContext) -> Result<SkillOutput, SkillError> {

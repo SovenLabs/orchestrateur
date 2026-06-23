@@ -41,11 +41,15 @@ pub mod memory;
 pub mod watcher;
 /// Défense en profondeur — validation adversariale des sorties LLM.
 pub mod security;
-/// Squelette Skills (trait, registre, noop).
+/// Points d'extension Cortex pour skills (Phase 6).
+pub mod cortex_extensions;
+/// Squelette Skills (trait, registre, hub, loader).
 pub mod skills;
 /// Daemon WebSocket local pour clients visuels (feature `websocket-server`).
 #[cfg(feature = "websocket-server")]
 pub mod daemon;
+/// Sauvegarde et restauration du workspace.
+pub mod backup;
 /// Boucle agent Phase 7.
 pub mod agent;
 /// Protocole B212 (enfant Orchestrateur — Phase 3).
@@ -69,6 +73,8 @@ pub mod tools;
 pub mod gateway;
 /// Use cases applicatifs testables en mémoire.
 pub mod use_cases;
+/// Logging structuré (stdout + fichier workspace).
+pub mod logging;
 
 /// Mocks in-memory des ports pour tests isolés.
 pub mod testing;
@@ -111,12 +117,17 @@ pub use security::{
     IntegrityStatus, MemoryDraftValidator, SecurityBootstrapError, SecurityContext,
     SecurityGateError, SecurityProfile, ValidationError,
 };
+pub use cortex_extensions::{CortexExtension, CortexExtensionRegistry};
 pub use skills::{
-    best_skill_match, compute_integrity_hash, suggest_skills, HubError, IntegrityReport,
-    MarketplaceCatalog,
-    MarketplaceEntry, MarketplaceError, MarketplaceSyncResult, NoopSkill, Skill, SkillContext,
-    SkillEntry, SkillHubDescriptor, SkillManifest, SkillOutput, SkillPluginConfig, SkillRegistry,
-    SkillSource, SkillsHub, SkillsMarketplace, SubprocessPluginSkill, verify_integrity_hash,
+    best_skill_match, compute_integrity_hash, suggest_skills, AgentSkill, AgentSkillAdapter,
+    B212Skill, B212SkillAdapter, CommunicationSkill, CommunicationSkillAdapter, CortexSkill,
+    CortexSkillAdapter, DependencyError, HotReloadError, HubError, IntegrityReport, LoaderError,
+    ManifestError,
+    MarketplaceCatalog, MarketplaceEntry, MarketplaceError, MarketplaceSyncResult, NoopSkill,
+    Skill, SkillContext, SkillEntry, SkillExecution, SkillHostContext, SkillHubDescriptor,
+    SkillLoader, SkillManifest, SkillMetadata, SkillOutput, SkillPluginConfig, SkillRegistry,
+    SkillSource, SkillType, SkillsHub, SkillsMarketplace, SubprocessPluginSkill, TypedSkill,
+    load_manifest, verify_integrity_hash, SkillHotReload, resolve_load_order, register_manifest,
 };
 #[cfg(feature = "plugins-native")]
 pub use skills::{NativePluginError, NativePluginSkill};
@@ -128,10 +139,10 @@ pub use agent::{
 };
 pub use communication::AgentMessage;
 pub use heartbeat::{AgentHeartbeat, BackgroundTaskReport};
-pub use manager::AgentManager;
+pub use manager::{AgentManager, AgentStatusSnapshot};
 pub use persistent::{
-    AgentIdentity, AgentMemoryStore, AgentStatus, AgentStructure, CortexAgentBridge,
-    PersistentAgent, PersistentAgentConfig, PersistentAgentError,
+    AgentIdentity, AgentMemoryStore, AgentSkillInjector, AgentStatus, AgentStructure,
+    CortexAgentBridge, PersistentAgent, PersistentAgentConfig, PersistentAgentError,
 };
 pub use registry::AgentRegistry;
 pub use worker::{run_agent_tick, spawn_agent_tick_if_enabled, AgentTickReport};

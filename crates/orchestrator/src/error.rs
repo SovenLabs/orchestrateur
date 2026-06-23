@@ -5,6 +5,18 @@ use crate::draft::DraftError;
 use crate::llm::LlmError;
 use crate::security::{SecurityGateError, ValidationError};
 
+/// Erreurs liées aux Skills.
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum SkillError {
+    /// Skill demandée absente du registre.
+    #[error("skill introuvable: {0}")]
+    NotFound(String),
+
+    /// Échec lors de l'exécution d'une skill.
+    #[error("échec exécution skill: {0}")]
+    ExecutionFailed(String),
+}
+
 /// Erreurs de la couche application (orchestrateur).
 #[derive(Debug, Error)]
 pub enum OrchestratorError {
@@ -42,16 +54,8 @@ pub enum OrchestratorError {
     /// Erreur de persistance des brouillons.
     #[error(transparent)]
     Draft(#[from] DraftError),
-}
 
-/// Erreurs liées aux Skills.
-#[derive(Debug, Error, PartialEq, Eq)]
-pub enum SkillError {
-    /// Skill demandée absente du registre.
-    #[error("skill introuvable: {0}")]
-    NotFound(String),
-
-    /// Échec lors de l'exécution d'une skill.
-    #[error("échec exécution skill: {0}")]
-    ExecutionFailed(String),
+    /// Erreur du sous-système skills (Phase 6).
+    #[error(transparent)]
+    Skill(#[from] SkillError),
 }

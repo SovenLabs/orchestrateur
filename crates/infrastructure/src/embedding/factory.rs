@@ -8,7 +8,10 @@ use tracing::warn;
 
 use crate::providers::{resolve_embedding_from_registry, UnavailableEmbeddingProvider};
 
-use super::ChainedEmbeddingProvider;
+use super::{CachedEmbeddingProvider, ChainedEmbeddingProvider};
+
+/// Taille par défaut du cache LRU d'embeddings.
+const DEFAULT_EMBEDDING_CACHE_ENTRIES: usize = 4096;
 
 /// Erreurs de construction des providers d'embeddings.
 #[derive(Debug, Error)]
@@ -55,9 +58,18 @@ pub fn build_embedding_provider(
         return Ok(Arc::new(UnavailableEmbeddingProvider::new(reason)));
     }
 
-    if providers.len() == 1 {
-        Ok(providers.remove(0))
+    let provider: Arc<dyn EmbeddingProvider> = if providers.len() == 1 {
+        providers.remove(0)
     } else {
-        Ok(Arc::new(ChainedEmbeddingProvider::new(providers)))
+        Arc::new(ChainedEmbeddingProvider::new(providers))
+    };
+
+    if provider.name() == "unavailable" {
+        return Ok(provider);
     }
+
+    Ok(CachedEmbeddingProvider::new(
+        provider,
+        DEFAULT_EMBEDDING_CACHE_ENTRIES,
+    ))
 }

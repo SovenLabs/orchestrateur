@@ -30,7 +30,7 @@ if (-not $SkipBuild) {
 }
 
 if (-not (Test-Path $SetupExe)) {
-    throw "Setup manquant: $SetupExe — lancez build-installer.ps1 d'abord"
+    throw "Setup manquant: $SetupExe - lancez build-installer.ps1 avant publication"
 }
 if (-not (Test-Path $ZipFile)) {
     throw "Zip manquant: $ZipFile"
@@ -81,8 +81,14 @@ $zipHash  $(Split-Path $ZipFile -Leaf)
 $draftFlag = if ($Draft) { "--draft" } else { "" }
 
 Write-Host "Publication release $Tag..."
-gh release view $Tag 2>$null
-if ($LASTEXITCODE -eq 0) {
+$releaseExists = $false
+try {
+    gh release view $Tag 2>$null | Out-Null
+    $releaseExists = ($LASTEXITCODE -eq 0)
+} catch {
+    $releaseExists = $false
+}
+if ($releaseExists) {
     gh release upload $Tag $SetupExe $ZipFile $ShaPath --clobber
     Write-Host "Assets mis a jour sur la release existante $Tag"
 } else {

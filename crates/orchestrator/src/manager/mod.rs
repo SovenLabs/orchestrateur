@@ -12,6 +12,15 @@ use crate::persistent::{
 };
 use crate::registry::{register_agent, AgentRegistry};
 
+/// Vue opérationnelle d'un agent (statut + inbox non lus).
+#[derive(Debug, Clone)]
+pub struct AgentStatusSnapshot {
+    /// Agent persistant.
+    pub agent: PersistentAgent,
+    /// Messages inbox non lus.
+    pub unread_inbox: usize,
+}
+
 /// API de haut niveau pour créer, lister et piloter les agents persistants.
 pub struct AgentManager {
     deps: AppDependencies,
@@ -163,6 +172,40 @@ impl AgentManager {
         let agent = self.get(id).await?;
         let store = CortexAgentBridge::memory_store(agent, self.deps.clone());
         store.assimilate(text, tags).await
+    }
+
+    /// Statut opérationnel d'un ou de tous les agents (inbox non lus inclus).
+    pub async fn status_snapshots(
+        &self,
+        id: Option<&str>,
+    ) -> Result<Vec<AgentStatusSnapshot>, PersistentAgentError> {
+        let agents = match id {
+            Some(agent_id) => vec![self.get(agent_id).await?],
+            None => self.list().await?,
+        };
+
+        let mut snapshots = Vec::with_capacity(agents.len());
+        for agent in agents {
+            let messages = receive_messages(&agent.root, false).await?;
+            let unread_inbox = messages.iter().filter(|m| !m.read).count();
+            snapshots.push(AgentStatusSnapshot {
+                agent,
+                unread_inbox,
+            });
+        }
+        Ok(snapshots)
+    }
+
+    /// Supprime un agent (registre mémoire, dossier disque, `AGENTS_REGISTRY.md`).
+    pub async fn delete_agent(&self, id: &str) -> Result<(), PersistentAgentError> {
+        {
+            let mut guard = self.registry.write().await;
+            guard.remove_agent(id).await?;
+        }
+        let guard = self.registry.read().await;
+        guard
+            .write_human_registry(&self.deps.config.agents_registry_path())
+            .await
     }
 }
 

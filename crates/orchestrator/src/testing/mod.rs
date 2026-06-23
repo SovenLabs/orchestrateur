@@ -18,5 +18,5 @@ pub use mocks::{
 pub use session_mock::InMemorySessionRepository;
 pub use scripted_providers::{
     CountingEmbeddingProvider, FailNthVectorStore, InvalidJsonLlmProvider, ScriptedLlmProvider,
-    StableOllamaLlmProvider,
+    StableOllamaLlmProvider, ToolScriptLlmProvider,
 };

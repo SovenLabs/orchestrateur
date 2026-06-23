@@ -546,6 +546,8 @@ pub struct SkillsHubConfig {
     pub marketplace_url: Option<String>,
     /// Exige un `catalog_hash` BLAKE3 valide au chargement (Phase 14).
     pub marketplace_require_signature: bool,
+    /// Recharge les plugins hub à chaud quand `skill.toml` change (Phase 6).
+    pub hot_reload: bool,
 }
 
 impl Default for SkillsHubConfig {
@@ -559,6 +561,7 @@ impl Default for SkillsHubConfig {
             marketplace_catalog: "skills/marketplace/catalog.json".into(),
             marketplace_url: None,
             marketplace_require_signature: false,
+            hot_reload: false,
         }
     }
 }
@@ -1053,6 +1056,9 @@ fn merge_skills_hub(target: &mut SkillsHubConfig, section: SkillsHubSection) {
     if let Some(v) = section.marketplace_require_signature {
         target.marketplace_require_signature = v;
     }
+    if let Some(v) = section.hot_reload {
+        target.hot_reload = v;
+    }
 }
 
 fn merge_memory(target: &mut MemoryConfig, section: MemorySection) {
@@ -1347,6 +1353,7 @@ struct SkillsHubSection {
     marketplace_catalog: Option<String>,
     marketplace_url: Option<String>,
     marketplace_require_signature: Option<bool>,
+    hot_reload: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]

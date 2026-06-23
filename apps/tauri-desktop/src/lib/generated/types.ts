@@ -56,6 +56,8 @@ export type DaemonServerMessage =
 
 export type BackendEvent =
   | { event: "agent_activity"; level: number }
+  | { event: "agent_status_changed"; agent_id: string; status: string }
+  | { event: "agent_message_received"; to: string; from: string; message_id: string }
   | { event: "memory_assimilated"; memory_id: string; intensity: number }
   | { event: "draft_created"; draft_id: string; title: string; kind: string }
   | { event: "draft_published"; draft_id: string; memory_id: string }
@@ -129,6 +131,20 @@ export function mapBroadcastToBackendEvent(
       return { event: "system_status", status: "degraded" };
     case "system_error":
       return { event: "system_status", status: "error" };
+    case "agent_status_changed":
+      return {
+        event: "agent_status_changed",
+        agent_id: String(payload.agent_id ?? ""),
+        status: String(payload.status ?? "sleeping"),
+      };
+    case "agent_message":
+    case "agent_message_received":
+      return {
+        event: "agent_message_received",
+        to: String(payload.to ?? ""),
+        from: String(payload.from ?? ""),
+        message_id: String(payload.message_id ?? ""),
+      };
     default:
       return { event: "daemon_broadcast", name: event, payload };
   }

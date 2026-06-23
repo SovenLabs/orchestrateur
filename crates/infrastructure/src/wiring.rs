@@ -59,6 +59,15 @@ pub async fn build_app_dependencies(
     std::fs::create_dir_all(config.memories_dir())
         .map_err(|e| WiringError::VectorStore(VectorStoreFactoryError::Build(e.to_string())))?;
 
+    if config.skills_hub.enabled {
+        std::fs::create_dir_all(config.skills_hub_dir()).map_err(|e| {
+            WiringError::VectorStore(VectorStoreFactoryError::Build(format!(
+                "skills hub {}: {e}",
+                config.skills_hub_dir().display()
+            )))
+        })?;
+    }
+
     let client = Client::builder()
         .build()
         .map_err(|e| WiringError::Embedding(EmbeddingFactoryError::Build(e.to_string())))?;

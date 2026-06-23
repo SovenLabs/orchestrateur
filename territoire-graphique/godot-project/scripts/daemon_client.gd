@@ -42,6 +42,10 @@ var _last_rtt_ms := -1.0
 
 func _ready() -> void:
 	_token = OS.get_environment("ORCHESTRATEUR_DAEMON_TOKEN")
+	if _token.is_empty() and OS.has_feature("web"):
+		var js_token = JavaScriptBridge.eval("localStorage.getItem('orchestrateur_daemon_token')", true)
+		if js_token is String and not js_token.is_empty():
+			_token = js_token
 	if _token.is_empty():
 		_token = "dev"
 	_http.request_completed.connect(_on_http_health)
@@ -116,6 +120,29 @@ func execute_get_memory(id: String) -> String:
 
 func execute_graph() -> String:
 	return execute({"command": "Graph"})
+
+
+func execute_list_agents() -> String:
+	return execute({"command": "ListAgents", "payload": null})
+
+
+func execute_get_agent(id: String) -> String:
+	return execute({"command": "GetAgent", "payload": {"id": id}})
+
+
+func execute_agent_wake(id: String) -> String:
+	return execute({"command": "AgentWake", "payload": {"id": id}})
+
+
+func execute_agent_sleep(id: String) -> String:
+	return execute({"command": "AgentSleep", "payload": {"id": id}})
+
+
+func execute_agent_send_message(from_id: String, to_id: String, body: String) -> String:
+	return execute({
+		"command": "AgentSendMessage",
+		"payload": {"from": from_id, "to": to_id, "body": body},
+	})
 
 
 func _connect_ws() -> void:
@@ -198,6 +225,7 @@ func _default_subscriptions() -> Array:
 			"activity", "visual", "memories", "graph", "chat", "brain_pulse",
 			"memory_assimilated", "tool_call", "vector_search",
 			"thought_propagation", "neuron_stimulated",
+			"agent_status_changed", "agent_message",
 			"system_error", "degraded_mode",
 		]
 	var subs: Array = ["activity"]
@@ -260,6 +288,8 @@ func _bootstrap_data() -> void:
 		execute_list()
 	if _window_kind == "main" or "graph" in _panels:
 		execute_graph()
+	if _window_kind == "main":
+		execute_list_agents()
 
 
 func _handle_broadcast(data: Dictionary) -> void:
@@ -285,6 +315,9 @@ func _handle_broadcast(data: Dictionary) -> void:
 				)
 		"chat_reply":
 			pass
+		"agent_status_changed", "agent_message":
+			if is_main_window():
+				_route_visual_event(event, payload)
 		"degraded_mode", "system_error":
 			if monitoring_panel_visible():
 				connection_state_changed.emit(false, str(payload.get("message", "Mode dégradé")))

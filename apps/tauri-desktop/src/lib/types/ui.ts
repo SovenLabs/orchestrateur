@@ -60,12 +60,29 @@ export type ChatMessage = {
   timestamp: number;
 };
 
+export type AgentPersistentStatus = "sleeping" | "awake" | "background";
+
 export type AgentInfo = {
   id: string;
   name: string;
-  status: "idle" | "active" | "error";
+  role?: string;
+  model?: string;
+  /** Statut persistant (`sleeping`/`awake`/`background`) ou heuristique UI (`idle`/`active`/`error`). */
+  status: AgentPersistentStatus | "idle" | "active" | "error";
   activity: number;
   lastAction?: string;
+  lastHeartbeat?: string | null;
+  sessionKey?: string;
+  unreadInbox?: number;
+};
+
+export type AgentMessage = {
+  id: string;
+  from: string;
+  to: string;
+  body: string;
+  sent_at: string;
+  read: boolean;
 };
 
 export type CommandAction = {
@@ -97,8 +114,8 @@ export const PANEL_META: Record<
     icon: "◎",
   },
   agents: {
-    label: "Agents",
-    description: "Registre & activité agents",
+    label: "Sub-Agents",
+    description: "Registre & activité des agents persistants",
     icon: "◇",
   },
   monitoring: {

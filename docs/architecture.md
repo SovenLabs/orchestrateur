@@ -1,103 +1,88 @@
-# Architecture Orchestrateur v2 — Phases 21–27
+# Architecture Orchestrateur — Vue d'ensemble
 
-**Version :** 0.28.0 · **Date :** 23 juin 2026 · **Statut :** Harness intégral v1.2
+**Version :** 0.28.0 · **Phase 7** · **Juin 2026**
 
-> Hiérarchie complète, priorités P0–P6 et frontière noyau figé / skills : [`project-hierarchy.md`](project-hierarchy.md)
+> Document canonique. Contenu détaillé historique : [`architecture.md`](architecture.md) · Hiérarchie P0–P6 : [`project-hierarchy.md`](project-hierarchy.md)
 
-## Vue d'ensemble
+## Mantra
+
+> **Cortex first, agent second, gateway third.**
 
 ```mermaid
 flowchart TB
-    subgraph Desktop["Desktop Hybride v0.27"]
-        Tauri["Tauri 2 + Svelte 5<br/>Cosmic Shell + chat"]
-        Godot["Godot 4.7<br/>Sphère + Territoire"]
+    subgraph Clients["Clients (P5)"]
+        CLI["CLI orch"]
+        Tauri["Tauri Desktop"]
+        Godot["Territoire Graphique"]
     end
 
-    subgraph Rust["Cœur Souverain Rust"]
-        Orch["orchestrator<br/>Cortex + AgentLoop + Daemon"]
-        Types["shared-types<br/>Protocole 1.2.0 + événements UI"]
+    subgraph Core["Cœur Rust"]
+        Cortex["cortex — domaine + ports"]
+        Infra["infrastructure — adapters"]
+        Orch["orchestrator — facade, agent, daemon"]
     end
 
-    Tauri -->|window_kind: desktop| Daemon
-    Godot -->|main / sphere / extension| Daemon
-    Daemon["Daemon WS :28790<br/>TerritoryHub"]
-    Orch --> Daemon
-    Types --> Tauri
-    Types --> Orch
+    subgraph Data["Workspace local"]
+        MD["memories/*.md"]
+        LDB[".orchestrateur/lancedb"]
+        Agents["agents/"]
+        B212["b212/"]
+    end
+
+    CLI --> Orch
+    Tauri -->|WS 1.2.0| Orch
+    Godot -->|WS 1.2.0| Orch
+    Orch --> Cortex
+    Infra --> Cortex
+    Orch --> Infra
+    Infra --> MD
+    Infra --> LDB
+    Orch --> Agents
+    Orch --> B212
 ```
 
-## Séparation des responsabilités
+## Crates et responsabilités
 
-| Composant | Rôle | Source de vérité |
-|-----------|------|------------------|
-| `shared-types` | Protocole WS, `BackendEvent`, export TS | Rust + `ts-rs` |
-| `orchestrator` | Cortex, AgentLoop, bridge, daemon WS, gateway | Logique métier |
-| `apps/tauri-desktop` | Apparence 2 cosmique (trou noir chat) + lancement Godot | Svelte 5 + Tauri commands |
-| `territoire-graphique` | Boule de Pixels Vivante + territoire 3D | Client Godot réactif |
+| Crate | Priorité | Rôle |
+|-------|----------|------|
+| `cortex` | P0 | Entités (`Memory`, graphe), ports hexagonaux, services purs |
+| `infrastructure` | P1 | FS, LanceDB, Ollama/xAI, cache embeddings, wiring |
+| `orchestrator` | P2–P3 | Facade, `AgentLoop`, daemon WS, gateway, skills, B212 |
+| `orchestrateur-cli` | P4 | Harness headless `orch` |
+| `orchestrateur-plugins` | P6 | Marketplace skills, manifests |
+| `apps/tauri-desktop` | P5 | Client desktop cosmique |
+| `territoire-graphique` | P5 | Client Godot 4 (sphère, arcs synaptiques) |
 
-**Cible dossiers clients :** `apps/desktop-tauri` + `apps/godot-territoire` (voir [`project-hierarchy.md`](project-hierarchy.md)).
+## Flux agent (Phase 7)
 
-**Principe :** le daemon Rust orchestre ; Tauri et Godot sont des clients WS indépendants (P5). Seules les skills (P6) restent évolutives après gel du noyau.
+1. **Contexte** — recherche proactive + graphe injectés avant le LLM
+2. **Boucle outils** — blocs ` ```tool ` JSON → registre `memory_*` / outils étendus
+3. **Session** — SQLite `.orchestrateur/sessions.db`
+4. **Auto-assimilation** — tour substantiel → mémoire Markdown + index vectoriel
+5. **Audit** — journal chaîné BLAKE3 `logs/audit.jsonl`
 
-## Types de fenêtre (`window_kind`)
+## Sécurité
 
-| Valeur | Client | brain_pulse | Actions critiques |
-|--------|--------|-------------|-------------------|
-| `desktop` | Tauri | ✅ (UI activité) | ✅ Harness intégral (Cortex + Esprit) |
-| `sphere` | Godot SphereDedicated | ✅ (rendu 3D) | ❌ |
-| `main` | Godot MainTerritory | ✅ | ✅ |
-| `extension` | Godot panneau détaché | selon abonnements | ❌ |
+| Couche | Mécanisme |
+|--------|-----------|
+| Validation LLM | Anti-injection, scoring gradué |
+| Comportemental | Rate limiting assimilations / recherches |
+| Intégrité | Honeypots canari, empreinte config |
+| Audit | Append-only tamper-evident |
 
-## Protocole WebSocket
+## Distribution
 
-- **URL :** `ws://127.0.0.1:28790/ws`
-- **Santé :** `http://127.0.0.1:28790/health` (+ `connected_windows`)
-- **Auth :** `connect` + `ORCHESTRATEUR_DAEMON_TOKEN` (défaut `dev`)
-- **Version :** `1.2.0`
+- **CI** : `.github/workflows/ci.yml` (tests rapides + heavy)
+- **Release** : `.github/workflows/release.yml` + `scripts/release.sh`
+- **Install** : `install.ps1` / `install.sh`
 
-Documentation : [`protocol-ws.md`](protocol-ws.md) · [`territoire-graphique/communication.md`](../territoire-graphique/communication.md)
+## Documentation associée
 
-## Phases 21–27 (livrées)
-
-| Phase | Version | Livrable clé |
-|-------|---------|--------------|
-| 21 | 0.22.0 | Socle hybride, shared-types, Tauri squelette |
-| 22 | 0.22.0 | UI J.A.R.V.I.S., design system |
-| 23 | 0.23.0 | WS temps réel, métriques, protocole 1.1.0 |
-| 24 | 0.24.0 | AINeuralBrainSphere premium, SphereDedicated |
-| 25 | 0.25.0 | Multi-fenêtrage Tauri → Godot, `connected_windows` |
-| 26 | 0.26.0 | Polish UI, release hybride, démo storyboard |
-| 27 | 0.27.0 | Apparence 2 cosmique, trou noir canvas, drawers |
-
-## Lancement développement
-
-```powershell
-# Terminal 1 — daemon
-$env:ORCHESTRATEUR_DAEMON_TOKEN = "dev"
-just daemon
-
-# Terminal 2 — desktop Tauri
-just desktop-dev
-# Sidebar → Ouvrir Sphère (Godot 4.7 requis)
-```
-
-## Build release
-
-```powershell
-just release-v26
-.\scripts\tag-phase-release.ps1 -Phase 26
-```
-
-Variables frontend (`.env` — voir `apps/tauri-desktop/.env.example`) :
-
-```
-VITE_ORCHESTRATEUR_WS_URL=ws://127.0.0.1:28790/ws
-VITE_ORCHESTRATEUR_DAEMON_TOKEN=dev
-```
-
-## Génération types TypeScript
-
-```bash
-cargo run -p shared-types --bin export-ts
-# ou : just export-types
-```
+| Sujet | Fichier |
+|-------|---------|
+| Développement | [`DEVELOPER_GUIDE.md`](DEVELOPER_GUIDE.md) |
+| Utilisation | [`USER_GUIDE.md`](USER_GUIDE.md) |
+| B212 trading | [`B212_INTEGRATION.md`](B212_INTEGRATION.md) |
+| Outils agent | [`agent-tools.md`](agent-tools.md) |
+| Skills | [`skills-schema.md`](skills-schema.md) |
+| Protocole WS | [`protocol-ws.md`](protocol-ws.md) |

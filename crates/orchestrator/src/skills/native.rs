@@ -9,7 +9,10 @@ use thiserror::Error;
 
 use crate::error::SkillError;
 use crate::skills::manifest::{NativePluginConfig, SkillManifest, SkillPluginConfig};
-use crate::skills::skill::{Skill, SkillContext, SkillOutput, SkillSource};
+use crate::skills::metadata::SkillMetadata;
+use crate::skills::plugin::metadata_from_manifest;
+use crate::skills::r#trait::Skill;
+use crate::skills::skill::{SkillContext, SkillOutput, SkillSource};
 
 type ExecuteFn = unsafe extern "C" fn(*const c_char) -> *mut c_char;
 type FreeFn = unsafe extern "C" fn(*mut c_char);
@@ -43,6 +46,7 @@ pub struct NativePluginSkill {
     id: String,
     description: String,
     version: String,
+    metadata: SkillMetadata,
     library_path: PathBuf,
     library: Arc<Library>,
 }
@@ -54,8 +58,8 @@ impl NativePluginSkill {
     ///
     /// Propage [`NativePluginError`] si la bibliothèque ou les symboles ABI sont absents.
     pub fn from_manifest(manifest: SkillManifest) -> Result<Self, NativePluginError> {
-        let NativePluginConfig { library } = match manifest.plugin {
-            SkillPluginConfig::Native(cfg) => cfg,
+        let NativePluginConfig { library } = match &manifest.plugin {
+            SkillPluginConfig::Native(cfg) => cfg.clone(),
             _ => {
                 return Err(NativePluginError::Execute(
                     "manifeste non natif".into(),
@@ -63,13 +67,21 @@ impl NativePluginSkill {
             }
         };
         let path = resolve_library_path(&manifest.root, &library);
-        Self::load(manifest.id, manifest.description, manifest.version, path)
+        let metadata = metadata_from_manifest(&manifest, SkillSource::Native);
+        Self::load(
+            manifest.id,
+            manifest.description,
+            manifest.version,
+            metadata,
+            path,
+        )
     }
 
     fn load(
         id: String,
         description: String,
         version: String,
+        metadata: SkillMetadata,
         path: PathBuf,
     ) -> Result<Self, NativePluginError> {
         let library = Arc::new(load_library(&path).map_err(|e| NativePluginError::Load {
@@ -88,6 +100,7 @@ impl NativePluginSkill {
             id,
             description,
             version,
+            metadata,
             library_path: path,
             library,
         })
@@ -133,6 +146,10 @@ impl Skill for NativePluginSkill {
 
     fn version(&self) -> Option<&str> {
         Some(&self.version)
+    }
+
+    fn metadata(&self) -> SkillMetadata {
+        self.metadata.clone()
     }
 
     async fn execute(&self, ctx: &SkillContext) -> Result<SkillOutput, SkillError> {

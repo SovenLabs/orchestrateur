@@ -147,6 +147,29 @@ export class DaemonWebSocketClient {
     return this.execute({ command: "ListSkills" });
   }
 
+  listAgents(): string {
+    return this.execute({ command: "ListAgents", payload: null });
+  }
+
+  getAgent(id: string): string {
+    return this.execute({ command: "GetAgent", payload: { id } });
+  }
+
+  agentMessages(id: string, markRead = false): string {
+    return this.execute({
+      command: "AgentMessages",
+      payload: { id, mark_read: markRead },
+    });
+  }
+
+  agentWake(id: string): string {
+    return this.execute({ command: "AgentWake", payload: { id } });
+  }
+
+  agentSleep(id: string): string {
+    return this.execute({ command: "AgentSleep", payload: { id } });
+  }
+
   private sendConnect(): void {
     this.send({
       type: "connect",

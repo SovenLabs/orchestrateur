@@ -4,7 +4,7 @@
   import DraftsPanel from "$lib/components/DraftsPanel.svelte";
   import WatcherIndicator from "$lib/components/WatcherIndicator.svelte";
   import MemoryNebula from "$lib/cosmic/MemoryNebula.svelte";
-  import AgentsPanel from "$lib/panels/AgentsPanel.svelte";
+  import AgentsView from "$lib/views/Agents.svelte";
   import DashboardPanel from "$lib/panels/DashboardPanel.svelte";
   import MemoryPanel from "$lib/panels/MemoryPanel.svelte";
   import MonitoringPanel from "$lib/panels/MonitoringPanel.svelte";
@@ -119,7 +119,7 @@
             <MemoryPanel />
           </section>
         {:else if section === "agents"}
-          <AgentsPanel />
+          <AgentsView />
         {:else if section === "monitoring"}
           <MonitoringPanel />
         {/if}

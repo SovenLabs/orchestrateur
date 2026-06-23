@@ -95,24 +95,20 @@ pub async fn run(cmd: B212Commands, workspace: &Path) -> Result<()> {
             }
         }
         B212Commands::Proposals => {
-            let resp = run_bridge_command(&facade, Command::B212ListProposals).await?;
-            println!("{resp}");
+            run_bridge_command(&facade, Command::B212ListProposals).await?;
         }
         B212Commands::Approve { id } => {
-            let resp = run_bridge_command(&facade, Command::B212ApproveProposal { id }).await?;
-            println!("{resp}");
+            run_bridge_command(&facade, Command::B212ApproveProposal { id }).await?;
         }
         B212Commands::Reject { id, reason } => {
-            let resp = run_bridge_command(
+            run_bridge_command(
                 &facade,
                 Command::B212RejectProposal { id, reason },
             )
             .await?;
-            println!("{resp}");
         }
         B212Commands::SimExecute { id } => {
-            let resp = run_bridge_command(&facade, Command::B212SimExecute { id }).await?;
-            println!("{resp}");
+            run_bridge_command(&facade, Command::B212SimExecute { id }).await?;
         }
     }
 

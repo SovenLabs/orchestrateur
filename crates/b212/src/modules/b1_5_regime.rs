@@ -20,6 +20,7 @@ pub enum MarketRegime {
 }
 
 impl MarketRegime {
+    /// Libellé court du régime (sérialisation / journal).
     pub fn label(self) -> &'static str {
         match self {
             Self::Trend => "trend",

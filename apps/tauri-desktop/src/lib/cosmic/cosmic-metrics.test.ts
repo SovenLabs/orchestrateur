@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import { computeAgentsSync, computeCoherence } from "./cosmic-metrics";
 
 describe("computeAgentsSync", () => {
-  it("compte les agents actifs", () => {
+  it("compte les agents actifs (awake/background)", () => {
     const r = computeAgentsSync([
-      { id: "a", name: "A", status: "active", activity: 1 },
-      { id: "b", name: "B", status: "idle", activity: 0 },
+      { id: "a", name: "A", status: "awake", activity: 1 },
+      { id: "b", name: "B", status: "sleeping", activity: 0 },
+      { id: "c", name: "C", status: "background", activity: 0.6 },
     ]);
-    expect(r.label).toBe("1/2");
+    expect(r.label).toBe("2/3");
   });
 });
 

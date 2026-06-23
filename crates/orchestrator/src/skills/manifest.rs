@@ -4,6 +4,8 @@ use blake3::Hasher;
 use serde::Deserialize;
 use thiserror::Error;
 
+use super::metadata::SkillType;
+
 /// Type de plugin skill.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -62,6 +64,14 @@ pub struct SkillManifest {
     pub plugin: SkillPluginConfig,
     /// Répertoire source du manifeste.
     pub root: PathBuf,
+    /// Auteur optionnel.
+    pub author: Option<String>,
+    /// Type fonctionnel (cortex, agent, b212, communication, generic).
+    pub skill_type: SkillType,
+    /// Dépendances sur d'autres skills.
+    pub dependencies: Vec<String>,
+    /// Agents cibles (vide = global).
+    pub agent_ids: Vec<String>,
 }
 
 /// Erreurs de parsing / découverte des manifestes.
@@ -169,6 +179,14 @@ pub fn load_manifest(path: &Path) -> Result<SkillManifest, ManifestError> {
             .parent()
             .unwrap_or_else(|| Path::new("."))
             .to_path_buf(),
+        author: skill.author,
+        skill_type: skill
+            .skill_type
+            .as_deref()
+            .map(SkillType::parse)
+            .unwrap_or_default(),
+        dependencies: skill.dependencies.unwrap_or_default(),
+        agent_ids: skill.agents.unwrap_or_default(),
     })
 }
 
@@ -232,6 +250,10 @@ struct SkillSectionToml {
     name: Option<String>,
     description: Option<String>,
     version: Option<String>,
+    author: Option<String>,
+    skill_type: Option<String>,
+    dependencies: Option<Vec<String>>,
+    agents: Option<Vec<String>>,
     kind: Option<SkillPluginKind>,
     enabled: Option<bool>,
     integrity_hash: Option<String>,

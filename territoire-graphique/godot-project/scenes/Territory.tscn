@@ -1,0 +1,22 @@
+[gd_scene load_steps=5 format=3 uid="uid://territory_agents_p5"]
+
+[ext_resource type="Script" path="res://scripts/agents/territory_agents.gd" id="1_ta"]
+[ext_resource type="Script" path="res://scripts/agents/communication_lines.gd" id="2_lines"]
+[ext_resource type="Script" path="res://scripts/agents/agent_interaction.gd" id="3_interact"]
+[ext_resource type="PackedScene" uid="uid://agent_sphere_p5" path="res://scenes/AgentSphere.tscn" id="4_sphere"]
+
+[node name="Territory" type="Node3D"]
+
+[node name="CommunicationLines" type="Node3D" parent="."]
+script = ExtResource("2_lines")
+
+[node name="AgentContainer" type="Node3D" parent="."]
+script = ExtResource("1_ta")
+communication_lines = NodePath("../CommunicationLines")
+
+[node name="AgentInteraction" type="Node" parent="."]
+script = ExtResource("3_interact")
+territory_agents = NodePath("../AgentContainer")
+
+[node name="AgentSphereTemplate" parent="AgentContainer" instance=ExtResource("4_sphere")]
+visible = false

@@ -29,9 +29,20 @@ just desktop-dev
 .\install.ps1 -Dev -InstallDaemon    # + tâche planifiée daemon à la connexion
 # Release : irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 | iex
 
-# Onboard harness (workspace + profil + token daemon)
+# Menus interactifs (navigation ↑↓, hints entre parenthèses)
+orchestrateur setup       # centre de commande harness
+orchestrateur settings    # configuration (profil, LLM, canaux, …)
+orchestrateur onboard     # assistant premier lancement (sans flags)
+
+# Onboard harness (flags = non interactif)
 orch onboard --local-only --install-daemon --workspace workspace
 orch configure --profile local_only --llm ollama --workspace workspace
+
+# Mise à jour autonome (exécute install.ps1, pas d'instructions manuelles)
+orchestrateur update              # dev si dépôt local détecté, sinon release
+orchestrateur update --check      # compare version locale vs GitHub
+orchestrateur update --dev        # recompile + réinstalle ~/.orchestrateur/bin
+orchestrateur update --release    # installateur release GitHub
 
 # Diagnostic enrichi (Cortex + daemon/gateway HTTP + tokens + egress)
 orch doctor --workspace C:\GitDev\Projet\orchestrateur\workspace

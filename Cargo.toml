@@ -57,6 +57,9 @@ arrow-array = "58"
 arrow-schema = "58"
 futures = "0.3"
 clap = { version = "4", features = ["derive"] }
+console = "0.15"
+dialoguer = "0.11"
+crossterm = "0.28"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 flume = "0.11"
 axum = { version = "0.8", features = ["ws"] }

@@ -1,6 +1,5 @@
 //! Opérations harness — onboard, doctor enrichi, daemon/gateway, canaux, providers.
 
-use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command as OsCommand, Stdio};
 use std::time::Duration;
@@ -9,7 +8,7 @@ use anyhow::{Context, Result};
 use orchestrator::{
     assert_llm_egress_allowed, execute_command, health::probe_services, set_channel_enabled,
     set_primary_llm, set_security_profile, ChannelCatalog, Command as BridgeCommand,
-    OrchestratorConfig, OrchestratorFacade, Response, VERSION,
+    OrchestratorConfig, OrchestratorFacade, Response,
 };
 use orchestrator::gateway::resolve_channel_config;
 use reqwest::Client;
@@ -279,14 +278,6 @@ pub fn cmd_configure(workspace: &Path, options: &ConfigureOptions) -> Result<()>
     }
 
     println!("Configuration mise à jour.");
-    Ok(())
-}
-
-/// Affiche la version et les instructions de mise à jour.
-pub fn cmd_update() -> Result<()> {
-    println!("Orchestrateur v{VERSION}");
-    println!("Mise à jour dev : .\\install.ps1 -Dev");
-    println!("Mise à jour release : installateur GitHub ou irm install.ps1");
     Ok(())
 }
 
@@ -637,31 +628,6 @@ pub async fn cmd_harness_run(workspace: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Onboard interactif si aucun flag fourni.
-pub fn onboard_interactive(workspace: &Path) -> Result<()> {
-    let profile = prompt_choice(
-        "Profil sécurité",
-        &["local_only", "ai_assisted", "strict", "default"],
-        1,
-    )?;
-    let llm = if profile == "local_only" {
-        "ollama".to_string()
-    } else {
-        prompt_choice("Provider LLM", &["ollama", "xai"], 1)?
-    };
-    let install = prompt_yes_no("Installer le daemon Windows (tâche planifiée) ?", false)?;
-
-    cmd_onboard(
-        workspace,
-        &OnboardOptions {
-            profile: Some(profile),
-            llm: Some(llm),
-            local_only: false,
-            install_daemon: install,
-        },
-    )
-}
-
 async fn service_alive(url: &str) -> bool {
     http_client()
         .get(url)
@@ -803,40 +769,3 @@ fn ensure_daemon_token_user() -> Result<()> {
     }
 }
 
-fn prompt_choice(label: &str, choices: &[&str], default_idx: usize) -> Result<String> {
-    println!("{label} :");
-    for (i, c) in choices.iter().enumerate() {
-        let mark = if i == default_idx { "*" } else { " " };
-        println!("  {mark} [{i}] {c}");
-    }
-    print!("Choix [{default_idx}] : ");
-    io::stdout().flush()?;
-    let mut line = String::new();
-    io::stdin().read_line(&mut line)?;
-    let trimmed = line.trim();
-    if trimmed.is_empty() {
-        return Ok(choices[default_idx].to_string());
-    }
-    if let Ok(idx) = trimmed.parse::<usize>() {
-        if let Some(c) = choices.get(idx) {
-            return Ok((*c).to_string());
-        }
-    }
-    if choices.contains(&trimmed) {
-        return Ok(trimmed.to_string());
-    }
-    Ok(choices[default_idx].to_string())
-}
-
-fn prompt_yes_no(label: &str, default_yes: bool) -> Result<bool> {
-    let hint = if default_yes { "O/n" } else { "o/N" };
-    print!("{label} [{hint}] : ");
-    io::stdout().flush()?;
-    let mut line = String::new();
-    io::stdin().read_line(&mut line)?;
-    let t = line.trim().to_lowercase();
-    if t.is_empty() {
-        return Ok(default_yes);
-    }
-    Ok(matches!(t.as_str(), "o" | "oui" | "y" | "yes"))
-}

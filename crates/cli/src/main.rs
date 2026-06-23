@@ -2,6 +2,8 @@
 
 mod harness_ops;
 mod output;
+mod tui;
+mod update;
 
 #[cfg(feature = "http")]
 use std::sync::Arc;
@@ -21,11 +23,10 @@ use orchestrator::ChannelCatalog;
 
 use harness_ops::{
     channels_disable, channels_enable, channels_status, cmd_configure, cmd_doctor, cmd_harness_run,
-    cmd_harness_smoke, cmd_onboard, cmd_uninstall, cmd_update, daemon_install, daemon_status,
-    daemon_stop,
-    gateway_status, onboard_interactive, providers_set, providers_test, ConfigureOptions,
-    OnboardOptions,
+    cmd_harness_smoke, cmd_onboard, cmd_uninstall, daemon_install, daemon_status, daemon_stop,
+    gateway_status, providers_set, providers_test, ConfigureOptions, OnboardOptions,
 };
+use update::{cmd_update, UpdateOptions};
 use output::print_response;
 use tracing_subscriber::EnvFilter;
 
@@ -65,6 +66,10 @@ enum Commands {
         #[arg(long)]
         install_daemon: bool,
     },
+    /// Centre de commande harness (menu interactif).
+    Setup,
+    /// Configuration harness (menu interactif).
+    Settings,
     /// Met à jour des champs harness dans orchestrator.toml.
     Configure {
         #[arg(long)]
@@ -74,8 +79,18 @@ enum Commands {
         #[arg(long)]
         local_only: bool,
     },
-    /// Instructions de mise à jour binaire.
-    Update,
+    /// Met à jour le binaire (release GitHub ou dev local).
+    Update {
+        /// Compare version locale vs GitHub sans installer.
+        #[arg(long)]
+        check: bool,
+        /// Force recompilation depuis le dépôt local.
+        #[arg(long)]
+        dev: bool,
+        /// Force installateur release GitHub.
+        #[arg(long)]
+        release: bool,
+    },
     /// Stop sécurité + instructions de désinstallation complète.
     Uninstall,
     /// Santé du service (équivalent `HealthCheck` bridge).
@@ -390,7 +405,9 @@ async fn main() -> Result<()> {
     match cli.command {
         Commands::Onboard { .. }
         | Commands::Configure { .. }
-        | Commands::Update
+        | Commands::Setup
+        | Commands::Settings
+        | Commands::Update { .. }
         | Commands::Uninstall
         | Commands::Harness {
             command: HarnessCommands::Run,
@@ -549,8 +566,21 @@ async fn main() -> Result<()> {
 /// Commandes harness sans bootstrap Cortex (config / OS / HTTP probes).
 async fn dispatch_lightweight(cli: &Cli) -> Result<Option<()>> {
     match &cli.command {
-        Commands::Update => {
-            cmd_update()?;
+        Commands::Setup => {
+            tui::run_setup(&cli.workspace)?;
+            return Ok(Some(()));
+        }
+        Commands::Settings => {
+            tui::run_settings(&cli.workspace)?;
+            return Ok(Some(()));
+        }
+        Commands::Update { check, dev, release } => {
+            cmd_update(UpdateOptions {
+                check: *check,
+                dev: *dev,
+                release: *release,
+            })
+            .await?;
             return Ok(Some(()));
         }
         Commands::Uninstall => {
@@ -574,7 +604,7 @@ async fn dispatch_lightweight(cli: &Cli) -> Result<Option<()>> {
                 && !opts.local_only
                 && !opts.install_daemon
             {
-                onboard_interactive(&cli.workspace)?;
+                tui::run_onboard_wizard(&cli.workspace)?;
             } else {
                 cmd_onboard(&cli.workspace, &opts)?;
             }

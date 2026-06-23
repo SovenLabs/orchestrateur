@@ -14,7 +14,8 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+serde_json.workspace = true
+tokio = { workspace = true, features = ["fs", "macros", "rt-multi-thread"] }
 
 [lints.rust]
 unsafe_code = "forbid"

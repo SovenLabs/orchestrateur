@@ -1,6 +1,8 @@
 //! Intégration B212 dans Orchestrateur (workflow, bridge — PR-6+).
 
 pub use b212::{
-    B212Error, B212Lineage, B212SetupAnalysis, B212_VERSION, MarketDataProvider, OhlcvSeries,
-    SetupContext, Timeframe, TradeProposal,
+    analyze_b1, analyze_b1_5, analyze_b12, analyze_b2, analyze_b2_5, build_setup_analysis,
+    run_all, B212Error, B212Lineage, B212SetupAnalysis, B212_VERSION, MacroClimate,
+    MarketDataProvider, MarketRegime, ModuleContext, OhlcvSeries, SetupContext, StructureBias,
+    Timeframe, TradeProposal,
 };

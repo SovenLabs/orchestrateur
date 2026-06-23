@@ -3,7 +3,7 @@ use cortex::SearchFilter;
 use crate::use_cases::SearchMemories;
 use serde_json::Value;
 
-use crate::tool::{Tool, ToolContext, ToolError, ToolResult};
+use super::tool::{Tool, ToolContext, ToolError, ToolResult};
 
 /// Recherche sémantique dans les mémoires Cortex.
 pub struct MemorySearchTool;

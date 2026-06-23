@@ -11,6 +11,7 @@ signal latency_updated(rtt_ms: float)
 
 const WS_URL := "ws://127.0.0.1:28790/ws"
 const HEALTH_URL := "http://127.0.0.1:28790/health"
+const PROTOCOL_VERSION := "1.2.0"
 const POLL_SECS := 2.0
 const PING_SECS := 25.0
 const RECONNECT_BASE := 1.0
@@ -68,6 +69,14 @@ func is_ready() -> bool:
 
 func is_main_window() -> bool:
 	return _window_kind == "main"
+
+
+func is_sphere_window() -> bool:
+	return _window_kind == "sphere"
+
+
+func receives_brain_pulse() -> bool:
+	return _window_kind == "main" or _window_kind == "sphere"
 
 
 func execute(command: Dictionary) -> String:
@@ -134,7 +143,7 @@ func _process(delta: float) -> void:
 		_poll_http_health()
 		var idle := ActivityMapper.fallback_idle(_fallback_elapsed)
 		activity_changed.emit(idle)
-		if is_main_window():
+		if receives_brain_pulse():
 			VisualEventMapper.emit_idle_breathing(_fallback_elapsed, false)
 			VisualEventMapper.set_degraded_mode(true)
 		_reconnect_timer -= delta
@@ -173,6 +182,7 @@ func _send_connect() -> void:
 	var payload := {
 		"type": "connect",
 		"token": _token,
+		"protocol_version": PROTOCOL_VERSION,
 		"client": {
 			"window_kind": _window_kind,
 			"panels": _panels,
@@ -183,10 +193,11 @@ func _send_connect() -> void:
 
 
 func _default_subscriptions() -> Array:
-	if _window_kind == "main":
+	if _window_kind == "main" or _window_kind == "sphere":
 		return [
 			"activity", "visual", "memories", "graph", "chat", "brain_pulse",
 			"memory_assimilated", "tool_call", "vector_search",
+			"thought_propagation", "neuron_stimulated",
 			"system_error", "degraded_mode",
 		]
 	var subs: Array = ["activity"]
@@ -267,7 +278,7 @@ func _handle_broadcast(data: Dictionary) -> void:
 			if _window_kind == "main" or "graph" in _panels:
 				execute_graph()
 		"brain_pulse":
-			if is_main_window():
+			if receives_brain_pulse():
 				brain_pulse_requested.emit(
 					float(payload.get("boost", 0.4)),
 					float(payload.get("duration", 0.5)),

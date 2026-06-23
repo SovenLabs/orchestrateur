@@ -8,6 +8,7 @@ use crate::deps::AppDependencies;
 use crate::skills::SkillRegistry;
 use super::capability_profiles::CapabilityProfileRegistry;
 use super::memory_assimilate::MemoryAssimilateTool;
+use super::memory_file_context::MemoryFileContextTool;
 use super::memory_get::MemoryGetTool;
 use super::memory_search::MemorySearchTool;
 use super::tool::{Tool, ToolContext, ToolDefinition, ToolError, ToolResult};
@@ -33,6 +34,7 @@ impl ToolRegistry {
         registry.register(Arc::new(MemorySearchTool));
         registry.register(Arc::new(MemoryGetTool));
         registry.register(Arc::new(MemoryAssimilateTool));
+        registry.register(Arc::new(MemoryFileContextTool));
         registry
     }
 

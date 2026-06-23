@@ -13,6 +13,7 @@ use crate::memory_draft::MemoryDraft;
 
 use crate::config::OrchestratorConfig;
 use crate::deps::AppDependencies;
+use crate::draft::{DraftError, DraftRepository, DraftStatus, StoredDraft};
 use crate::events::NoopEventPublisher;
 use super::session_mock::InMemorySessionRepository;
 
@@ -28,6 +29,8 @@ pub struct MockBundle {
     pub llm: Arc<InMemoryLlmProvider>,
     /// Mock sessions agent.
     pub session_repo: Arc<InMemorySessionRepository>,
+    /// Mock file de brouillons.
+    pub draft_repo: Arc<InMemoryDraftRepository>,
     /// Configuration de test.
     pub config: OrchestratorConfig,
 }
@@ -45,6 +48,7 @@ impl MockBundle {
             embedding,
             llm,
             session_repo: Arc::new(InMemorySessionRepository::new()),
+            draft_repo: Arc::new(InMemoryDraftRepository::new()),
             config,
         }
     }
@@ -58,9 +62,84 @@ impl MockBundle {
             self.embedding,
             self.llm,
             self.session_repo,
+            self.draft_repo,
             self.config,
             Arc::new(NoopEventPublisher),
         )
+    }
+}
+
+/// Persistance brouillons en mémoire (`HashMap` + `RwLock`).
+pub struct InMemoryDraftRepository {
+    inner: RwLock<HashMap<String, StoredDraft>>,
+}
+
+impl InMemoryDraftRepository {
+    /// Crée un dépôt vide.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            inner: RwLock::new(HashMap::new()),
+        }
+    }
+}
+
+impl Default for InMemoryDraftRepository {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait]
+impl DraftRepository for InMemoryDraftRepository {
+    async fn save(&self, stored: &StoredDraft) -> Result<(), DraftError> {
+        let mut guard = self
+            .inner
+            .write()
+            .map_err(|e| DraftError::Io(e.to_string()))?;
+        guard.insert(stored.id.clone(), stored.clone());
+        Ok(())
+    }
+
+    async fn get_by_id(&self, id: &str) -> Result<StoredDraft, DraftError> {
+        let guard = self
+            .inner
+            .read()
+            .map_err(|e| DraftError::Io(e.to_string()))?;
+        guard
+            .get(id)
+            .cloned()
+            .ok_or_else(|| DraftError::NotFound(id.to_string()))
+    }
+
+    async fn list(&self, status: Option<DraftStatus>) -> Result<Vec<StoredDraft>, DraftError> {
+        let guard = self
+            .inner
+            .read()
+            .map_err(|e| DraftError::Io(e.to_string()))?;
+        let mut items: Vec<StoredDraft> = guard
+            .values()
+            .filter(|d| status.is_none_or(|s| d.status == s))
+            .cloned()
+            .collect();
+        items.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        Ok(items)
+    }
+
+    async fn update_status(
+        &self,
+        id: &str,
+        status: DraftStatus,
+    ) -> Result<StoredDraft, DraftError> {
+        let mut guard = self
+            .inner
+            .write()
+            .map_err(|e| DraftError::Io(e.to_string()))?;
+        let stored = guard
+            .get_mut(id)
+            .ok_or_else(|| DraftError::NotFound(id.to_string()))?;
+        stored.status = status;
+        Ok(stored.clone())
     }
 }
 
@@ -327,19 +406,34 @@ impl LlmProvider for InMemoryLlmProvider {
         } else {
             title
         };
-        Ok(MemoryDraft {
-            title,
-            content: user.into(),
-            tags: vec![],
-            backlinks: vec![],
-        })
+        Ok(MemoryDraft::new(title, user))
     }
 
     async fn chat(&self, messages: &[crate::llm::ChatMessage]) -> Result<String, LlmError> {
-        Ok(messages
+        let user = messages
             .last()
-            .map(|m| m.content.clone())
-            .unwrap_or_default())
+            .map(|m| m.content.as_str())
+            .unwrap_or_default();
+        if let Some((_, body)) = user.rsplit_once("## Texte à analyser\n") {
+            let draft = self.generate_memory_draft("", body).await?;
+            return serde_json::to_string(&draft).map_err(|e| LlmError::StructuredOutputInvalid {
+                provider: self.name().into(),
+                message: e.to_string(),
+            });
+        }
+        // Préprocesseur expand : renvoie le message original (simule un enrichissement neutre).
+        if let Some(rest) = user.strip_prefix("## Message original\n") {
+            if let Some((original, _)) = rest.split_once("\n\n## Ancrages Cortex\n") {
+                return Ok(original.to_string());
+            }
+        }
+        // Préprocesseur compress (map) : renvoie le segment tel quel.
+        if let Some(rest) = user.strip_prefix("## Segment ") {
+            if let Some((chunk, _)) = rest.split_once("\n\n") {
+                return Ok(chunk.to_string());
+            }
+        }
+        Ok(user.to_string())
     }
 }
 

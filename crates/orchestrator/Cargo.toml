@@ -17,6 +17,7 @@ plugins-native = ["dep:libloading"]
 skills-marketplace = ["dep:reqwest"]
 
 [dependencies]
+shared-types.workspace = true
 async-trait.workspace = true
 blake3.workspace = true
 chrono.workspace = true
@@ -34,13 +35,16 @@ tower-http = { workspace = true, optional = true }
 futures-util = { workspace = true, optional = true }
 reqwest = { workspace = true, optional = true }
 libloading = { workspace = true, optional = true }
+notify = { workspace = true }
 
 [dev-dependencies]
 infrastructure = { workspace = true }
 reqwest = { workspace = true }
 serde_json = "1"
 tempfile = "3"
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time", "net"] }
+tokio-tungstenite = { workspace = true }
+futures-util = { workspace = true }
 
 [[test]]
 name = "gateway_integration"
@@ -54,8 +58,9 @@ required-features = ["gateway"]
 name = "daemon_integration"
 required-features = ["websocket-server"]
 
-[lints.rust]
-unsafe_code = "forbid"
+[[test]]
+name = "daemon_ws_live"
+required-features = ["websocket-server"]
 
 [lints.clippy]
 unwrap_used = "deny"

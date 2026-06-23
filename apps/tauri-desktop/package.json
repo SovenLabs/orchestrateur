@@ -1,0 +1,44 @@
+{
+  "name": "orchestrateur-desktop",
+  "private": true,
+  "version": "1.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "tauri": "tauri",
+    "export-types": "cargo run -p shared-types --bin export-ts",
+    "cosmic:export-gif": "powershell -ExecutionPolicy Bypass -File ../../scripts/cosmic-export-gif.ps1",
+    "cosmic:gen-tables": "node scripts/generate-bh-tables.mjs",
+    "test:visual": "playwright test",
+    "test:visual:install": "playwright install chromium"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/plugin-shell": "^2.3.0",
+    "three": "^0.172.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "@tailwindcss/vite": "^4.1.8",
+    "@tauri-apps/cli": "^2.11.0",
+    "@tsconfig/svelte": "^5.0.4",
+    "@types/pngjs": "^6.0.5",
+    "@types/three": "^0.172.0",
+    "autoprefixer": "^10.4.21",
+    "pixelmatch": "^7.2.0",
+    "pngjs": "^7.0.0",
+    "postcss": "^8.5.3",
+    "svelte": "^5.28.0",
+    "svelte-check": "^4.2.0",
+    "tailwindcss": "^4.1.8",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,45 @@
+[gd_scene load_steps=7 format=3 uid="uid://sphere_dedicated_p24"]
+
+[ext_resource type="PackedScene" uid="uid://ai_neural_brain_sphere" path="res://scenes/ai_neural_brain/AINeuralBrainSphere.tscn" id="1_brain"]
+[ext_resource type="Script" path="res://scripts/sphere_dedicated_scene.gd" id="2_root"]
+[ext_resource type="Script" path="res://scripts/daemon_client.gd" id="3_daemon"]
+[ext_resource type="Script" path="res://scripts/ai_neural_brain/neural_brain_camera.gd" id="4_cam"]
+[ext_resource type="Script" path="res://scripts/ai_neural_brain/sphere_performance.gd" id="5_perf"]
+[ext_resource type="Script" path="res://scripts/ai_neural_brain/ai_neural_brain_bridge.gd" id="6_bridge"]
+
+[node name="SphereDedicated" type="Node3D"]
+script = ExtResource("2_root")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 2, 4, 2)
+light_energy = 0.4
+
+[node name="AINeuralBrainSphere" parent="." instance=ExtResource("1_brain")]
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.94, 0.342, 0, -0.342, 0.94, 0, 0.5, 9.5)
+script = ExtResource("4_cam")
+target_path = NodePath("../AINeuralBrainSphere")
+
+[node name="NeuralBrainBridge" type="Node" parent="."]
+script = ExtResource("6_bridge")
+brain_path = NodePath("../AINeuralBrainSphere")
+
+[node name="SpherePerformance" type="Node" parent="."]
+script = ExtResource("5_perf")
+brain_path = NodePath("../AINeuralBrainSphere")
+
+[node name="DaemonClient" type="Node" parent="."]
+script = ExtResource("3_daemon")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="FpsLabel" type="Label" parent="UI"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 280.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0, 0.866667, 1, 1)
+text = "Sphère — 60 FPS"

@@ -1,0 +1,27 @@
+[package]
+name = "orchestrateur-desktop"
+version = "0.27.0"
+description = "Orchestrateur v2 — Desktop Tauri (Territoire Graphique)"
+authors = ["Sovën"]
+edition = "2021"
+rust-version = "1.80"
+
+[lib]
+name = "orchestrateur_desktop_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+orchestrator-core.workspace = true
+shared-types.workspace = true
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+
+[lints.rust]
+unsafe_code = "forbid"

@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{Backlink, BacklinkKind, CortexError, Memory, MemoryId, Tag};
+use super::{Backlink, BacklinkKind, CortexError, Memory, MemoryId, MemoryKind, Tag};
 
 /// Candidat de backlink tel que renvoyé par un LLM (avant validation domaine).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -43,9 +43,32 @@ pub struct MemoryDraft {
     /// Backlinks candidats issus du LLM.
     #[serde(default)]
     pub backlinks: Vec<BacklinkDraft>,
+    /// Type sémantique du brouillon.
+    #[serde(default)]
+    pub kind: MemoryKind,
+    /// Champs structurés optionnels selon le kind.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub structured: Option<serde_json::Value>,
+    /// Fichiers sources ayant motivé le brouillon (chemins relatifs workspace).
+    #[serde(default)]
+    pub source_files: Vec<String>,
 }
 
 impl MemoryDraft {
+    /// Crée un brouillon minimal avec kind `context` par défaut.
+    #[must_use]
+    pub fn new(title: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            title: title.into(),
+            content: content.into(),
+            tags: Vec::new(),
+            backlinks: Vec::new(),
+            kind: MemoryKind::default(),
+            structured: None,
+            source_files: Vec::new(),
+        }
+    }
+
     /// Valide structurellement et matérialise une entité domaine [`Memory`].
     ///
     /// N'effectue **pas** la validation adversariale — appeler
@@ -62,6 +85,8 @@ impl MemoryDraft {
             .collect::<Result<_, _>>()?;
 
         let mut memory = Memory::new(self.title, self.content)?;
+        memory.kind = self.kind;
+        memory.structured = self.structured;
         for tag in tags {
             memory.add_tag(tag);
         }
@@ -95,16 +120,14 @@ mod tests {
     #[test]
     fn draft_converts_to_valid_memory() {
         let id = MemoryId::new();
-        let draft = MemoryDraft {
-            title: "Décision architecture".into(),
-            content: "Contenu du souvenir.".into(),
-            tags: vec!["architecture".into(), "rust".into()],
-            backlinks: vec![BacklinkDraft {
-                target: id.to_string(),
-                score: 0.87,
-                kind: BacklinkDraftKind::Semantic,
-            }],
-        };
+        let mut draft = MemoryDraft::new("Décision architecture", "Contenu du souvenir.");
+        draft.tags = vec!["architecture".into(), "rust".into()];
+        draft.kind = MemoryKind::Decision;
+        draft.backlinks = vec![BacklinkDraft {
+            target: id.to_string(),
+            score: 0.87,
+            kind: BacklinkDraftKind::Semantic,
+        }];
 
         let memory = draft.into_memory().unwrap();
         assert_eq!(memory.title, "Décision architecture");
@@ -114,23 +137,15 @@ mod tests {
 
     #[test]
     fn rejects_invalid_tag_in_draft() {
-        let draft = MemoryDraft {
-            title: "T".into(),
-            content: "C".into(),
-            tags: vec!["bad tag".into()],
-            backlinks: vec![],
-        };
+        let mut draft = MemoryDraft::new("T", "C");
+        draft.tags = vec!["bad tag".into()];
         assert!(draft.into_memory().is_err());
     }
 
     #[test]
     fn serde_roundtrip_draft() {
-        let draft = MemoryDraft {
-            title: "T".into(),
-            content: "C".into(),
-            tags: vec!["rust".into()],
-            backlinks: vec![],
-        };
+        let mut draft = MemoryDraft::new("T", "C");
+        draft.tags = vec!["rust".into()];
         let json = serde_json::to_string(&draft).unwrap();
         let parsed: MemoryDraft = serde_json::from_str(&json).unwrap();
         assert_eq!(draft, parsed);

@@ -8,6 +8,7 @@ description = "Orchestrateur — Adapters (FS, LanceDB, Ollama, Grok)"
 
 [dependencies]
 async-trait.workspace = true
+chrono.workspace = true
 arrow-array.workspace = true
 arrow-schema.workspace = true
 cortex.workspace = true

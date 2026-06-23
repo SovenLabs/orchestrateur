@@ -3,6 +3,7 @@ use std::sync::Arc;
 use cortex::{EmbeddingProvider, MemoryRepository, SessionRepository, VectorStore};
 
 use crate::config::OrchestratorConfig;
+use crate::draft::DraftRepository;
 use crate::events::{EventPublisher, TracingEventPublisher};
 use crate::llm::LlmProvider;
 use crate::mcp::McpGateway;
@@ -21,6 +22,8 @@ pub struct AppDependencies {
     pub llm: Arc<dyn LlmProvider>,
     /// Sessions de conversation agent (Phase 7).
     pub session_repo: Arc<dyn SessionRepository>,
+    /// File de brouillons insight en attente de revue.
+    pub draft_repo: Arc<dyn DraftRepository>,
     /// Configuration applicative.
     pub config: OrchestratorConfig,
     /// Publication des événements de domaine.
@@ -40,6 +43,7 @@ impl AppDependencies {
         embedding: Arc<dyn EmbeddingProvider>,
         llm: Arc<dyn LlmProvider>,
         session_repo: Arc<dyn SessionRepository>,
+        draft_repo: Arc<dyn DraftRepository>,
         config: OrchestratorConfig,
         security: Arc<SecurityContext>,
         mcp: Option<Arc<dyn McpGateway>>,
@@ -50,6 +54,7 @@ impl AppDependencies {
             embedding,
             llm,
             session_repo,
+            draft_repo,
             config,
             Arc::new(TracingEventPublisher),
             security,
@@ -65,6 +70,7 @@ impl AppDependencies {
         embedding: Arc<dyn EmbeddingProvider>,
         llm: Arc<dyn LlmProvider>,
         session_repo: Arc<dyn SessionRepository>,
+        draft_repo: Arc<dyn DraftRepository>,
         config: OrchestratorConfig,
         events: Arc<dyn EventPublisher>,
         security: Arc<SecurityContext>,
@@ -76,6 +82,7 @@ impl AppDependencies {
             embedding,
             llm,
             session_repo,
+            draft_repo,
             config,
             events,
             security,
@@ -91,6 +98,7 @@ impl AppDependencies {
         embedding: Arc<dyn EmbeddingProvider>,
         llm: Arc<dyn LlmProvider>,
         session_repo: Arc<dyn SessionRepository>,
+        draft_repo: Arc<dyn DraftRepository>,
         config: OrchestratorConfig,
         events: Arc<dyn EventPublisher>,
     ) -> Self {
@@ -101,6 +109,7 @@ impl AppDependencies {
             embedding,
             llm,
             session_repo,
+            draft_repo,
             config,
             events,
             security,

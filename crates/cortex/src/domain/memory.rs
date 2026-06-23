@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use super::{deduplicate, Backlink, CortexError, MemoryId, Tag};
+use super::{deduplicate, Backlink, CortexError, MemoryId, MemoryKind, Tag};
 
 /// Entité centrale : un souvenir persistant en Markdown.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -20,6 +20,12 @@ pub struct Memory {
     pub updated_at: DateTime<Utc>,
     /// Liens sortants vers d'autres mémoires.
     pub backlinks: Vec<Backlink>,
+    /// Type sémantique du souvenir.
+    #[serde(default)]
+    pub kind: MemoryKind,
+    /// Champs structurés optionnels selon le kind (JSON libre).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub structured: Option<serde_json::Value>,
 }
 
 impl Memory {
@@ -46,6 +52,8 @@ impl Memory {
             created_at: now,
             updated_at: now,
             backlinks: Vec::new(),
+            kind: MemoryKind::Context,
+            structured: None,
         })
     }
 
@@ -62,6 +70,8 @@ impl Memory {
         created_at: DateTime<Utc>,
         updated_at: DateTime<Utc>,
         backlinks: Vec<Backlink>,
+        kind: MemoryKind,
+        structured: Option<serde_json::Value>,
     ) -> Result<Self, CortexError> {
         let title = title.into().trim().to_string();
         let content = content.into().trim().to_string();
@@ -79,6 +89,8 @@ impl Memory {
             created_at,
             updated_at,
             backlinks,
+            kind,
+            structured,
         })
     }
 

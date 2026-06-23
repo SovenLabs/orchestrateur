@@ -3,9 +3,9 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde_json::Value;
 
-use crate::skills::marketplace::suggest_skills;
+use crate::skills::suggest_skills;
 use crate::skills::SkillRegistry;
-use crate::tool::{Tool, ToolContext, ToolError, ToolResult};
+use super::tool::{Tool, ToolContext, ToolError, ToolResult};
 
 /// Suggère des skills pertinentes pour une requête utilisateur (Phase 13).
 pub struct SkillSuggestTool {

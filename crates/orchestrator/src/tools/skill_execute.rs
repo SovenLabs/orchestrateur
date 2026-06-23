@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::skills::{SkillContext, SkillRegistry};
-use crate::tool::{Tool, ToolContext, ToolError, ToolResult};
+use super::tool::{Tool, ToolContext, ToolError, ToolResult};
 
 /// Exécute une skill par identifiant (agentic Phase 12).
 pub struct SkillExecuteTool {

@@ -10,7 +10,7 @@ use crate::deps::AppDependencies;
 use crate::error::SkillError;
 use crate::facade::OrchestratorFacade;
 use crate::health::probe_services;
-use crate::skills::marketplace::SkillsMarketplace;
+use crate::skills::SkillsMarketplace;
 use crate::skills::SkillContext;
 use crate::VERSION;
 
@@ -171,6 +171,118 @@ pub async fn execute_command(facade: &OrchestratorFacade, cmd: Command) -> Respo
         }
         Command::SkillsMarketplaceList => execute_marketplace_list(facade).await,
         Command::SkillsHubVerify => execute_hub_verify(facade),
+        Command::WatcherStatus => execute_watcher_status(facade).await,
+        Command::WatcherStart => execute_watcher_start(facade),
+        Command::WatcherStop => execute_watcher_stop(),
+        Command::ListDrafts => execute_list_drafts(facade).await,
+        Command::GetDraft { id } => execute_get_draft(facade, &id).await,
+        Command::PublishDraft { id } => execute_publish_draft(facade, &id).await,
+        Command::DiscardDraft { id } => execute_discard_draft(facade, &id).await,
+    }
+}
+
+async fn execute_get_draft(facade: &OrchestratorFacade, id: &str) -> Response {
+    match facade.get_draft(id).await {
+        Ok(draft) => Response::DraftDetail { draft },
+        Err(err) => Response::Error(AppError::from_orchestrator(&err)),
+    }
+}
+
+async fn execute_watcher_status(facade: &OrchestratorFacade) -> Response {
+    if let Some(handle) = crate::watcher::global_handle() {
+        let status = handle.status().await;
+        return Response::WatcherStatus { status };
+    }
+    use crate::draft::DraftStatus;
+
+    let drafts_pending = facade
+        .deps()
+        .draft_repo
+        .list(Some(DraftStatus::Pending))
+        .await
+        .map(|d| d.len())
+        .unwrap_or(0);
+    let cfg = &facade.deps().config.watcher;
+    Response::WatcherStatus {
+        status: super::types::WatcherStatus {
+            enabled: cfg.enabled,
+            running: false,
+            watch_dirs: cfg
+                .watch_dirs
+                .iter()
+                .map(|d| facade.deps().config.workspace_root.join(d).display().to_string())
+                .collect(),
+            sessions_processed: 0,
+            drafts_created: 0,
+            drafts_pending,
+            last_activity_at: None,
+            last_error: None,
+        },
+    }
+}
+
+fn execute_watcher_start(facade: &OrchestratorFacade) -> Response {
+    if !facade.deps().config.watcher.enabled {
+        return Response::Error(AppError {
+            kind: "watcher".into(),
+            message: "watcher désactivé — activez [watcher] enabled = true".into(),
+        });
+    }
+    if crate::watcher::global_handle().is_some() {
+        return Response::Success {
+            message: "watcher déjà actif".into(),
+        };
+    }
+    let handle = std::sync::Arc::new(crate::watcher::SessionWatcherHandle::new(
+        std::sync::Arc::new(OrchestratorFacade::new(facade.deps().clone())),
+        None::<crate::watcher::DraftReadyCallback>,
+        &facade.deps().config,
+    ));
+    crate::watcher::install_global(std::sync::Arc::clone(&handle));
+    handle.spawn();
+    Response::Success {
+        message: "watcher démarré".into(),
+    }
+}
+
+fn execute_watcher_stop() -> Response {
+    if let Some(handle) = crate::watcher::global_handle() {
+        handle.stop();
+        Response::Success {
+            message: "watcher arrêté".into(),
+        }
+    } else {
+        Response::Success {
+            message: "watcher inactif".into(),
+        }
+    }
+}
+
+async fn execute_list_drafts(facade: &OrchestratorFacade) -> Response {
+    match facade.list_drafts().await {
+        Ok(items) => {
+            let total = items.len();
+            Response::DraftList { items, total }
+        }
+        Err(err) => Response::Error(AppError::from_orchestrator(&err)),
+    }
+}
+
+async fn execute_publish_draft(facade: &OrchestratorFacade, id: &str) -> Response {
+    match facade.publish_draft(id).await {
+        Ok((draft_id, (memory, _events))) => Response::DraftPublished {
+            draft_id,
+            memory_id: memory.id,
+            title: memory.title,
+        },
+        Err(err) => Response::Error(AppError::from_orchestrator(&err)),
+    }
+}
+
+async fn execute_discard_draft(facade: &OrchestratorFacade, id: &str) -> Response {
+    match facade.discard_draft(id).await {
+        Ok(()) => Response::DraftDiscarded { id: id.to_string() },
+        Err(err) => Response::Error(AppError::from_orchestrator(&err)),
     }
 }
 
@@ -197,8 +309,7 @@ async fn execute_assimilate(
     text: &str,
     tags: &[String],
 ) -> Response {
-    let prompt = format_assimilate_user_prompt(text, tags);
-    match facade.assimilate(&prompt, None).await {
+    match facade.assimilate(text, tags, None).await {
         Ok((memory, _events)) => Response::Assimilated {
             memory_id: memory.id,
             title: memory.title,
@@ -439,7 +550,7 @@ mod tests {
 
     #[tokio::test]
     async fn dispatch_marketplace_list_reads_catalog() {
-        use crate::skills::marketplace::{MarketplaceCatalog, MarketplaceEntry};
+        use crate::skills::{MarketplaceCatalog, MarketplaceEntry};
 
         let dir = tempfile::tempdir().unwrap();
         let catalog = MarketplaceCatalog {
@@ -500,6 +611,88 @@ mod tests {
             Response::ChatReply { reply, .. } => assert!(!reply.is_empty()),
             other => panic!("réponse inattendue: {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn dispatch_draft_lifecycle() {
+        use cortex::MemoryDraft;
+        use crate::draft::DraftStatus;
+
+        let facade = OrchestratorFacade::new(MockBundle::new().into_deps());
+        let stored = facade
+            .store_draft(
+                MemoryDraft::new("Brouillon bridge", "Contenu test."),
+                Some("sessions/demo.md".into()),
+            )
+            .await
+            .unwrap();
+
+        let list = execute_command(&facade, Command::ListDrafts).await;
+        match list {
+            Response::DraftList { items, total } => {
+                assert_eq!(total, 1);
+                assert_eq!(items[0].id, stored.id);
+                assert_eq!(items[0].status, DraftStatus::Pending);
+            }
+            other => panic!("réponse inattendue: {other:?}"),
+        }
+
+        let detail = execute_command(
+            &facade,
+            Command::GetDraft {
+                id: stored.id.clone(),
+            },
+        )
+        .await;
+        match detail {
+            Response::DraftDetail { draft } => {
+                assert_eq!(draft.id, stored.id);
+                assert_eq!(draft.draft.title, "Brouillon bridge");
+            }
+            other => panic!("réponse inattendue: {other:?}"),
+        }
+
+        let published = execute_command(
+            &facade,
+            Command::PublishDraft {
+                id: stored.id.clone(),
+            },
+        )
+        .await;
+        match published {
+            Response::DraftPublished {
+                draft_id,
+                memory_id: _,
+                title,
+            } => {
+                assert_eq!(draft_id, stored.id);
+                assert_eq!(title, "Brouillon bridge");
+            }
+            other => panic!("réponse inattendue: {other:?}"),
+        }
+
+        let after = facade.get_draft(&stored.id).await.unwrap();
+        assert_eq!(after.status, DraftStatus::Published);
+
+        let stored2 = facade
+            .store_draft(MemoryDraft::new("À rejeter", "x"), None)
+            .await
+            .unwrap();
+        let discarded = execute_command(
+            &facade,
+            Command::DiscardDraft {
+                id: stored2.id.clone(),
+            },
+        )
+        .await;
+        match discarded {
+            Response::DraftDiscarded { id } => assert_eq!(id, stored2.id),
+            other => panic!("réponse inattendue: {other:?}"),
+        }
+        assert_eq!(
+            facade.get_draft(&stored2.id).await.unwrap().status,
+            DraftStatus::Discarded
+        );
     }
 
     #[tokio::test]

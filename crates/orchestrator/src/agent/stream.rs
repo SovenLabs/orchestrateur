@@ -27,6 +27,27 @@ pub enum AgentStreamEvent {
         /// Outils invoqués pendant le tour.
         tools_invoked: Vec<String>,
     },
+    /// Message enrichi avant construction du contexte (PR-6).
+    MessageExpanded {
+        /// Taille du message original (caractères).
+        original_chars: usize,
+        /// Taille du message enrichi (caractères).
+        expanded_chars: usize,
+    },
+    /// Message compressé avant construction du contexte (PR-6).
+    MessageCompressed {
+        /// Taille du message original (caractères).
+        original_chars: usize,
+        /// Taille du digest compressé (caractères).
+        compressed_chars: usize,
+    },
+    /// Progression du prétraitement (PR-6).
+    PreprocessProgress {
+        /// Étape en cours (`expand_start`, `memory_search`, `compress_chunk`, …).
+        stage: String,
+        /// Détail lisible (ex. `2/5` segments).
+        detail: String,
+    },
 }
 
 /// Sink optionnel pour les événements de streaming agent.

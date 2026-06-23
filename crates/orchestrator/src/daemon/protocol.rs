@@ -2,40 +2,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::bridge::{Command, Response};
+use shared_types::PROTOCOL_VERSION;
 
-/// Métadonnées fenêtre Godot — handshake `connect`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
-pub struct ClientInfo {
-    /// `main` ou `extension`.
-    #[serde(default = "default_window_kind")]
-    pub window_kind: String,
-    /// Identifiant stable côté client (optionnel).
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub window_id: Option<String>,
-    /// Panneaux affichés (`chat`, `memory`, `graph`, `monitoring`).
-    #[serde(default)]
-    pub panels: Vec<String>,
-    /// Topics broadcast explicites (fusionnés avec les défauts).
-    #[serde(default)]
-    pub subscriptions: Vec<String>,
+pub use shared_types::protocol::{ClientInfo, TerritoryBroadcast};
+
+fn default_protocol_version() -> String {
+    PROTOCOL_VERSION.to_string()
 }
 
-fn default_window_kind() -> String {
-    "main".to_string()
-}
-
-/// Événement territorial diffusé à plusieurs clients WS.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct TerritoryBroadcast {
-    /// Nom de l'événement (`memories_changed`, `graph_changed`, `brain_pulse`, `chat_reply`, …).
-    pub event: String,
-    /// Session source ayant déclenché l'événement.
-    pub source_session_id: String,
-    /// Charge utile JSON libre.
-    pub payload: Value,
-}
-
-/// Message client → daemon (WebSocket JSON).
+/// Message client → daemon (WebSocket JSON) — variante typée bridge.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum DaemonClientMessage {
@@ -43,6 +18,9 @@ pub enum DaemonClientMessage {
     Connect {
         /// Token (variable d'environnement configurée dans `orchestrator.toml`).
         token: String,
+        /// Version protocole client.
+        #[serde(default = "default_protocol_version")]
+        protocol_version: String,
         /// Métadonnées fenêtre Territoire Graphique (Phase 18).
         #[serde(default)]
         client: ClientInfo,
@@ -61,7 +39,7 @@ pub enum DaemonClientMessage {
     },
 }
 
-/// Message daemon → client (WebSocket JSON).
+/// Message daemon → client (WebSocket JSON) — variante typée bridge.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum DaemonServerMessage {
@@ -69,6 +47,9 @@ pub enum DaemonServerMessage {
     ConnectOk {
         /// Version orchestrateur.
         version: String,
+        /// Version protocole WS négociée.
+        #[serde(default = "default_protocol_version")]
+        protocol_version: String,
         /// Identifiant de session de ce client WS.
         session_id: String,
         /// Identifiant de territoire partagé (toutes les fenêtres Godot).
@@ -105,4 +86,110 @@ pub enum DaemonServerMessage {
         /// Message d'erreur lisible.
         message: String,
     },
+}
+
+impl From<DaemonClientMessage> for shared_types::DaemonClientMessage {
+    fn from(value: DaemonClientMessage) -> Self {
+        match value {
+            DaemonClientMessage::Connect {
+                token,
+                protocol_version,
+                client,
+            } => Self::Connect {
+                token,
+                protocol_version,
+                client,
+            },
+            DaemonClientMessage::Execute {
+                request_id,
+                command,
+            } => {
+                let command = match serde_json::to_value(command) {
+                    Ok(value) => value,
+                    Err(_) => Value::Null,
+                };
+                Self::Execute {
+                    request_id,
+                    command,
+                }
+            }
+            DaemonClientMessage::Ping { nonce } => Self::Ping { nonce },
+        }
+    }
+}
+
+impl TryFrom<shared_types::DaemonClientMessage> for DaemonClientMessage {
+    type Error = serde_json::Error;
+
+    fn try_from(value: shared_types::DaemonClientMessage) -> Result<Self, Self::Error> {
+        Ok(match value {
+            shared_types::DaemonClientMessage::Connect {
+                token,
+                protocol_version,
+                client,
+            } => Self::Connect {
+                token,
+                protocol_version,
+                client,
+            },
+            shared_types::DaemonClientMessage::Execute {
+                request_id,
+                command,
+            } => Self::Execute {
+                request_id,
+                command: serde_json::from_value(command)?,
+            },
+            shared_types::DaemonClientMessage::Ping { nonce } => Self::Ping { nonce },
+        })
+    }
+}
+
+impl From<DaemonServerMessage> for shared_types::DaemonServerMessage {
+    fn from(value: DaemonServerMessage) -> Self {
+        match value {
+            DaemonServerMessage::ConnectOk {
+                version,
+                protocol_version,
+                session_id,
+                territory_session_id,
+            } => Self::ConnectOk {
+                version,
+                protocol_version,
+                session_id,
+                territory_session_id,
+            },
+            DaemonServerMessage::Result {
+                request_id,
+                response,
+            } => {
+                let response = match serde_json::to_value(response) {
+                    Ok(value) => value,
+                    Err(_) => Value::Null,
+                };
+                Self::Result {
+                    request_id,
+                    response,
+                }
+            }
+            DaemonServerMessage::Broadcast {
+                territory_session_id,
+                event,
+                source_session_id,
+                payload,
+            } => Self::Broadcast {
+                territory_session_id,
+                event,
+                source_session_id,
+                payload,
+            },
+            DaemonServerMessage::Pong { nonce } => Self::Pong { nonce },
+            DaemonServerMessage::Error {
+                request_id,
+                message,
+            } => Self::Error {
+                request_id,
+                message,
+            },
+        }
+    }
 }

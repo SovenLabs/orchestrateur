@@ -33,6 +33,11 @@ func update_mapper_activity(level: float) -> void:
 		_mapper.text = "Niveau mapper : %.2f / 3" % clampf(level, 0.0, 3.0)
 
 
+func update_sphere_fps(fps: float, tier: String) -> void:
+	if _mapper:
+		_mapper.text = "Sphère : %.0f FPS · qualité %s" % [fps, tier]
+
+
 func update_latency(rtt_ms: float) -> void:
 	if not _latency:
 		return

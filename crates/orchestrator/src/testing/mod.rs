@@ -12,8 +12,8 @@ pub use hardcore_helpers::{
     percentile_ms, test_memories, test_memory,
 };
 pub use mocks::{
-    InMemoryEmbeddingProvider, InMemoryLlmProvider, InMemoryMemoryRepository, InMemoryVectorStore,
-    MockBundle,
+    InMemoryDraftRepository, InMemoryEmbeddingProvider, InMemoryLlmProvider,
+    InMemoryMemoryRepository, InMemoryVectorStore, MockBundle,
 };
 pub use session_mock::InMemorySessionRepository;
 pub use scripted_providers::{

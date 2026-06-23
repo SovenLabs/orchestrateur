@@ -2,33 +2,66 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 use cortex::DomainEvent;
+use serde::Serialize;
 use serde_json::{json, Value};
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use crate::bridge::{Command, Response};
 
+use super::metrics::DaemonMetrics;
 use super::protocol::{DaemonServerMessage, TerritoryBroadcast};
 
-/// Type de fenêtre Territoire Graphique (Godot).
+/// Type de fenêtre Territoire Graphique (Godot) ou desktop Tauri.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WindowKind {
-    /// Fenêtre principale — seule autorisée pour actions critiques + Boule.
+    /// Fenêtre principale Godot — seule autorisée pour actions critiques + Boule intégrée.
     Main,
     /// Extension du territoire — panneau(s) détaché(s), pas de Boule.
     Extension,
+    /// Interface Tauri (commandement J.A.R.V.I.S.).
+    Desktop,
+    /// Fenêtre Godot dédiée — Boule de Pixels Vivante standalone (Phase 25).
+    Sphere,
 }
 
 impl WindowKind {
     /// Parse le champ `window_kind` du handshake client.
     #[must_use]
     pub fn parse(raw: &str) -> Self {
-        if raw.eq_ignore_ascii_case("extension") {
-            Self::Extension
-        } else {
-            Self::Main
+        match raw.to_ascii_lowercase().as_str() {
+            "extension" => Self::Extension,
+            "desktop" => Self::Desktop,
+            "sphere" => Self::Sphere,
+            _ => Self::Main,
         }
     }
+
+    /// Libellé wire protocol (`connect.client.window_kind`).
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Main => "main",
+            Self::Extension => "extension",
+            Self::Desktop => "desktop",
+            Self::Sphere => "sphere",
+        }
+    }
+}
+
+/// Répartition des clients WS connectés par type de fenêtre.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ConnectedWindows {
+    /// Fenêtre principale Godot.
+    pub main: usize,
+    /// Extensions Godot détachées.
+    pub extension: usize,
+    /// Desktop Tauri.
+    pub desktop: usize,
+    /// Sphère Godot standalone.
+    pub sphere: usize,
+    /// Total clients authentifiés.
+    pub total: usize,
 }
 
 /// Client WebSocket enregistré dans le hub territorial.
@@ -44,19 +77,27 @@ pub struct ClientSession {
 }
 
 /// Hub central — fan-out broadcast vers les clients WS (source unique de vérité).
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TerritoryHub {
     territory_session_id: Arc<String>,
     clients: Arc<Mutex<HashMap<String, ClientSession>>>,
+    metrics: Option<Arc<DaemonMetrics>>,
 }
 
 impl TerritoryHub {
     /// Crée un hub avec un identifiant de territoire stable pour la durée du daemon.
     #[must_use]
     pub fn new() -> Self {
+        Self::with_metrics(None)
+    }
+
+    /// Crée un hub avec métriques daemon optionnelles.
+    #[must_use]
+    pub fn with_metrics(metrics: Option<Arc<DaemonMetrics>>) -> Self {
         Self {
             territory_session_id: Arc::new(Uuid::now_v7().to_string()),
             clients: Arc::new(Mutex::new(HashMap::new())),
+            metrics,
         }
     }
 
@@ -89,6 +130,36 @@ impl TerritoryHub {
             .unwrap_or(0)
     }
 
+    /// Compte les clients connectés par `window_kind` (multi-fenêtrage Phase 25).
+    #[must_use]
+    pub fn connected_windows(&self) -> ConnectedWindows {
+        let Ok(guard) = self.clients.lock() else {
+            return ConnectedWindows {
+                main: 0,
+                extension: 0,
+                desktop: 0,
+                sphere: 0,
+                total: 0,
+            };
+        };
+        let mut counts = ConnectedWindows {
+            main: 0,
+            extension: 0,
+            desktop: 0,
+            sphere: 0,
+            total: guard.len(),
+        };
+        for client in guard.values() {
+            match client.window_kind {
+                WindowKind::Main => counts.main += 1,
+                WindowKind::Extension => counts.extension += 1,
+                WindowKind::Desktop => counts.desktop += 1,
+                WindowKind::Sphere => counts.sphere += 1,
+            }
+        }
+        counts
+    }
+
     /// Diffuse un événement aux clients abonnés, en excluant optionnellement l'émetteur.
     pub fn broadcast(&self, event: TerritoryBroadcast, exclude_session: Option<&str>) {
         let Ok(guard) = self.clients.lock() else {
@@ -103,32 +174,29 @@ impl TerritoryHub {
             {
                 continue;
             }
-            if Self::is_brain_only(&event.event) && client.window_kind != WindowKind::Main {
-                continue;
+            if client
+                .outbound
+                .send(DaemonServerMessage::Broadcast {
+                    territory_session_id: self.territory_session_id(),
+                    event: event.event.clone(),
+                    source_session_id: event.source_session_id.clone(),
+                    payload: event.payload.clone(),
+                })
+                .is_ok()
+            {
+                if let Some(metrics) = &self.metrics {
+                    metrics.inc_sent();
+                }
             }
-            let _ = client.outbound.send(DaemonServerMessage::Broadcast {
-                territory_session_id: self.territory_session_id(),
-                event: event.event.clone(),
-                source_session_id: event.source_session_id.clone(),
-                payload: event.payload.clone(),
-            });
+        }
+        if let Some(metrics) = &self.metrics {
+            metrics.inc_broadcast();
         }
     }
 
     /// Diffuse à tous les clients (événements domaine Cortex).
     pub fn broadcast_all(&self, event: TerritoryBroadcast) {
         self.broadcast(event, None);
-    }
-
-    fn is_brain_only(event: &str) -> bool {
-        matches!(
-            event,
-            "brain_pulse"
-                | "memory_assimilated"
-                | "tool_call"
-                | "vector_search"
-                | "system_error"
-        )
     }
 
     /// Mappe un [`DomainEvent`] Cortex vers des broadcasts territoriaux.
@@ -181,6 +249,53 @@ impl TerritoryHub {
     ) -> Vec<TerritoryBroadcast> {
         let mut events = Vec::new();
         match response {
+            Response::DraftPublished {
+                draft_id,
+                memory_id,
+                title,
+            } => {
+                events.push(TerritoryBroadcast {
+                    event: "draft_published".into(),
+                    source_session_id: source_session_id.into(),
+                    payload: json!({
+                        "draft_id": draft_id,
+                        "memory_id": memory_id.to_string(),
+                        "title": title,
+                    }),
+                });
+                events.push(TerritoryBroadcast {
+                    event: "memory_assimilated".into(),
+                    source_session_id: source_session_id.into(),
+                    payload: json!({
+                        "memory_id": memory_id.to_string(),
+                        "title": title,
+                    }),
+                });
+                events.push(TerritoryBroadcast {
+                    event: "memories_changed".into(),
+                    source_session_id: source_session_id.into(),
+                    payload: json!({}),
+                });
+                events.push(TerritoryBroadcast {
+                    event: "graph_changed".into(),
+                    source_session_id: source_session_id.into(),
+                    payload: json!({}),
+                });
+                events.push(TerritoryBroadcast {
+                    event: "brain_pulse".into(),
+                    source_session_id: source_session_id.into(),
+                    payload: json!({"boost": 0.75, "duration": 0.85, "kind": "draft_publish"}),
+                });
+            }
+            Response::DraftDiscarded { id } => {
+                events.push(TerritoryBroadcast {
+                    event: "draft_discarded".into(),
+                    source_session_id: source_session_id.into(),
+                    payload: json!({
+                        "draft_id": id,
+                    }),
+                });
+            }
             Response::Assimilated { memory_id, title } => {
                 events.push(TerritoryBroadcast {
                     event: "memory_assimilated".into(),
@@ -326,8 +441,21 @@ pub fn default_subscriptions(kind: WindowKind, panels: &[String]) -> HashSet<Str
     subs.insert("activity".into());
 
     match kind {
-        WindowKind::Main => {
+        WindowKind::Main | WindowKind::Sphere => {
             subs.insert("visual".into());
+            subs.insert("memories".into());
+            subs.insert("graph".into());
+            subs.insert("chat".into());
+            subs.insert("brain_pulse".into());
+            subs.insert("memory_assimilated".into());
+            subs.insert("tool_call".into());
+            subs.insert("vector_search".into());
+            subs.insert("thought_propagation".into());
+            subs.insert("neuron_stimulated".into());
+            subs.insert("system_error".into());
+            subs.insert("degraded_mode".into());
+        }
+        WindowKind::Desktop => {
             subs.insert("memories".into());
             subs.insert("graph".into());
             subs.insert("chat".into());
@@ -406,6 +534,22 @@ mod tests {
         assert!(subs.contains("graph"));
         assert!(subs.contains("memories"));
         assert!(!subs.contains("brain_pulse"));
+    }
+
+    #[test]
+    fn desktop_parses_and_subscribes_brain_pulse() {
+        assert_eq!(WindowKind::parse("desktop"), WindowKind::Desktop);
+        let subs = default_subscriptions(WindowKind::Desktop, &["dashboard".to_string()]);
+        assert!(subs.contains("brain_pulse"));
+        assert!(subs.contains("memories"));
+    }
+
+    #[test]
+    fn sphere_matches_main_visual_subscriptions() {
+        assert_eq!(WindowKind::parse("sphere"), WindowKind::Sphere);
+        let subs = default_subscriptions(WindowKind::Sphere, &["sphere".to_string()]);
+        assert!(subs.contains("brain_pulse"));
+        assert!(subs.contains("thought_propagation"));
     }
 
     #[test]

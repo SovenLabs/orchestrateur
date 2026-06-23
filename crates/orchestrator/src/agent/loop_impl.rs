@@ -2,17 +2,18 @@ use std::sync::Arc;
 
 use cortex::{ConversationTurn, SessionKey, TurnRole};
 use crate::deps::AppDependencies;
-use crate::skills::marketplace::best_skill_match;
+use crate::skills::best_skill_match;
 use crate::skills::{SkillContext, SkillRegistry};
 use crate::llm::ChatMessage;
 use crate::tools::{ToolContext, ToolRegistry};
 use tracing::{debug, info};
 
 use super::config::AgentConfig;
+use super::message_preprocessor::MessagePreprocessor;
 use super::stream::{AgentStreamEvent, AgentStreamSink};
 use super::context::{base_system_prompt, build_context, format_tool_definitions};
-use crate::error::AgentError;
-use crate::tool_parse::{extract_tool_call, has_tool_call};
+use super::tool_parse::{extract_tool_call, has_tool_call};
+use super::AgentError;
 
 /// Requête d'un tour agent.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -110,17 +111,22 @@ impl AgentLoop {
             )
             .await?;
 
+        let preprocessed = MessagePreprocessor::new(&self.deps, &self.tools, &self.config)
+            .preprocess(&user_message, &stream)
+            .await?;
+        let effective_message = preprocessed.effective_message;
+
         let built = build_context(
             &self.deps,
             &self.tools,
             &self.config,
-            &user_message,
+            &effective_message,
             self.skills.as_deref(),
         )
         .await?;
 
         let (auto_executed_skills, auto_execute_section) =
-            try_auto_execute_skill(&self.config, self.skills.as_deref(), &user_message).await;
+            try_auto_execute_skill(&self.config, self.skills.as_deref(), &effective_message).await;
 
         let mut context_section = built.system_context;
         if !auto_execute_section.is_empty() {
@@ -157,6 +163,12 @@ impl AgentLoop {
                 role: role.into(),
                 content: turn.content.clone(),
             });
+        }
+
+        if effective_message != user_message {
+            if let Some(idx) = messages.iter().rposition(|m| m.role == "user") {
+                messages[idx].content = effective_message.clone();
+            }
         }
 
         let tool_ctx = ToolContext::new(self.deps.clone());
@@ -200,7 +212,7 @@ impl AgentLoop {
                         name: call.name.clone(),
                         success: false,
                     });
-                    return Err(err);
+                    return Err(err.into());
                 }
             };
 
@@ -313,7 +325,8 @@ async fn try_auto_execute_skill(
             (
                 Vec::new(),
                 format!(
-                    "## Skill auto-exécutée ({entry.name})\n(échec: {err})"
+                    "## Skill auto-exécutée ({})\n(échec: {err})",
+                    entry.name
                 ),
             )
         }
@@ -335,14 +348,21 @@ fn chunk_text(text: &str, chunk_size: usize) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::stream::{AgentStreamEvent, AgentStreamSink};
-    use cortex::Memory;
+    use crate::agent::{AgentStreamEvent, AgentStreamSink};
+    use cortex::{Memory, MemoryRepository};
     use crate::testing::MockBundle;
+
+    fn passthrough_agent_config() -> AgentConfig {
+        AgentConfig {
+            message_preprocess: false,
+            ..AgentConfig::default()
+        }
+    }
 
     #[tokio::test]
     async fn run_turn_simple_chat() {
         let deps = MockBundle::new().into_deps();
-        let agent = AgentLoop::new(deps, AgentConfig::default(), None);
+        let agent = AgentLoop::new(deps, passthrough_agent_config(), None);
         let result = agent
             .run_turn(AgentTurnRequest {
                 session_key: SessionKey::default_chat(),
@@ -357,7 +377,7 @@ mod tests {
     #[tokio::test]
     async fn run_turn_emits_stream_events() {
         let deps = MockBundle::new().into_deps();
-        let agent = AgentLoop::new(deps, AgentConfig::default(), None);
+        let agent = AgentLoop::new(deps, passthrough_agent_config(), None);
         let (tx, rx) = flume::unbounded();
         let sink = AgentStreamSink::from_sender(tx);
         let result = agent
@@ -393,11 +413,11 @@ mod tests {
         let mem = Memory::new("Rust agent", "Le Cortex est souverain.").unwrap();
         bundle.memory_repo.save(&mem).await.unwrap();
         let deps = bundle.into_deps();
-        let agent = AgentLoop::new(deps, AgentConfig::default(), None);
+        let agent = AgentLoop::new(deps, passthrough_agent_config(), None);
         let result = agent
             .run_turn(AgentTurnRequest {
                 session_key: SessionKey::new("test").unwrap(),
-                message: "Cortex".into(),
+                message: "Explique le rôle du Cortex dans l'orchestrateur.".into(),
             })
             .await
             .unwrap();

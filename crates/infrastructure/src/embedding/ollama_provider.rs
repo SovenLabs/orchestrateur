@@ -9,7 +9,7 @@ use tracing::instrument;
 use crate::http_retry::with_retry;
 use crate::http_status::map_embedding_http_status;
 
-/// Provider d'embeddings via l'API Ollama (`/api/embeddings`).
+/// Provider d'embeddings via l'API Ollama (`/api/embed`, doc officielle).
 pub struct OllamaEmbeddingProvider {
     client: Client,
     base_url: String,
@@ -49,11 +49,14 @@ impl OllamaEmbeddingProvider {
     }
 
     async fn request_embedding(&self, text: &str) -> Result<Vec<f32>, EmbeddingError> {
-        let body = serde_json::json!({
+        let mut body = serde_json::json!({
             "model": self.model,
-            "prompt": text,
+            "input": text,
         });
-        let url = self.url("/api/embeddings");
+        if let Some(dim) = self.dimension {
+            body["dimensions"] = serde_json::json!(dim);
+        }
+        let url = self.url("/api/embed");
         let client = self.client.clone();
         let timeout = self.timeout;
         let max_retries = self.max_retries;
@@ -98,13 +101,34 @@ impl OllamaEmbeddingProvider {
                     message: e.to_string(),
                 })?;
 
-        Ok(parsed.embedding)
+        let vector = parsed
+            .embeddings
+            .into_iter()
+            .next()
+            .ok_or_else(|| EmbeddingError::InvalidResponse {
+                provider: "ollama".into(),
+                message: "réponse embed sans vecteur".into(),
+            })?;
+
+        if let Some(expected) = self.dimension {
+            if vector.len() != expected {
+                return Err(EmbeddingError::InvalidResponse {
+                    provider: "ollama".into(),
+                    message: format!(
+                        "dimension embedding {} != attendue {expected}",
+                        vector.len()
+                    ),
+                });
+            }
+        }
+
+        Ok(vector)
     }
 }
 
 #[derive(Debug, Deserialize)]
 struct OllamaEmbeddingResponse {
-    embedding: Vec<f32>,
+    embeddings: Vec<Vec<f32>>,
 }
 
 #[async_trait]

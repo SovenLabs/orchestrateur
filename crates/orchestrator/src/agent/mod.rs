@@ -4,6 +4,7 @@ mod config;
 mod context;
 mod error;
 mod loop_impl;
+mod message_preprocessor;
 mod stream;
 mod tool_parse;
 

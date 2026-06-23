@@ -66,4 +66,27 @@ pub enum Command {
     SkillsMarketplaceList,
     /// Vérifie l'intégrité BLAKE3 du hub skills (Phase 14).
     SkillsHubVerify,
+    /// Statut du watcher de sessions (surveillance Markdown).
+    WatcherStatus,
+    /// Démarre le watcher de sessions (si configuré).
+    WatcherStart,
+    /// Arrête le watcher de sessions.
+    WatcherStop,
+    /// Liste les brouillons en attente de publication.
+    ListDrafts,
+    /// Récupère un brouillon par identifiant.
+    GetDraft {
+        /// Identifiant du brouillon.
+        id: String,
+    },
+    /// Publie un brouillon (assimilation Cortex).
+    PublishDraft {
+        /// Identifiant du brouillon.
+        id: String,
+    },
+    /// Supprime un brouillon sans publier.
+    DiscardDraft {
+        /// Identifiant du brouillon.
+        id: String,
+    },
 }

@@ -62,8 +62,8 @@ struct EmbeddingData {
 
 #[async_trait]
 impl EmbeddingProvider for OpenAiEmbeddingsProvider {
-    fn name(&self) -> &str {
-        self.name
+    fn name(&self) -> &'static str {
+        "openai-embeddings"
     }
 
     fn capabilities(&self) -> EmbeddingCapabilities {

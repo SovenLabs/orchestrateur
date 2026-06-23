@@ -123,9 +123,10 @@ impl GatewayRunner {
             let forward_id = req_id.clone();
             tokio::spawn(async move {
                 while let Ok(event) = event_rx.recv_async().await {
-                    let msg = agent_event_to_gateway(&forward_id, event);
-                    if ws_tx.send_async(msg).await.is_err() {
-                        break;
+                    if let Some(msg) = agent_event_to_gateway(&forward_id, event) {
+                        if ws_tx.send_async(msg).await.is_err() {
+                            break;
+                        }
                     }
                 }
             });
@@ -237,25 +238,31 @@ impl InboundHandler for GatewayInboundHandler {
     }
 }
 
-fn agent_event_to_gateway(request_id: &str, event: AgentStreamEvent) -> GatewayServerMessage {
+fn agent_event_to_gateway(
+    request_id: &str,
+    event: AgentStreamEvent,
+) -> Option<GatewayServerMessage> {
     match event {
         AgentStreamEvent::Delta { content } => {
-            GatewayServerMessage::stream_delta(request_id, content)
+            Some(GatewayServerMessage::stream_delta(request_id, content))
         }
-        AgentStreamEvent::ToolStart { name } => {
-            GatewayServerMessage::stream_tool(request_id, name, "start", None)
-        }
-        AgentStreamEvent::ToolEnd { name, success } => {
-            GatewayServerMessage::stream_tool(request_id, name, "end", Some(success))
-        }
+        AgentStreamEvent::ToolStart { name } => Some(GatewayServerMessage::stream_tool(
+            request_id, name, "start", None,
+        )),
+        AgentStreamEvent::ToolEnd { name, success } => Some(GatewayServerMessage::stream_tool(
+            request_id, name, "end", Some(success),
+        )),
         AgentStreamEvent::End {
             reply,
             tools_invoked,
-        } => GatewayServerMessage::AgentStreamEnd {
+        } => Some(GatewayServerMessage::AgentStreamEnd {
             request_id: request_id.to_string(),
             reply,
             tools_invoked,
-        },
+        }),
+        AgentStreamEvent::MessageExpanded { .. }
+        | AgentStreamEvent::MessageCompressed { .. }
+        | AgentStreamEvent::PreprocessProgress { .. } => None,
     }
 }
 

@@ -25,6 +25,7 @@ fn chained_facade(xai: Arc<dyn orchestrator::LlmProvider>) -> OrchestratorFacade
         bundle.embedding,
         llm,
         bundle.session_repo,
+        bundle.draft_repo,
         bundle.config,
         events,
     );
@@ -34,17 +35,12 @@ fn chained_facade(xai: Arc<dyn orchestrator::LlmProvider>) -> OrchestratorFacade
 #[tokio::test]
 #[ignore = "intégration: fallback xAI 429 → Ollama"]
 async fn intensity1_fallback_xai_429_then_ollama_success() {
-    let draft = MemoryDraft {
-        title: "Ne sera pas utilisé".into(),
-        content: "x".into(),
-        tags: vec![],
-        backlinks: vec![],
-    };
+    let draft = MemoryDraft::new("Ne sera pas utilisé", "x");
     let xai = ScriptedLlmProvider::xai_fail_429_then_ok(draft);
     let facade = chained_facade(xai.clone());
 
     let (memory, _) = facade
-        .assimilate("test résilience fallback", None)
+        .assimilate("test résilience fallback", &[], None)
         .await
         .expect("le fallback Ollama doit réussir");
 
@@ -68,7 +64,7 @@ async fn intensity1_xai_auth_error_does_not_fallback() {
     let facade = chained_facade(xai);
 
     let err = facade
-        .assimilate("auth failure", None)
+        .assimilate("auth failure", &[], None)
         .await
         .expect_err("auth ne doit pas basculer vers Ollama");
 
@@ -88,12 +84,7 @@ async fn intensity2_xai_unavailable_then_recovery() {
             message: "simulation panne".into(),
         }));
     }
-    script.push(Ok(MemoryDraft {
-        title: "Récupération xAI".into(),
-        content: "ok".into(),
-        tags: vec![],
-        backlinks: vec![],
-    }));
+    script.push(Ok(MemoryDraft::new("Récupération xAI", "ok")));
 
     let xai = ScriptedLlmProvider::new("xai", script);
     let ollama = Arc::new(StableOllamaLlmProvider);
@@ -106,12 +97,13 @@ async fn intensity2_xai_unavailable_then_recovery() {
         bundle.embedding,
         llm,
         bundle.session_repo,
+        bundle.draft_repo,
         bundle.config,
         Arc::new(orchestrator::NoopEventPublisher),
     ));
 
     let (memory, _) = facade
-        .assimilate("résilience prolongée", None)
+        .assimilate("résilience prolongée", &[], None)
         .await
         .expect("Ollama doit absorber la panne xAI");
     assert_eq!(memory.title, "Ollama fallback");

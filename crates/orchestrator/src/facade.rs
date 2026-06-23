@@ -11,6 +11,8 @@ use crate::skills::{SkillContext, SkillEntry, SkillOutput, SkillRegistry};
 use std::path::Path;
 use std::sync::Arc;
 
+use crate::bridge::DraftSummary;
+use crate::draft::{DraftError, DraftStatus, StoredDraft};
 use crate::use_cases::{
     AssimilateFromDraft, AssimilateFromText, AssimilationResult, GetMemory, ImportMemories,
     ImportResult, ListMemories, SaveMemory, SearchMemories,
@@ -122,12 +124,101 @@ impl OrchestratorFacade {
     /// Propage une [`OrchestratorError`] si le LLM, la validation ou la persistance échoue.
     pub async fn assimilate(
         &self,
-        user_prompt: &str,
+        text: &str,
+        tags: &[String],
         system_prompt: Option<&str>,
     ) -> Result<AssimilationResult, OrchestratorError> {
         AssimilateFromText::new(self.deps.clone())
-            .execute(user_prompt, system_prompt)
+            .execute(text, tags, system_prompt)
             .await
+    }
+
+    /// Liste les brouillons `pending` en attente de publication.
+    ///
+    /// # Errors
+    ///
+    /// Propage [`OrchestratorError`] si la lecture échoue.
+    pub async fn list_drafts(&self) -> Result<Vec<DraftSummary>, OrchestratorError> {
+        let drafts = self
+            .deps
+            .draft_repo
+            .list(Some(DraftStatus::Pending))
+            .await?;
+        Ok(drafts.iter().map(StoredDraft::to_summary).collect())
+    }
+
+    /// Récupère un brouillon par identifiant.
+    ///
+    /// # Errors
+    ///
+    /// Propage [`OrchestratorError`] si le brouillon est introuvable.
+    pub async fn get_draft(&self, id: &str) -> Result<StoredDraft, OrchestratorError> {
+        self.deps.draft_repo.get_by_id(id).await.map_err(Into::into)
+    }
+
+    /// Persiste un nouveau brouillon `pending` (watcher / pipeline insight).
+    ///
+    /// # Errors
+    ///
+    /// Propage [`OrchestratorError`] si la persistance échoue.
+    pub async fn store_draft(
+        &self,
+        draft: MemoryDraft,
+        watcher_session: Option<String>,
+    ) -> Result<StoredDraft, OrchestratorError> {
+        self.deps
+            .draft_repo
+            .create_pending(draft, watcher_session)
+            .await
+            .map_err(Into::into)
+    }
+
+    /// Publie un brouillon (assimilation Cortex) et marque le statut `published`.
+    ///
+    /// # Errors
+    ///
+    /// Propage [`OrchestratorError`] si le brouillon est introuvable ou l'assimilation échoue.
+    pub async fn publish_draft(
+        &self,
+        id: &str,
+    ) -> Result<(String, AssimilationResult), OrchestratorError> {
+        let stored = self.deps.draft_repo.get_by_id(id).await?;
+        if stored.status != DraftStatus::Pending {
+            return Err(DraftError::InvalidStatus {
+                expected: DraftStatus::Pending.as_str(),
+                actual: stored.status.as_str(),
+            }
+            .into());
+        }
+        let result = AssimilateFromDraft::new(self.deps.clone())
+            .execute(stored.draft)
+            .await?;
+        self.deps
+            .draft_repo
+            .update_status(id, DraftStatus::Published)
+            .await?;
+        Ok((id.to_string(), result))
+    }
+
+    /// Marque un brouillon `discarded` sans publier.
+    ///
+    /// # Errors
+    ///
+    /// Propage [`OrchestratorError`] si le brouillon est introuvable.
+    pub async fn discard_draft(&self, id: &str) -> Result<(), OrchestratorError> {
+        let stored = self.deps.draft_repo.get_by_id(id).await?;
+        if stored.status != DraftStatus::Pending {
+            return Err(DraftError::InvalidStatus {
+                expected: DraftStatus::Pending.as_str(),
+                actual: stored.status.as_str(),
+            }
+            .into());
+        }
+        self.deps
+            .draft_repo
+            .update_status(id, DraftStatus::Discarded)
+            .await?;
+        Ok(())
     }
 
     /// Liste les skills enregistrées (métadonnées complètes).
@@ -284,12 +375,7 @@ mod tests {
     #[tokio::test]
     async fn facade_assimilates_draft() {
         let f = facade();
-        let draft = MemoryDraft {
-            title: "Nouveau".into(),
-            content: "Souvenir assimilé.".into(),
-            tags: vec![],
-            backlinks: vec![],
-        };
+        let draft = MemoryDraft::new("Nouveau", "Souvenir assimilé.");
         let (memory, events) = f.assimilate_from_draft(draft).await.unwrap();
         assert_eq!(memory.title, "Nouveau");
         assert!(events
@@ -312,8 +398,12 @@ mod tests {
     #[tokio::test]
     async fn facade_agent_turn_returns_reply() {
         let f = facade();
+        let config = AgentConfig {
+            message_preprocess: false,
+            ..AgentConfig::default()
+        };
         let result = f
-            .agent_turn(SessionKey::default_chat(), "Salut agent")
+            .agent_turn_with_config(SessionKey::default_chat(), "Salut agent", config)
             .await
             .unwrap();
         assert_eq!(result.reply, "Salut agent");

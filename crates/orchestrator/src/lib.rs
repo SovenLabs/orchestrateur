@@ -5,7 +5,7 @@
 //!
 //! Garde-fous : Rust stable uniquement — pas de `#![feature(...)]`.
 
-#![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "plugins-native"), forbid(unsafe_code))]
 #![warn(missing_docs, rust_2018_idioms)]
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used))]
 
@@ -31,6 +31,12 @@ pub mod health;
 pub mod llm;
 /// Brouillon structuré issu des providers IA (`MemoryDraft`).
 pub mod memory_draft;
+/// Brouillons persistés et port [`DraftRepository`].
+pub mod draft;
+/// Dédup et prompts d'extraction d'insights.
+pub mod memory;
+/// Watcher sessions Markdown → brouillons insight.
+pub mod watcher;
 /// Défense en profondeur — validation adversariale des sorties LLM.
 pub mod security;
 /// Squelette Skills (trait, registre, noop).
@@ -57,13 +63,14 @@ pub use bridge::{
     spawn_orchestrator_bridge, AppError, AuditUpdate, BridgeError, BridgeSearchHit, BridgeUiAction,
     ChannelHandle, Command, FanoutEventPublisher, BridgeSkillContext, GraphUpdate, HealthUpdate,
     HubIntegritySummary, HubSummary, MarketplaceEntrySummary, MemoryDetailView, MemorySummary,
-    OrchestratorHandle, OrchestratorThread, Response, SkillSummary,
+    OrchestratorHandle, OrchestratorThread, Response, SkillSummary, DraftSummary, WatcherStatus,
 };
 pub use config::{
-    AgentSettingsConfig, AuditConfig, BehavioralConfig, ConfigError, DaemonConfig,
+    AgentSettingsConfig, AuditConfig, BehavioralConfig, ConfigError, DaemonConfig, WatcherConfig,
     GatewayChannelConfig, GatewayConfig, IntegrityConfig, McpConfig, McpServerConfig, OllamaConfig,
     OrchestratorConfig,
-    ProvidersConfig, SecurityConfig, SkillsHubConfig, SkillsHubEntryConfig, VectorStoreConfig,
+    MemoryConfig, ProvidersConfig, SecurityConfig, SkillsHubConfig, SkillsHubEntryConfig,
+    VectorStoreConfig,
     XaiConfig,
 };
 pub use mcp::{McpError, McpGateway, McpToolInfo};
@@ -78,6 +85,7 @@ pub use events::{EventPublisher, NoopEventPublisher, TracingEventPublisher};
 pub use facade::OrchestratorFacade;
 pub use llm::{ChatMessage, LlmCapabilities, LlmError, LlmProvider, LlmUsageRecorded};
 pub use memory_draft::{BacklinkDraft, BacklinkDraftKind, MemoryDraft};
+pub use draft::{DraftError, DraftRepository, DraftStatus, StoredDraft};
 pub use security::{
     build_security_context, build_test_security_context, AuditEvent, BehavioralError,
     IntegrityStatus, MemoryDraftValidator, SecurityBootstrapError, SecurityContext,

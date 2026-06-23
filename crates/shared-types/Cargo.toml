@@ -1,0 +1,23 @@
+[package]
+name = "shared-types"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Types partagés Orchestrateur v2 — protocole WS, événements UI, export TypeScript"
+publish = false
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+ts-rs = { version = "10", features = ["serde-compat", "chrono-impl"] }
+
+[[bin]]
+name = "export-ts"
+path = "src/bin/export_ts.rs"
+
+[dev-dependencies]
+orchestrator = { path = "../orchestrator", features = ["websocket-server"] }
+
+[lints.rust]
+unsafe_code = "forbid"

@@ -127,12 +127,7 @@ impl LlmProvider for StableOllamaLlmProvider {
         _system: &str,
         user: &str,
     ) -> Result<MemoryDraft, LlmError> {
-        Ok(MemoryDraft {
-            title: "Ollama fallback".into(),
-            content: user.into(),
-            tags: vec![],
-            backlinks: vec![],
-        })
+        Ok(MemoryDraft::new("Ollama fallback", user))
     }
 
     async fn chat(&self, messages: &[ChatMessage]) -> Result<String, LlmError> {

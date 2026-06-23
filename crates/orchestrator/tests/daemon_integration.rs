@@ -51,14 +51,28 @@ fn daemon_protocol_execute_health_check() {
 #[test]
 fn daemon_protocol_connect_ok_with_sessions() {
     let msg = DaemonServerMessage::ConnectOk {
-        version: "0.19.0".into(),
+        version: "0.22.0".into(),
+        protocol_version: shared_types::PROTOCOL_VERSION.into(),
         session_id: "sess-a".into(),
         territory_session_id: "terr-1".into(),
     };
     let json = serde_json::to_string(&msg).expect("serialize");
     assert!(json.contains("\"session_id\":\"sess-a\""));
+    assert!(json.contains("\"protocol_version\":\"1.1.0\""));
     let back: DaemonServerMessage = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(back, msg);
+}
+
+#[test]
+fn connect_ok_backward_compat_without_protocol_version() {
+    let json = r#"{"type":"connect_ok","version":"0.19.0","session_id":"s","territory_session_id":"t"}"#;
+    let msg: DaemonServerMessage = serde_json::from_str(json).expect("deserialize");
+    match msg {
+        DaemonServerMessage::ConnectOk {
+            protocol_version, ..
+        } => assert_eq!(protocol_version, shared_types::PROTOCOL_VERSION),
+        _ => panic!("expected connect_ok"),
+    }
 }
 
 #[test]

@@ -1,8 +1,9 @@
 extends Node
 class_name TerritoryManager
-## Hub fenêtre principale — boule réactive, panneaux, événements visuels Phase 20.
+## Hub fenêtre principale — sphère neurale premium, panneaux, événements Phase 24.
 
-@export var brain_sphere: BrainSphere
+@export var neural_brain: AINeuralBrainSphere
+@export var sphere_performance: Node
 @export var monitoring_panel: MonitoringPanel
 @export var chat_panel: ChatPanel
 @export var memory_list_panel: MemoryListPanel
@@ -26,6 +27,8 @@ func _ready() -> void:
 
 	if monitoring_panel:
 		VisualEventMapper.activity_level_changed.connect(monitoring_panel.update_mapper_activity)
+		if sphere_performance and sphere_performance.has_signal("fps_updated"):
+			sphere_performance.fps_updated.connect(_on_fps_updated)
 
 	if memory_list_panel and graph_panel:
 		memory_list_panel.memory_selected.connect(graph_panel.highlight_memory)
@@ -38,21 +41,21 @@ func _exit_tree() -> void:
 
 
 func _on_brain_pulse(boost: float, duration: float) -> void:
-	if brain_sphere:
-		brain_sphere.pulse_activity(boost, duration)
+	if neural_brain:
+		neural_brain.pulse_activity(boost, duration)
 
 
 func _on_activity_changed(intensity: float) -> void:
-	if brain_sphere:
-		brain_sphere.update_brain_activity(intensity)
+	if neural_brain:
+		neural_brain.update_brain_activity(intensity)
 	if monitoring_panel:
 		monitoring_panel.update_activity(intensity)
 
 
 func _on_connection_state(connected: bool, detail: String) -> void:
 	_connected = connected
-	if brain_sphere:
-		brain_sphere.set_degraded_mode(not connected)
+	if neural_brain:
+		neural_brain.set_degraded_mode(not connected)
 	VisualEventMapper.set_degraded_mode(not connected)
 	if monitoring_panel:
 		monitoring_panel.set_connection_status(connected, detail)
@@ -62,3 +65,8 @@ func _on_connection_state(connected: bool, detail: String) -> void:
 func _on_latency_updated(rtt_ms: float) -> void:
 	if monitoring_panel:
 		monitoring_panel.update_latency(rtt_ms)
+
+
+func _on_fps_updated(fps: float, tier: String) -> void:
+	if monitoring_panel and monitoring_panel.has_method("update_sphere_fps"):
+		monitoring_panel.update_sphere_fps(fps, tier)

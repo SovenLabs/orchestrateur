@@ -36,12 +36,15 @@ async fn setup_lancedb_workspace() -> (tempfile::TempDir, AppDependencies) {
 
     let session_repo: Arc<dyn cortex::SessionRepository> =
         Arc::new(orchestrator::testing::InMemorySessionRepository::new());
+    let draft_repo: Arc<dyn orchestrator::DraftRepository> =
+        Arc::new(orchestrator::testing::InMemoryDraftRepository::new());
     let deps = AppDependencies::for_tests(
         memory_repo,
         vector_store,
         embedding,
         llm,
         session_repo,
+        draft_repo,
         cfg,
         Arc::new(orchestrator::NoopEventPublisher),
     );
@@ -144,6 +147,7 @@ async fn intensity1_embed_batch_used_in_assimilation_corpus() {
         counting.clone(),
         bundle.llm,
         bundle.session_repo,
+        bundle.draft_repo,
         bundle.config,
         Arc::new(orchestrator::NoopEventPublisher),
     );
@@ -153,12 +157,10 @@ async fn intensity1_embed_batch_used_in_assimilation_corpus() {
         deps.memory_repo.save(&mem).await.expect("repo seul");
     }
 
-    let draft = MemoryDraft {
-        title: "Batch test".into(),
-        content: "Vérifie embed_batch dans le corpus.".into(),
-        tags: vec![],
-        backlinks: vec![],
-    };
+    let draft = MemoryDraft::new(
+        "Batch test",
+        "Vérifie embed_batch dans le corpus.",
+    );
 
     OrchestratorFacade::new(deps)
         .assimilate_from_draft(draft)

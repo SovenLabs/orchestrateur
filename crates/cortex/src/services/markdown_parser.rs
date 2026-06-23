@@ -6,7 +6,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::domain::{Backlink, CortexError, Memory, MemoryId, Tag};
+use crate::domain::{Backlink, CortexError, Memory, MemoryId, MemoryKind, Tag};
 
 /// Frontmatter YAML — contrat strict (champs inconnus rejetés).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -18,6 +18,10 @@ struct MemoryFrontmatter {
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     backlinks: Vec<Backlink>,
+    #[serde(default)]
+    kind: MemoryKind,
+    #[serde(default)]
+    structured: Option<serde_json::Value>,
 }
 
 /// Document Markdown complet (frontmatter + corps).
@@ -71,6 +75,8 @@ pub fn parse_memory_markdown(raw: &str) -> Result<MemoryDocument, CortexError> {
         frontmatter.created_at,
         frontmatter.updated_at,
         frontmatter.backlinks,
+        frontmatter.kind,
+        frontmatter.structured,
     )?;
 
     Ok(MemoryDocument { memory })
@@ -89,6 +95,8 @@ pub fn serialize_memory(memory: &Memory) -> Result<String, CortexError> {
         created_at: memory.created_at,
         updated_at: memory.updated_at,
         backlinks: memory.backlinks.clone(),
+        kind: memory.kind,
+        structured: memory.structured.clone(),
     };
 
     let yaml = serde_yaml::to_string(&frontmatter)
@@ -220,6 +228,31 @@ Contenu complet du souvenir en Markdown pur...
         let mem = MarkdownParser::parse(&raw).unwrap();
         assert!(mem.content.contains("Section"));
         assert!(mem.content.contains("Suite du contenu"));
+    }
+
+    #[test]
+    fn parses_legacy_frontmatter_without_kind() {
+        let id = MemoryId::new();
+        let raw = format!(
+            "---\nid: \"{id}\"\ntitle: \"Legacy\"\ntags: []\ncreated_at: \"2026-06-20T12:00:00Z\"\nupdated_at: \"2026-06-20T12:00:00Z\"\nbacklinks: []\n---\n\nCorps legacy."
+        );
+        let mem = MarkdownParser::parse(&raw).unwrap();
+        assert_eq!(mem.kind, MemoryKind::Context);
+        assert!(mem.structured.is_none());
+    }
+
+    #[test]
+    fn roundtrip_with_kind_and_structured() {
+        let mut mem = Memory::new("Kind RT", "Corps").unwrap();
+        mem.kind = MemoryKind::Decision;
+        mem.structured = Some(serde_json::json!({"rationale": "test"}));
+        let md = serialize_memory(&mem).unwrap();
+        let parsed = parse_memory_markdown(&md).unwrap();
+        assert_eq!(parsed.memory.kind, MemoryKind::Decision);
+        assert_eq!(
+            parsed.memory.structured,
+            Some(serde_json::json!({"rationale": "test"}))
+        );
     }
 
     #[test]

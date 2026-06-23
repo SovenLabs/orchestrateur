@@ -27,6 +27,14 @@ pub struct AgentConfig {
     pub skill_auto_execute: bool,
     /// Score minimal pour l'auto-exécution (Phase 14).
     pub skill_auto_execute_threshold: u32,
+    /// Prétraitement bidirectionnel des messages (PR-6).
+    pub message_preprocess: bool,
+    /// Seuil minimal (caractères) pour l'enrichissement.
+    pub enrichment_min_chars: usize,
+    /// Seuil maximal (caractères) pour la compression.
+    pub compression_max_chars: usize,
+    /// Préserve les entités via ancrage Cortex lors de la compression.
+    pub compression_preserve_entities: bool,
 }
 
 impl Default for AgentConfig {
@@ -52,6 +60,10 @@ impl AgentConfig {
             skill_auto_suggest: settings.skill_auto_suggest,
             skill_auto_execute: settings.skill_auto_execute,
             skill_auto_execute_threshold: settings.skill_auto_execute_threshold,
+            message_preprocess: settings.message_preprocess,
+            enrichment_min_chars: settings.enrichment_min_chars,
+            compression_max_chars: settings.compression_max_chars,
+            compression_preserve_entities: settings.compression_preserve_entities,
         }
     }
 }

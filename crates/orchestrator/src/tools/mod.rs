@@ -3,6 +3,7 @@
 mod mcp_call;
 mod mcp_list;
 mod memory_assimilate;
+mod memory_file_context;
 mod memory_get;
 mod memory_search;
 mod registry;
@@ -17,6 +18,7 @@ pub use capability_profiles::{
 };
 
 pub use memory_assimilate::MemoryAssimilateTool;
+pub use memory_file_context::MemoryFileContextTool;
 pub use memory_get::MemoryGetTool;
 pub use memory_search::MemorySearchTool;
 pub use skill_execute::SkillExecuteTool;

@@ -84,6 +84,10 @@ enum Commands {
         #[arg(long)]
         source: PathBuf,
     },
+    /// Ré-indexe les embeddings LanceDB pour toutes les mémoires persistées.
+    Reindex,
+    /// Surveille les fichiers session Markdown et génère des brouillons insight.
+    Watch,
     /// Skills opérationnelles (liste et exécution via bridge).
     Skill {
         #[command(subcommand)]
@@ -314,6 +318,8 @@ async fn main() -> Result<()> {
             }
         },
         Commands::Import { source } => cmd_import(&facade, &source).await?,
+        Commands::Reindex => cmd_reindex(&facade).await?,
+        Commands::Watch => cmd_watch(&facade).await?,
         #[cfg(feature = "http")]
         Commands::Serve { port, bind } => run_http_server(facade, &bind, port).await?,
         #[cfg(feature = "websocket-server")]
@@ -505,7 +511,75 @@ fn print_response(response: Response) -> Result<()> {
             }
         }
         Response::Event(_) => {}
+        Response::WatcherStatus { status } => {
+            println!(
+                "watcher enabled={} running={} pending={} processed={}",
+                status.enabled,
+                status.running,
+                status.drafts_pending,
+                status.sessions_processed
+            );
+            for dir in &status.watch_dirs {
+                println!("  watch: {dir}");
+            }
+            if let Some(err) = &status.last_error {
+                println!("  erreur: {err}");
+            }
+        }
+        Response::DraftList { items, total } => {
+            println!("# brouillons total={total}");
+            for item in items {
+                println!(
+                    "{} | {} | {:?} | tags=[{}]",
+                    item.id,
+                    item.title,
+                    item.kind,
+                    item.tags.join(", ")
+                );
+            }
+        }
+        Response::DraftPublished {
+            draft_id,
+            memory_id,
+            title,
+        } => {
+            println!("Brouillon publié : {title} (draft={draft_id}, memory={memory_id})");
+        }
+        Response::DraftDiscarded { id } => {
+            println!("Brouillon supprimé : {id}");
+        }
     }
+    Ok(())
+}
+
+async fn cmd_watch(facade: &OrchestratorFacade) -> Result<()> {
+    use std::sync::Arc;
+
+    use orchestrator::watcher::{install_global, SessionWatcherHandle};
+
+    let config = &facade.deps().config;
+    if !config.watcher.enabled {
+        anyhow::bail!("watcher désactivé — activez [watcher] enabled = true dans orchestrator.toml");
+    }
+
+    let handle = Arc::new(SessionWatcherHandle::new(
+        Arc::new(OrchestratorFacade::new(facade.deps().clone())),
+        None::<orchestrator::watcher::DraftReadyCallback>,
+        config,
+    ));
+    install_global(Arc::clone(&handle));
+    handle.spawn();
+
+    println!(
+        "Watcher actif — Ctrl+C pour arrêter. Répertoires : {:?}",
+        handle.status().await.watch_dirs
+    );
+
+    tokio::signal::ctrl_c()
+        .await
+        .map_err(|e| anyhow::anyhow!("signal ctrl+c: {e}"))?;
+    handle.stop();
+    println!("Watcher arrêté.");
     Ok(())
 }
 
@@ -520,6 +594,42 @@ async fn cmd_import(facade: &OrchestratorFacade, source: &Path) -> Result<()> {
     for err in &result.errors {
         eprintln!("  erreur: {err}");
     }
+    Ok(())
+}
+
+async fn cmd_reindex(facade: &OrchestratorFacade) -> Result<()> {
+    let memories = facade.list_memories().await?;
+    let total = memories.len();
+    if total == 0 {
+        println!("Reindex terminé : 0 mémoire.");
+        return Ok(());
+    }
+
+    let mut ok = 0usize;
+    let mut errors = Vec::new();
+    for (i, memory) in memories.iter().enumerate() {
+        match facade.save_memory(memory).await {
+            Ok(_) => {
+                ok += 1;
+                println!(
+                    "[{}/{}] indexé : {} ({})",
+                    i + 1,
+                    total,
+                    memory.title,
+                    memory.id
+                );
+            }
+            Err(err) => {
+                errors.push(format!("{}: {err}", memory.id));
+                eprintln!("[{}/{}] erreur : {} — {err}", i + 1, total, memory.id);
+            }
+        }
+    }
+
+    println!(
+        "Reindex terminé : {ok}/{total} indexée(s), {} erreur(s)",
+        errors.len()
+    );
     Ok(())
 }
 

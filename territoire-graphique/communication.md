@@ -1,6 +1,6 @@
 # Protocole de communication — Territoire Graphique (Option B)
 
-**Version :** 0.15.0 · **Transport :** WebSocket local · **Sérialisation :** JSON
+**Version :** 0.23.0 · **Protocole WS :** `1.1.0` · **Transport :** WebSocket local · **Sérialisation :** JSON
 
 ---
 
@@ -28,7 +28,7 @@ sequenceDiagram
 
     C->>D: WS connect ws://127.0.0.1:28790/ws
     C->>D: {"type":"connect","token":"..."}
-    D-->>C: {"type":"connect_ok","version":"0.15.0"}
+    D-->>C: {"type":"connect_ok","version":"0.23.0","protocol_version":"1.1.0"}
     C->>D: {"type":"execute","request_id":"1","command":{"command":"HealthCheck"}}
     D-->>C: {"type":"result","request_id":"1","response":{...}}
     C->>D: {"type":"ping","nonce":42}
@@ -47,6 +47,7 @@ Tous les messages sont du JSON texte sur le WebSocket.
 {
   "type": "connect",
   "token": "votre-token-secret",
+  "protocol_version": "1.1.0",
   "client": {
     "window_kind": "main",
     "panels": ["chat", "memory", "graph", "monitoring"],
@@ -108,7 +109,8 @@ Exemples de commandes (`command` field) :
 ```json
 {
   "type": "connect_ok",
-  "version": "0.19.0",
+  "version": "0.23.0",
+  "protocol_version": "1.1.0",
   "session_id": "uuid-client-ws",
   "territory_session_id": "uuid-territoire-daemon"
 }
@@ -181,17 +183,31 @@ Le champ `response` suit le format taggé [`Response`](../crates/orchestrator/sr
 
 ```bash
 curl http://127.0.0.1:28790/health
+curl http://127.0.0.1:28790/metrics
 ```
 
 ```json
 {
   "status": "ok",
-  "version": "0.19.0",
+  "version": "0.23.0",
+  "protocol_version": "1.1.0",
   "port": 28790,
   "territory_session_id": "uuid-territoire-daemon",
-  "connected_clients": 2
+  "connected_clients": 2,
+  "metrics": {
+    "messages_received": 0,
+    "messages_sent": 0,
+    "broadcasts_sent": 0,
+    "execute_requests": 0,
+    "ping_requests": 0,
+    "connections_opened": 0,
+    "auth_failures": 0,
+    "parse_errors": 0
+  }
 }
 ```
+
+Documentation complète : [`docs/protocol-ws.md`](../docs/protocol-ws.md).
 
 ---
 

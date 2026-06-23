@@ -3,7 +3,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 use crate::mcp::McpError;
-use crate::tool::{Tool, ToolContext, ToolError, ToolResult};
+use super::tool::{Tool, ToolContext, ToolError, ToolResult};
 
 /// Outil agent — appelle un outil MCP distant.
 pub struct McpCallTool;

@@ -36,17 +36,8 @@ impl Skill for AssimilateSkill {
             .filter(|t| !t.is_empty())
             .ok_or_else(|| SkillError::ExecutionFailed("paramètre text requis".into()))?;
 
-        let prompt = if ctx.tags.is_empty() {
-            text.to_string()
-        } else {
-            format!(
-                "{text}\n\nTags suggérés : {}",
-                ctx.tags.join(", ")
-            )
-        };
-
         let (memory, _events) = AssimilateFromText::new(self.deps.clone())
-            .execute(&prompt, None)
+            .execute(text, &ctx.tags, None)
             .await
             .map_err(|err| map_orchestrator_error(&err))?;
 

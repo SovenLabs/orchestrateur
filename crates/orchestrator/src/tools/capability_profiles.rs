@@ -16,7 +16,7 @@ pub const CAPABILITY_PROFILE_DESCRIPTORS: &[CapabilityProfileDescriptor] = &[
     CapabilityProfileDescriptor {
         id: "memory",
         display_name: "Mémoire Cortex",
-        tools: &["memory_search", "memory_get", "memory_assimilate"],
+        tools: &["memory_search", "memory_get", "memory_assimilate", "memory_file_context"],
     },
     CapabilityProfileDescriptor {
         id: "mcp",
@@ -30,6 +30,7 @@ pub const CAPABILITY_PROFILE_DESCRIPTORS: &[CapabilityProfileDescriptor] = &[
             "memory_search",
             "memory_get",
             "memory_assimilate",
+            "memory_file_context",
             "mcp_list_tools",
             "mcp_call",
             "skill_list",

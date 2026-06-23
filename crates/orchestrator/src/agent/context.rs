@@ -1,12 +1,12 @@
 use cortex::{KnowledgeGraph, Memory, SearchFilter};
 use crate::deps::AppDependencies;
-use crate::skills::marketplace::suggest_skills;
+use crate::skills::suggest_skills;
 use crate::skills::SkillRegistry;
 use crate::tools::{ToolContext, ToolRegistry};
 use crate::use_cases::ListMemories;
 
 use super::config::AgentConfig;
-use crate::error::AgentError;
+use super::AgentError;
 
 /// Contexte enrichi injecté dans le prompt système.
 #[derive(Debug, Clone, PartialEq, Eq)]

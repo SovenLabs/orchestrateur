@@ -60,12 +60,15 @@ async fn lancedb_store_with_file_repo_smoke() {
 
     let session_repo: Arc<dyn cortex::SessionRepository> =
         Arc::new(orchestrator::testing::InMemorySessionRepository::new());
+    let draft_repo: Arc<dyn orchestrator::DraftRepository> =
+        Arc::new(orchestrator::testing::InMemoryDraftRepository::new());
     let deps = AppDependencies::for_tests(
         memory_repo,
         vector_store,
         embedding,
         llm,
         session_repo,
+        draft_repo,
         cfg,
         Arc::new(orchestrator::NoopEventPublisher),
     );
@@ -89,7 +92,7 @@ async fn ollama_end_to_end_when_available() {
     let deps = build_app_dependencies(cfg).await.expect("deps");
     let facade = OrchestratorFacade::new(deps);
     let (memory, _) = facade
-        .assimilate("Note de test Ollama Phase 3.", None)
+        .assimilate("Note de test Ollama Phase 3.", &[], None)
         .await
         .expect("assimilate");
     assert!(!memory.title.is_empty());
@@ -104,6 +107,7 @@ async fn memory_mode_deps_via_mocks() {
         bundle.embedding,
         bundle.llm,
         bundle.session_repo,
+        bundle.draft_repo,
         bundle.config,
         Arc::new(orchestrator::NoopEventPublisher),
     );

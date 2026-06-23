@@ -2,6 +2,7 @@ extends Node
 ## Gestionnaire multi-fenêtrage — une Boule, extensions détachables (Phase 20).
 
 const EXTENSION_SCENE_PATH := "res://scenes/ExtensionTerritory.tscn"
+const SPHERE_DEDICATED_SCENE := "res://scenes/SphereDedicated.tscn"
 
 var main_window: Window = null
 var _extensions: Dictionary = {}
@@ -16,6 +17,37 @@ func register_main(root: Node) -> void:
 	if win:
 		win.title = "Territoire Graphique — Cortex"
 		win.close_requested.connect(_on_main_close_requested)
+
+
+func open_sphere_dedicated() -> void:
+	if _extensions.has("sphere"):
+		var existing: Window = _extensions["sphere"]
+		if is_instance_valid(existing):
+			existing.grab_focus()
+			return
+		_extensions.erase("sphere")
+
+	var packed: PackedScene = load(SPHERE_DEDICATED_SCENE)
+	if not packed:
+		push_error("Scène sphère dédiée introuvable")
+		return
+
+	var win := Window.new()
+	win.title = "Orchestrateur — Boule de Pixels Vivante"
+	win.size = Vector2i(1280, 800)
+	win.min_size = Vector2i(800, 600)
+	win.close_requested.connect(_on_sphere_close_requested)
+
+	var content: Node3D = packed.instantiate()
+	win.add_child(content)
+	get_tree().root.add_child(win)
+	win.tree_exited.connect(_on_extension_tree_exited.bind("sphere"))
+	win.show()
+	_extensions["sphere"] = win
+
+
+func _on_sphere_close_requested() -> void:
+	_close_extension("sphere")
 
 
 func open_extension(panel_id: String) -> void:

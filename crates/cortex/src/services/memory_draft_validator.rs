@@ -479,12 +479,9 @@ mod tests {
     }
 
     fn valid_draft() -> MemoryDraft {
-        MemoryDraft {
-            title: "Décision valide".into(),
-            content: "Contenu markdown sain.".into(),
-            tags: vec!["architecture".into()],
-            backlinks: vec![],
-        }
+        let mut draft = MemoryDraft::new("Décision valide", "Contenu markdown sain.");
+        draft.tags = vec!["architecture".into()];
+        draft
     }
 
     #[test]

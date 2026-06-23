@@ -22,12 +22,13 @@ async fn intensity1_invalid_json_returns_structured_error() {
         bundle.embedding,
         llm,
         bundle.session_repo,
+        bundle.draft_repo,
         bundle.config,
         events.clone(),
     );
 
     let err = build_test_facade(deps)
-        .assimilate("json cassé", None)
+        .assimilate("json cassé", &[], None)
         .await
         .expect_err("JSON invalide doit échouer proprement");
 
@@ -52,12 +53,13 @@ async fn intensity1_llm_usage_emitted_on_success() {
         bundle.embedding,
         bundle.llm,
         bundle.session_repo,
+        bundle.draft_repo,
         bundle.config,
         events.clone(),
     );
 
     build_test_facade(deps)
-        .assimilate("trace usage tokens", None)
+        .assimilate("trace usage tokens", &[], None)
         .await
         .expect("assimilation mock");
 
@@ -78,12 +80,13 @@ async fn intensity2_vector_store_failure_surfaces_as_cortex_error() {
         bundle.embedding,
         bundle.llm,
         bundle.session_repo,
+        bundle.draft_repo,
         bundle.config,
         Arc::new(orchestrator::NoopEventPublisher),
     );
 
     let err = build_test_facade(deps)
-        .assimilate("échec vector store", None)
+        .assimilate("échec vector store", &[], None)
         .await
         .expect_err("upsert simulé doit échouer");
 

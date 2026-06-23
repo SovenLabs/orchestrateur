@@ -181,12 +181,7 @@ mod tests {
             _system: &str,
             user: &str,
         ) -> Result<MemoryDraft, LlmError> {
-            Ok(MemoryDraft {
-                title: "Stub".into(),
-                content: user.into(),
-                tags: vec![],
-                backlinks: vec![],
-            })
+            Ok(MemoryDraft::new("Stub", user))
         }
 
         async fn chat(&self, messages: &[ChatMessage]) -> Result<String, LlmError> {

@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use serde_json::Value;
 
 use crate::skills::SkillRegistry;
-use crate::tool::{Tool, ToolContext, ToolError, ToolResult};
+use super::tool::{Tool, ToolContext, ToolError, ToolResult};
 
 /// Liste les skills disponibles (builtin + hub + native).
 pub struct SkillListTool {

@@ -13,6 +13,7 @@ mod embedding;
 mod http_retry;
 mod http_status;
 mod llm;
+mod draft_repository;
 mod memory_repository;
 mod session_store;
 mod providers;
@@ -27,6 +28,7 @@ pub use embedding::{
 pub use llm::{
     build_llm_provider, ChainedLlmProvider, LlmFactoryError, OllamaLlmProvider, XaiGrokProvider,
 };
+pub use draft_repository::FileDraftRepository;
 pub use memory_repository::FileMemoryRepository;
 pub use session_store::SqliteSessionStore;
 pub use vector_store::{build_vector_store, LancedbVectorStore, VectorStoreFactoryError};

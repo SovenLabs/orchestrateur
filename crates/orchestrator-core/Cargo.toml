@@ -1,0 +1,16 @@
+[package]
+name = "orchestrator-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Placeholder Cortex + AgentLoop — extraction future depuis orchestrator (Phase 21+)"
+publish = false
+
+[dependencies]
+serde_json.workspace = true
+shared-types.workspace = true
+tracing.workspace = true
+
+[lints.rust]
+unsafe_code = "forbid"

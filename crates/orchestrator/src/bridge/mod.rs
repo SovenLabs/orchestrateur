@@ -47,6 +47,6 @@ pub use ui_response::{
     health_from_response, AuditUpdate, BridgeUiAction, GraphUpdate, HealthUpdate,
 };
 pub use types::{
-    AppError, BridgeSearchHit, BridgeSkillContext, HubIntegritySummary, HubSummary,
-    MarketplaceEntrySummary, MemorySummary, SkillSummary,
+    AppError, BridgeSearchHit, BridgeSkillContext, DraftSummary, HubIntegritySummary, HubSummary,
+    MarketplaceEntrySummary, MemorySummary, SkillSummary, WatcherStatus,
 };

@@ -1,11 +1,12 @@
 use cortex::{DomainEvent, Memory, MemoryId};
 use serde::{Deserialize, Serialize};
 
+use crate::draft::StoredDraft;
 use crate::security::AuditEvent;
 
 use super::types::{
-    AppError, BridgeSearchHit, HubIntegritySummary, HubSummary, MarketplaceEntrySummary,
-    MemorySummary, SkillSummary,
+    AppError, BridgeSearchHit, DraftSummary, HubIntegritySummary, HubSummary,
+    MarketplaceEntrySummary, MemorySummary, SkillSummary, WatcherStatus,
 };
 
 /// Réponse produite par le thread orchestrateur vers la couche présentation.
@@ -110,5 +111,36 @@ pub enum Response {
     HubIntegrityReport {
         /// Détail des manifestes valides / invalides.
         report: HubIntegritySummary,
+    },
+    /// Statut du watcher de sessions.
+    WatcherStatus {
+        /// Métriques runtime.
+        status: WatcherStatus,
+    },
+    /// Liste des brouillons en attente.
+    DraftList {
+        /// Résumés paginés.
+        items: Vec<DraftSummary>,
+        /// Total.
+        total: usize,
+    },
+    /// Détail complet d'un brouillon.
+    DraftDetail {
+        /// Enregistrement persisté.
+        draft: StoredDraft,
+    },
+    /// Brouillon publié en mémoire Cortex.
+    DraftPublished {
+        /// Identifiant du brouillon publié.
+        draft_id: String,
+        /// Identifiant mémoire créée.
+        memory_id: MemoryId,
+        /// Titre publié.
+        title: String,
+    },
+    /// Brouillon supprimé.
+    DraftDiscarded {
+        /// Identifiant supprimé.
+        id: String,
     },
 }

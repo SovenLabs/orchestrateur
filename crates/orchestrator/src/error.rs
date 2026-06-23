@@ -1,6 +1,7 @@
 use cortex::{CortexError, EmbeddingError};
 use thiserror::Error;
 
+use crate::draft::DraftError;
 use crate::llm::LlmError;
 use crate::security::{SecurityGateError, ValidationError};
 
@@ -26,6 +27,21 @@ pub enum OrchestratorError {
     /// Garde comportemental ou mode dégradé.
     #[error(transparent)]
     Security(#[from] SecurityGateError),
+
+    /// Extraction d'insight sans contribution significative.
+    #[error("assimilation ignorée: {reason}")]
+    InsightSkipped {
+        /// Motif retourné par le LLM.
+        reason: String,
+    },
+
+    /// Erreur interne (I/O, sérialisation hors validation Cortex).
+    #[error("{0}")]
+    Internal(String),
+
+    /// Erreur de persistance des brouillons.
+    #[error(transparent)]
+    Draft(#[from] DraftError),
 }
 
 /// Erreurs liées aux Skills.

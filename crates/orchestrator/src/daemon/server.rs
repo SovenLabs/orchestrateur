@@ -13,10 +13,11 @@ use axum::{
 use futures_util::{SinkExt, StreamExt};
 use serde::Serialize;
 use tokio::sync::mpsc;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use cortex::DomainEvent;
+use shared_types::{is_client_version_supported, PROTOCOL_VERSION};
 
 use crate::bridge::execute_command;
 use crate::config::DaemonConfig;
@@ -25,8 +26,10 @@ use crate::VERSION;
 
 use super::error::DaemonError;
 use super::hub::{
-    requires_main_window, resolve_subscriptions, ClientSession, TerritoryHub, WindowKind,
+    requires_main_window, resolve_subscriptions, ClientSession, ConnectedWindows, TerritoryHub,
+    WindowKind,
 };
+use super::metrics::{new_shared_metrics, DaemonMetrics, DaemonMetricsSnapshot};
 use super::protocol::{DaemonClientMessage, DaemonServerMessage};
 
 /// État partagé du daemon WebSocket.
@@ -34,6 +37,15 @@ pub struct DaemonState {
     facade: Arc<OrchestratorFacade>,
     config: DaemonConfig,
     hub: TerritoryHub,
+    metrics: Arc<DaemonMetrics>,
+}
+
+impl DaemonState {
+    /// Compteurs observabilité daemon.
+    #[must_use]
+    pub fn metrics(&self) -> Arc<DaemonMetrics> {
+        self.metrics.clone()
+    }
 }
 
 /// Réponse HTTP santé daemon.
@@ -43,12 +55,45 @@ pub struct HealthResponse {
     pub status: String,
     /// Version.
     pub version: String,
+    /// Version protocole WS.
+    pub protocol_version: String,
     /// Port configuré.
     pub port: u16,
     /// Identifiant de session territorial actif.
     pub territory_session_id: String,
     /// Nombre de clients WS connectés.
     pub connected_clients: usize,
+    /// Répartition par type de fenêtre (Phase 25).
+    pub connected_windows: ConnectedWindows,
+    /// Métriques temps réel.
+    pub metrics: DaemonMetricsSnapshot,
+}
+
+/// Réponse HTTP métriques dédiées (`/metrics`).
+#[derive(Debug, Serialize)]
+pub struct MetricsResponse {
+    /// Version protocole.
+    pub protocol_version: String,
+    /// Clients connectés.
+    pub connected_clients: usize,
+    /// Compteurs daemon.
+    pub metrics: DaemonMetricsSnapshot,
+}
+
+/// Construit un état daemon pour tests d'intégration (Phase 23).
+#[must_use]
+pub fn build_test_daemon_state(
+    facade: Arc<OrchestratorFacade>,
+    config: DaemonConfig,
+) -> Arc<DaemonState> {
+    let metrics = new_shared_metrics();
+    let hub = TerritoryHub::with_metrics(Some(metrics.clone()));
+    Arc::new(DaemonState {
+        facade,
+        config,
+        hub,
+        metrics,
+    })
 }
 
 /// Construit le routeur Axum du daemon.
@@ -56,6 +101,7 @@ pub struct HealthResponse {
 pub fn build_router(state: Arc<DaemonState>) -> Router {
     Router::new()
         .route("/health", get(health_handler))
+        .route("/metrics", get(metrics_handler))
         .route("/ws", get(ws_upgrade_handler))
         .with_state(state)
 }
@@ -88,7 +134,8 @@ pub async fn serve_with_domain_events(
         ));
     }
 
-    let hub = TerritoryHub::new();
+    let metrics = new_shared_metrics();
+    let hub = TerritoryHub::with_metrics(Some(metrics.clone()));
     if let Some(rx) = domain_events {
         let hub_clone = hub.clone();
         tokio::spawn(async move {
@@ -100,10 +147,29 @@ pub async fn serve_with_domain_events(
         });
     }
 
+    let hub_for_watcher = hub.clone();
+    let on_draft_ready: crate::watcher::DraftReadyCallback = Arc::new(move |stored| {
+        use serde_json::json;
+
+        let summary = stored.to_summary();
+        hub_for_watcher.broadcast_all(super::protocol::TerritoryBroadcast {
+            event: "draft_created".into(),
+            source_session_id: "watcher".into(),
+            payload: json!({
+                "draft_id": summary.id,
+                "title": summary.title,
+                "kind": summary.kind,
+                "status": summary.status,
+            }),
+        });
+    });
+    crate::watcher::spawn_if_enabled(Arc::clone(&facade), Some(on_draft_ready));
+
     let state = Arc::new(DaemonState {
         facade,
         config: config.clone(),
         hub,
+        metrics,
     });
     let app = build_router(state);
 
@@ -122,9 +188,20 @@ async fn health_handler(State(state): State<Arc<DaemonState>>) -> Json<HealthRes
     Json(HealthResponse {
         status: "ok".into(),
         version: VERSION.into(),
+        protocol_version: PROTOCOL_VERSION.into(),
         port: state.config.port,
         territory_session_id: state.hub.territory_session_id(),
         connected_clients: state.hub.client_count(),
+        connected_windows: state.hub.connected_windows(),
+        metrics: state.metrics.snapshot(),
+    })
+}
+
+async fn metrics_handler(State(state): State<Arc<DaemonState>>) -> Json<MetricsResponse> {
+    Json(MetricsResponse {
+        protocol_version: PROTOCOL_VERSION.into(),
+        connected_clients: state.hub.client_count(),
+        metrics: state.metrics.snapshot(),
     })
 }
 
@@ -147,7 +224,7 @@ async fn handle_ws_socket(state: Arc<DaemonState>, socket: WebSocket) {
             outbound = out_rx.recv() => {
                 match outbound {
                     Some(message) => {
-                        if send_json(&mut sender, message).await.is_err() {
+                        if send_json(&mut sender, &state.metrics, message).await.is_err() {
                             break;
                         }
                     }
@@ -161,11 +238,15 @@ async fn handle_ws_socket(state: Arc<DaemonState>, socket: WebSocket) {
                     Some(Ok(_)) => continue,
                 };
 
+                state.metrics.inc_received();
+
                 let parsed: DaemonClientMessage = match serde_json::from_str(&msg) {
                     Ok(m) => m,
                     Err(err) => {
+                        state.metrics.inc_parse_error();
                         let _ = send_json(
                             &mut sender,
+                            &state.metrics,
                             DaemonServerMessage::Error {
                                 request_id: None,
                                 message: format!("JSON invalide: {err}"),
@@ -177,10 +258,16 @@ async fn handle_ws_socket(state: Arc<DaemonState>, socket: WebSocket) {
                 };
 
                 match parsed {
-                    DaemonClientMessage::Connect { token, client } => {
+                    DaemonClientMessage::Connect {
+                        token,
+                        protocol_version,
+                        client,
+                    } => {
                         if !verify_token(&state.config, &token) {
+                            state.metrics.inc_auth_failure();
                             let _ = send_json(
                                 &mut sender,
+                                &state.metrics,
                                 DaemonServerMessage::Error {
                                     request_id: None,
                                     message: "token invalide ou absent".into(),
@@ -189,6 +276,13 @@ async fn handle_ws_socket(state: Arc<DaemonState>, socket: WebSocket) {
                             .await;
                             break;
                         }
+                        if !is_client_version_supported(&protocol_version) {
+                            warn!(
+                                client_protocol = %protocol_version,
+                                min = shared_types::PROTOCOL_MIN_CLIENT,
+                                "client protocole obsolète"
+                            );
+                        }
                         window_kind = WindowKind::parse(&client.window_kind);
                         let subscriptions = resolve_subscriptions(
                             window_kind,
@@ -196,16 +290,25 @@ async fn handle_ws_socket(state: Arc<DaemonState>, socket: WebSocket) {
                             &client.subscriptions,
                         );
                         authenticated = true;
+                        state.metrics.inc_connection();
                         state.hub.register(ClientSession {
                             session_id: session_id.clone(),
                             window_kind,
                             subscriptions,
                             outbound: out_tx.clone(),
                         });
+                        debug!(
+                            %session_id,
+                            window_kind = ?window_kind,
+                            client_protocol = %protocol_version,
+                            "daemon client connecté"
+                        );
                         let _ = send_json(
                             &mut sender,
+                            &state.metrics,
                             DaemonServerMessage::ConnectOk {
                                 version: VERSION.into(),
+                                protocol_version: PROTOCOL_VERSION.into(),
                                 session_id: session_id.clone(),
                                 territory_session_id: state.hub.territory_session_id(),
                             },
@@ -213,9 +316,11 @@ async fn handle_ws_socket(state: Arc<DaemonState>, socket: WebSocket) {
                         .await;
                     }
                     DaemonClientMessage::Ping { nonce } => {
+                        state.metrics.inc_ping();
                         if !authenticated {
                             let _ = send_json(
                                 &mut sender,
+                                &state.metrics,
                                 DaemonServerMessage::Error {
                                     request_id: None,
                                     message: "non authentifié — envoyez Connect d'abord".into(),
@@ -224,15 +329,22 @@ async fn handle_ws_socket(state: Arc<DaemonState>, socket: WebSocket) {
                             .await;
                             continue;
                         }
-                        let _ = send_json(&mut sender, DaemonServerMessage::Pong { nonce }).await;
+                        let _ = send_json(
+                            &mut sender,
+                            &state.metrics,
+                            DaemonServerMessage::Pong { nonce },
+                        )
+                        .await;
                     }
                     DaemonClientMessage::Execute {
                         request_id,
                         command,
                     } => {
+                        state.metrics.inc_execute();
                         if !authenticated {
                             let _ = send_json(
                                 &mut sender,
+                                &state.metrics,
                                 DaemonServerMessage::Error {
                                     request_id: Some(request_id),
                                     message: "non authentifié — envoyez Connect d'abord".into(),
@@ -244,10 +356,11 @@ async fn handle_ws_socket(state: Arc<DaemonState>, socket: WebSocket) {
                         if requires_main_window(&command) && window_kind != WindowKind::Main {
                             let _ = send_json(
                                 &mut sender,
+                                &state.metrics,
                                 DaemonServerMessage::Result {
                                     request_id: request_id.clone(),
                                     response: crate::bridge::Response::Error(
-                                        crate::bridge::types::AppError {
+                                        crate::bridge::AppError {
                                             kind: "main_window_required".into(),
                                             message: "cette commande est réservée à la fenêtre principale".into(),
                                         },
@@ -263,6 +376,7 @@ async fn handle_ws_socket(state: Arc<DaemonState>, socket: WebSocket) {
                         }
                         let _ = send_json(
                             &mut sender,
+                            &state.metrics,
                             DaemonServerMessage::Result {
                                 request_id: request_id.clone(),
                                 response: response.clone(),
@@ -288,9 +402,11 @@ async fn handle_ws_socket(state: Arc<DaemonState>, socket: WebSocket) {
 
 async fn send_json(
     sender: &mut futures_util::stream::SplitSink<WebSocket, Message>,
+    metrics: &DaemonMetrics,
     message: DaemonServerMessage,
 ) -> Result<(), ()> {
     let text = serde_json::to_string(&message).map_err(|_| ())?;
+    metrics.inc_sent();
     sender.send(Message::Text(text.into())).await.map_err(|_| ())
 }
 

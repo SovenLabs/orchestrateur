@@ -8,11 +8,10 @@ use cortex::{MemoryDraft, MemoryDraftValidator, MemoryDraftValidatorConfig};
 #[test]
 fn heavy_adversarial_validation_smoke() {
     let validator = MemoryDraftValidator::from_config(&MemoryDraftValidatorConfig::default());
-    let draft = MemoryDraft {
-        title: "Smoke heavy".into(),
-        content: "Validation adversarial complète sur gros volume.".into(),
-        tags: vec!["security".into()],
-        backlinks: vec![],
-    };
+    let mut draft = MemoryDraft::new(
+        "Smoke heavy",
+        "Validation adversarial complète sur gros volume.",
+    );
+    draft.tags = vec!["security".into()];
     validator.validate(&draft).expect("draft sain");
 }

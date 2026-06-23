@@ -398,6 +398,14 @@ pub struct AgentSettingsConfig {
     pub skill_auto_execute: bool,
     /// Score minimal pour déclencher l'auto-exécution (Phase 14).
     pub skill_auto_execute_threshold: u32,
+    /// Prétraitement bidirectionnel des messages avant construction du contexte (PR-6).
+    pub message_preprocess: bool,
+    /// Seuil minimal (caractères) en dessous duquel un message est enrichi.
+    pub enrichment_min_chars: usize,
+    /// Seuil maximal (caractères) au-delà duquel un message est compressé.
+    pub compression_max_chars: usize,
+    /// Préserve les entités nommées via ancrage Cortex lors de la compression.
+    pub compression_preserve_entities: bool,
 }
 
 impl Default for AgentSettingsConfig {
@@ -415,6 +423,10 @@ impl Default for AgentSettingsConfig {
             skill_auto_suggest: true,
             skill_auto_execute: false,
             skill_auto_execute_threshold: 10,
+            message_preprocess: true,
+            enrichment_min_chars: 40,
+            compression_max_chars: 8000,
+            compression_preserve_entities: true,
         }
     }
 }
@@ -488,6 +500,48 @@ impl Default for SkillsHubConfig {
     }
 }
 
+/// Configuration du watcher de sessions Markdown.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WatcherConfig {
+    /// Active le watcher au démarrage daemon / CLI `watch`.
+    pub enabled: bool,
+    /// Répertoires relatifs au workspace à surveiller (récursif `*.md`).
+    pub watch_dirs: Vec<String>,
+    /// Délai de stabilité fichier avant traitement (secondes).
+    pub debounce_secs: u64,
+    /// Taille minimale du contenu session (caractères).
+    pub min_content_chars: usize,
+}
+
+impl Default for WatcherConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            watch_dirs: vec![".orchestrateur/sessions".into()],
+            debounce_secs: 8,
+            min_content_chars: 120,
+        }
+    }
+}
+
+/// Configuration mémoire opérationnelle (insights, dédup).
+#[derive(Debug, Clone, PartialEq)]
+pub struct MemoryConfig {
+    /// Seuil Jaccard pour considérer un brouillon comme doublon (0.0–1.0).
+    pub dedup_jaccard_threshold: f32,
+    /// Nombre de souvenirs liés injectés avant extraction LLM.
+    pub insight_related_search_limit: usize,
+}
+
+impl Default for MemoryConfig {
+    fn default() -> Self {
+        Self {
+            dedup_jaccard_threshold: 0.6,
+            insight_related_search_limit: 3,
+        }
+    }
+}
+
 /// Configuration client MCP Phase 9.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct McpConfig {
@@ -535,6 +589,10 @@ pub struct OrchestratorConfig {
     pub mcp: McpConfig,
     /// Configuration agent (Phase 10).
     pub agent: AgentSettingsConfig,
+    /// Insights, dédup et extraction mémoire.
+    pub memory: MemoryConfig,
+    /// Watcher sessions → brouillons insight.
+    pub watcher: WatcherConfig,
     /// Hub skills + plugins dynamiques (Phase 11).
     pub skills_hub: SkillsHubConfig,
 }
@@ -556,6 +614,8 @@ impl Default for OrchestratorConfig {
             provider_profiles: ProviderProfiles::default(),
             mcp: McpConfig::default(),
             agent: AgentSettingsConfig::default(),
+            memory: MemoryConfig::default(),
+            watcher: WatcherConfig::default(),
             skills_hub: SkillsHubConfig::default(),
         }
     }
@@ -584,6 +644,18 @@ impl OrchestratorConfig {
     #[must_use]
     pub fn marketplace_catalog_path(&self) -> PathBuf {
         self.workspace_root.join(&self.skills_hub.marketplace_catalog)
+    }
+
+    /// Répertoire par défaut des fichiers session Markdown surveillés.
+    #[must_use]
+    pub fn sessions_watch_dir(&self) -> PathBuf {
+        self.workspace_root.join(".orchestrateur").join("sessions")
+    }
+
+    /// Répertoire des brouillons en attente de publication.
+    #[must_use]
+    pub fn drafts_dir(&self) -> PathBuf {
+        self.workspace_root.join(".orchestrateur").join("drafts")
     }
 
     /// Chemin de la base SQLite des sessions agent.
@@ -746,9 +818,30 @@ impl OrchestratorConfig {
         if let Some(a) = settings.agent {
             merge_agent(&mut self.agent, a);
         }
+        if let Some(m) = settings.memory {
+            merge_memory(&mut self.memory, m);
+        }
+        if let Some(w) = settings.watcher {
+            merge_watcher(&mut self.watcher, w);
+        }
         if let Some(h) = settings.skills_hub {
             merge_skills_hub(&mut self.skills_hub, h);
         }
+    }
+}
+
+fn merge_watcher(target: &mut WatcherConfig, section: WatcherSection) {
+    if let Some(v) = section.enabled {
+        target.enabled = v;
+    }
+    if let Some(v) = section.watch_dirs {
+        target.watch_dirs = v;
+    }
+    if let Some(v) = section.debounce_secs {
+        target.debounce_secs = v.max(2);
+    }
+    if let Some(v) = section.min_content_chars {
+        target.min_content_chars = v.max(32);
     }
 }
 
@@ -791,6 +884,15 @@ fn merge_skills_hub(target: &mut SkillsHubConfig, section: SkillsHubSection) {
     }
 }
 
+fn merge_memory(target: &mut MemoryConfig, section: MemorySection) {
+    if let Some(v) = section.dedup_jaccard_threshold {
+        target.dedup_jaccard_threshold = v;
+    }
+    if let Some(v) = section.insight_related_search_limit {
+        target.insight_related_search_limit = v;
+    }
+}
+
 fn merge_agent(target: &mut AgentSettingsConfig, section: AgentSection) {
     if let Some(v) = section.max_tool_iterations {
         target.max_tool_iterations = v;
@@ -827,6 +929,18 @@ fn merge_agent(target: &mut AgentSettingsConfig, section: AgentSection) {
     }
     if let Some(v) = section.skill_auto_execute_threshold {
         target.skill_auto_execute_threshold = v;
+    }
+    if let Some(v) = section.message_preprocess {
+        target.message_preprocess = v;
+    }
+    if let Some(v) = section.enrichment_min_chars {
+        target.enrichment_min_chars = v;
+    }
+    if let Some(v) = section.compression_max_chars {
+        target.compression_max_chars = v;
+    }
+    if let Some(v) = section.compression_preserve_entities {
+        target.compression_preserve_entities = v;
     }
 }
 
@@ -1025,7 +1139,23 @@ struct SettingsToml {
     provider_profiles: Option<HashMap<String, ProviderProfileSection>>,
     mcp: Option<McpSection>,
     agent: Option<AgentSection>,
+    memory: Option<MemorySection>,
+    watcher: Option<WatcherSection>,
     skills_hub: Option<SkillsHubSection>,
+}
+
+#[derive(Debug, Deserialize)]
+struct WatcherSection {
+    enabled: Option<bool>,
+    watch_dirs: Option<Vec<String>>,
+    debounce_secs: Option<u64>,
+    min_content_chars: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MemorySection {
+    dedup_jaccard_threshold: Option<f32>,
+    insight_related_search_limit: Option<usize>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1066,6 +1196,10 @@ struct AgentSection {
     skill_auto_suggest: Option<bool>,
     skill_auto_execute: Option<bool>,
     skill_auto_execute_threshold: Option<u32>,
+    message_preprocess: Option<bool>,
+    enrichment_min_chars: Option<usize>,
+    compression_max_chars: Option<usize>,
+    compression_preserve_entities: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -1385,6 +1519,10 @@ enabled = false
         assert!(cfg.agent.skill_tools_enabled);
         assert_eq!(cfg.agent.active_capability_profile, "agent");
         assert_eq!(cfg.agent.max_tool_iterations, 3);
+        assert!(cfg.agent.message_preprocess);
+        assert_eq!(cfg.agent.enrichment_min_chars, 40);
+        assert_eq!(cfg.agent.compression_max_chars, 8000);
+        assert!(cfg.agent.compression_preserve_entities);
     }
 
     #[test]

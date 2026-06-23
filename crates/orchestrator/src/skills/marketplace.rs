@@ -124,7 +124,7 @@ impl SkillsMarketplace {
         }
         if let Some(url) = &config.skills_hub.marketplace_url {
             if !url.is_empty() {
-                return Self::fetch_catalog(config, url).await;
+                return Self::fetch_catalog(url).await;
             }
         }
         Self::load_catalog(config)
@@ -219,26 +219,7 @@ impl SkillsMarketplace {
 }
 
 fn verify_manifest_file(path: &Path) -> Result<(), ManifestError> {
-    let raw = std::fs::read_to_string(path).map_err(|e| ManifestError::Io {
-        path: path.to_path_buf(),
-        message: e.to_string(),
-    })?;
-    let parsed: crate::skills::manifest::SkillManifestToml =
-        toml::from_str(&raw).map_err(|e| ManifestError::Parse {
-            path: path.to_path_buf(),
-            message: e.to_string(),
-        })?;
-    let expected = parsed
-        .skill
-        .as_ref()
-        .and_then(|s| s.integrity_hash.clone());
-    if let Some(hash) = expected {
-        verify_integrity_hash(&raw, &hash).map_err(|message| ManifestError::Invalid {
-            path: path.to_path_buf(),
-            message,
-        })?;
-    }
-    Ok(())
+    crate::skills::manifest::load_manifest(path).map(|_| ())
 }
 
 impl MarketplaceCatalog {

@@ -13,6 +13,7 @@ use thiserror::Error;
 
 use crate::embedding::{build_embedding_provider, EmbeddingFactoryError};
 use crate::llm::{build_llm_provider, LlmFactoryError};
+use crate::draft_repository::FileDraftRepository;
 use crate::memory_repository::FileMemoryRepository;
 use crate::session_store::SqliteSessionStore;
 use crate::vector_store::{build_vector_store, VectorStoreFactoryError};
@@ -88,12 +89,16 @@ pub async fn build_app_dependencies(
             .map_err(|e| WiringError::VectorStore(VectorStoreFactoryError::Build(e.to_string())))?,
     );
 
+    let draft_repo: Arc<dyn orchestrator::draft::DraftRepository> =
+        Arc::new(FileDraftRepository::new(config.drafts_dir()));
+
     Ok(AppDependencies::new(
         memory_repo,
         vector_store,
         embedding,
         llm,
         session_repo,
+        draft_repo,
         config,
         security,
         mcp,

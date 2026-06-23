@@ -284,16 +284,8 @@ timeout_secs = 5
 
     #[test]
     fn integrity_hash_roundtrip() {
-        let raw = r#"
-[skill]
-id = "secure"
-description = "test"
-
-[subprocess]
-command = "echo"
-args = ["ok"]
-"#;
-        let hash = compute_integrity_hash(raw);
+        let unsigned = "[skill]\nid = \"secure\"\ndescription = \"test\"\n\n[subprocess]\ncommand = \"echo\"\nargs = [\"ok\"]\n";
+        let hash = compute_integrity_hash(unsigned);
         let signed = format!(
             "[skill]\nid = \"secure\"\ndescription = \"test\"\nintegrity_hash = \"{hash}\"\n\n[subprocess]\ncommand = \"echo\"\nargs = [\"ok\"]\n"
         );

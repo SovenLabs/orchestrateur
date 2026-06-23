@@ -13,16 +13,12 @@ async fn intensity1_invalid_draft_backlinks_rejected() {
     let deps = bundle.into_deps();
     let ghost_id = cortex::MemoryId::new();
 
-    let draft = MemoryDraft {
-        title: "Lien invalide".into(),
-        content: "Sans wikilink résolvable.".into(),
-        tags: vec![],
-        backlinks: vec![BacklinkDraft {
-            target: ghost_id.to_string(),
-            score: 0.9,
-            kind: BacklinkDraftKind::Semantic,
-        }],
-    };
+    let mut draft = MemoryDraft::new("Lien invalide", "Sans wikilink résolvable.");
+    draft.backlinks = vec![BacklinkDraft {
+        target: ghost_id.to_string(),
+        score: 0.9,
+        kind: BacklinkDraftKind::Semantic,
+    }];
 
     let err = build_test_facade(deps)
         .assimilate_from_draft(draft)
@@ -48,12 +44,10 @@ async fn intensity1_workspace_consistent_after_assimilations() {
     }
 
     for i in 0..10 {
-        let draft = MemoryDraft {
-            title: format!("Assimilation {i}"),
-            content: format!("Contenu assimilé numéro {i}."),
-            tags: vec![],
-            backlinks: vec![],
-        };
+        let draft = MemoryDraft::new(
+            format!("Assimilation {i}"),
+            format!("Contenu assimilé numéro {i}."),
+        );
         facade
             .assimilate_from_draft(draft)
             .await
@@ -77,16 +71,16 @@ async fn intensity2_mass_overlap_assimilations() {
     facade.save_memory(&seed).await.expect("save seed");
 
     for i in 0..500 {
-        let draft = MemoryDraft {
-            title: format!("Overlap {i}"),
-            content: "Le Cortex est le squelette durable.".into(),
-            tags: vec!["architecture".into()],
-            backlinks: vec![BacklinkDraft {
-                target: seed.id.to_string(),
-                score: 0.5,
-                kind: BacklinkDraftKind::Semantic,
-            }],
-        };
+        let mut draft = MemoryDraft::new(
+            format!("Overlap {i}"),
+            "Le Cortex est le squelette durable.",
+        );
+        draft.tags = vec!["architecture".into()];
+        draft.backlinks = vec![BacklinkDraft {
+            target: seed.id.to_string(),
+            score: 0.5,
+            kind: BacklinkDraftKind::Semantic,
+        }];
         facade.assimilate_from_draft(draft).await.expect("assim");
     }
 

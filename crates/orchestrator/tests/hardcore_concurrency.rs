@@ -22,12 +22,10 @@ async fn intensity1_ten_parallel_assimilations() {
         .map(|i| {
             let f = facade.clone();
             tokio::spawn(async move {
-                let draft = MemoryDraft {
-                    title: format!("Parallèle {i}"),
-                    content: format!("Assimilation concurrente {i}."),
-                    tags: vec![],
-                    backlinks: vec![],
-                };
+                let draft = MemoryDraft::new(
+                    format!("Parallèle {i}"),
+                    format!("Assimilation concurrente {i}."),
+                );
                 f.assimilate_from_draft(draft).await
             })
         })
@@ -59,12 +57,10 @@ async fn intensity2_mixed_assimilations_and_searches() {
         .map(|i| {
             let f = facade.clone();
             tokio::spawn(async move {
-                let draft = MemoryDraft {
-                    title: format!("Mix {i}"),
-                    content: format!("Recherche et assimilation {i}."),
-                    tags: vec![],
-                    backlinks: vec![],
-                };
+                let draft = MemoryDraft::new(
+                    format!("Mix {i}"),
+                    format!("Recherche et assimilation {i}."),
+                );
                 f.assimilate_from_draft(draft).await
             })
         })
@@ -101,12 +97,7 @@ async fn intensity3_burst_assimilations() {
         .map(|i| {
             let f = facade.clone();
             tokio::spawn(async move {
-                let draft = MemoryDraft {
-                    title: format!("Burst {i}"),
-                    content: "Charge extrême.".into(),
-                    tags: vec![],
-                    backlinks: vec![],
-                };
+                let draft = MemoryDraft::new(format!("Burst {i}"), "Charge extrême.");
                 f.assimilate_from_draft(draft).await
             })
         })

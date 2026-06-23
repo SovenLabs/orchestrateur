@@ -43,7 +43,8 @@ User workspace (memories, LanceDB, config):
 First run:
   1. Edit orchestrator.toml in %APPDATA%\Orchestrateur\workspace\config\
   2. Start daemon: orchestrateur.exe daemon run --workspace <path>
-  3. Launch Territoire Graphique (Godot) — Phase 15+
+  3. Launch Desktop Tauri or Territoire Graphique (Godot) — Phases 21–26
+  4. Package hybride complet : just release-v26
 
 Providers: Ollama (local), xAI via XAI_API_KEY
 

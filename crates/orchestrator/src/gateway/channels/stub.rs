@@ -144,7 +144,8 @@ impl Channel for StubChannel {
                 debug!(
                     channel = self.id,
                     token_env = %self.config.token_env,
-                    "canal stub configuré — inbound HTTP /v1/channels/{id}/inbound"
+                    "canal stub configuré — inbound HTTP /v1/channels/{}/inbound",
+                    self.id
                 );
             } else {
                 debug!(

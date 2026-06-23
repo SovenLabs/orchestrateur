@@ -64,6 +64,7 @@ const SYNAPSE_SHADER := preload("res://shaders/ai_neural_brain/synapse_multimesh
 var _neuron_positions: PackedVector3Array = PackedVector3Array()
 var _edges: Array = []
 var _edge_lookup: Dictionary = {}
+var _neuron_adjacency: Array = []
 var _edge_spikes: PackedFloat32Array = PackedFloat32Array()
 
 var _core_material: ShaderMaterial
@@ -76,6 +77,9 @@ var _propagations: Array = []
 var _network_activity := 1.0
 var _activity_shader := 1.0
 var _generated := false
+var _degraded := false
+var _performance_scale := 1.0
+var _process_skip := 0
 
 
 func _ready() -> void:
@@ -86,6 +90,10 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if _performance_scale < 0.5:
+		_process_skip += 1
+		if _process_skip % 2 != 0:
+			return
 	var t := Time.get_ticks_msec() / 1000.0
 	_activity_shader = lerpf(0.3, 2.8, clampf(agent_activity, 0.0, 1.0))
 	_network_activity = lerpf(0.65, 1.85, clampf(agent_activity, 0.0, 1.0))
@@ -115,6 +123,38 @@ func _process(delta: float) -> void:
 
 func set_agent_activity(level: float) -> void:
 	agent_activity = clampf(level, 0.0, 1.0)
+
+
+## Compat TerritoryManager / BrainSphere (Phase 24).
+func update_brain_activity(intensity: float) -> void:
+	set_agent_activity(clampf(intensity / 3.0, 0.0, 1.0))
+
+
+func pulse_activity(boost: float, duration: float) -> void:
+	stimulate_random_burst(
+		int(12.0 + boost * 28.0 * _performance_scale),
+		clampf(boost, 0.2, 1.2),
+		maxf(0.15, duration),
+	)
+
+
+func set_degraded_mode(active: bool) -> void:
+	_degraded = active
+	if active:
+		set_agent_activity(0.18)
+		if _synapses_mm:
+			_synapses_mm.visible = false
+	else:
+		if _synapses_mm:
+			_synapses_mm.visible = true
+
+
+func set_performance_tier(scale: float) -> void:
+	_performance_scale = clampf(scale, 0.25, 1.0)
+	if _synapses_mm:
+		_synapses_mm.visible = _performance_scale >= 0.45 and not _degraded
+	if _neurons_mm:
+		_neurons_mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 func stimulate_neurons(indices: PackedInt32Array, intensity: float, duration: float) -> void:
@@ -164,6 +204,7 @@ func generate(sphere_seed_value: int) -> void:
 		sphere_seed,
 	)
 	_build_edge_lookup()
+	_build_neuron_adjacency()
 	_build_neuron_multimesh(rng)
 	_build_synapse_multimesh()
 	_generated = true
@@ -296,13 +337,25 @@ func _edge_index_for(a: int, b: int) -> int:
 	return int(_edge_lookup.get(key, -1))
 
 
+func _build_neuron_adjacency() -> void:
+	_neuron_adjacency.clear()
+	_neuron_adjacency.resize(_neuron_positions.size())
+	for i in range(_neuron_adjacency.size()):
+		_neuron_adjacency[i] = []
+	for edge_i in range(_edges.size()):
+		var e: Vector2i = _edges[edge_i]
+		(_neuron_adjacency[e.x] as Array).append(edge_i)
+		(_neuron_adjacency[e.y] as Array).append(edge_i)
+
+
 func _stimulate_edges_for_neurons(indices: PackedInt32Array, amount: float) -> void:
+	if _performance_scale < 0.45:
+		return
 	var dirty := false
 	for idx in indices:
-		for edge_i in range(_edges.size()):
-			var e: Vector2i = _edges[edge_i]
-			if e.x != idx and e.y != idx:
-				continue
+		if idx < 0 or idx >= _neuron_adjacency.size():
+			continue
+		for edge_i in _neuron_adjacency[idx]:
 			_edge_spikes[edge_i] = maxf(_edge_spikes[edge_i], amount)
 			dirty = true
 	if dirty:

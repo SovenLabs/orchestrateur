@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use crate::use_cases::{AssimilateFromText, DEFAULT_ASSIMILATION_SYSTEM_PROMPT};
 use serde_json::Value;
 
-use crate::tool::{Tool, ToolContext, ToolError, ToolResult};
+use super::tool::{Tool, ToolContext, ToolError, ToolResult};
 
 /// Assimile du texte dans le Cortex via le provider LLM.
 pub struct MemoryAssimilateTool;
@@ -40,16 +40,8 @@ impl Tool for MemoryAssimilateTool {
             })
             .unwrap_or_default();
 
-        let mut prompt = text.to_string();
-        if !tags.is_empty() {
-            prompt = format!(
-                "Tags suggérés: {}\n\n{text}",
-                tags.join(", ")
-            );
-        }
-
         let (memory, _) = AssimilateFromText::new(ctx.deps.clone())
-            .execute(&prompt, Some(DEFAULT_ASSIMILATION_SYSTEM_PROMPT))
+            .execute(text, &tags, Some(DEFAULT_ASSIMILATION_SYSTEM_PROMPT))
             .await
             .map_err(|e| ToolError::ExecutionFailed {
                 tool: self.name().into(),

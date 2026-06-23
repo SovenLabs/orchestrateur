@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use cortex::MemoryId;
 use serde_json::Value;
 
-use crate::tool::{Tool, ToolContext, ToolError, ToolResult};
+use super::tool::{Tool, ToolContext, ToolError, ToolResult};
 
 /// Récupère une mémoire complète par identifiant UUID.
 pub struct MemoryGetTool;

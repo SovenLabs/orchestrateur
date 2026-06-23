@@ -79,7 +79,7 @@ func _should_apply(effect: Dictionary) -> bool:
 	var now := Time.get_ticks_msec() / 1000.0
 	if now - _last_applied < THROTTLE_SECS:
 		var kind: String = str(effect.get("kind", ""))
-		if kind not in ["assimilation", "error", "degraded", "tool_call"]:
+		if kind not in ["assimilation", "error", "degraded", "tool_call", "thought_propagation", "neuron_stimulated"]:
 			return false
 	_last_applied = now
 	return true
@@ -153,6 +153,28 @@ func _build_effect(event_type: String, payload: Dictionary) -> Dictionary:
 				"intensity": level / 3.0,
 				"pulse_boost": 0.0,
 				"pulse_duration": 0.0,
+				"swirl": false,
+				"stress": 0.0,
+				"particle_mode": "idle",
+			}
+		"thought_propagation":
+			return {
+				"kind": "thought_propagation",
+				"intensity": 0.7,
+				"path": payload.get("path", []),
+				"pulse_boost": 0.5,
+				"pulse_duration": 0.6,
+				"swirl": true,
+				"stress": 0.0,
+				"particle_mode": "idle",
+			}
+		"neuron_stimulated":
+			return {
+				"kind": "neuron_stimulated",
+				"intensity": float(payload.get("intensity", 0.8)),
+				"neuron_id": int(payload.get("id", payload.get("neuron_id", -1))),
+				"pulse_boost": 0.4,
+				"pulse_duration": 0.35,
 				"swirl": false,
 				"stress": 0.0,
 				"particle_mode": "idle",

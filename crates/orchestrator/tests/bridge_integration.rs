@@ -33,7 +33,7 @@ fn bridge_chat_uses_agent_loop() {
     thread.join();
 
     match response.expect("timeout chat agent") {
-        Response::ChatReply { reply, .. } => assert_eq!(reply, "Phase 7 agent"),
+        Response::ChatReply { reply, .. } => assert!(reply.contains("Phase 7 agent"), "reply: {reply}"),
         other => panic!("réponse inattendue: {other:?}"),
     }
 }

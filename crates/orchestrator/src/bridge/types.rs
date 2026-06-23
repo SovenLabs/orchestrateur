@@ -1,11 +1,22 @@
 use chrono::{DateTime, Utc};
-use cortex::{Memory, MemoryId, SearchHit};
+use cortex::{BacklinkKind, Memory, MemoryId, MemoryKind, SearchHit};
 use serde::{Deserialize, Serialize};
 
 use crate::error::OrchestratorError;
 
+/// Lien sortant exposé dans les listes mémoire (trous de ver UI).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BacklinkSummary {
+    /// Mémoire cible.
+    pub target: MemoryId,
+    /// Score de pertinence ∈ [0.0, 1.0].
+    pub score: f32,
+    /// `semantic` ou `explicit_wikilink`.
+    pub kind: String,
+}
+
 /// Vue légère d'une mémoire pour listes virtualisées (HUD / TUI).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MemorySummary {
     /// Identifiant unique.
     pub id: MemoryId,
@@ -19,6 +30,12 @@ pub struct MemorySummary {
     pub updated_at: DateTime<Utc>,
     /// Nombre de backlinks sortants.
     pub backlink_count: usize,
+    /// Cibles des backlinks sortants (pour graphe cosmique).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub backlinks: Vec<BacklinkSummary>,
+    /// Type sémantique du souvenir.
+    #[serde(default)]
+    pub kind: MemoryKind,
 }
 
 impl MemorySummary {
@@ -36,6 +53,19 @@ impl MemorySummary {
             created_at: memory.created_at,
             updated_at: memory.updated_at,
             backlink_count: memory.backlink_count(),
+            kind: memory.kind,
+            backlinks: memory
+                .backlinks
+                .iter()
+                .map(|bl| BacklinkSummary {
+                    target: bl.target,
+                    score: bl.score,
+                    kind: match bl.kind {
+                        BacklinkKind::Semantic => "semantic".to_string(),
+                        BacklinkKind::ExplicitWikilink => "explicit_wikilink".to_string(),
+                    },
+                })
+                .collect(),
         }
     }
 
@@ -49,6 +79,59 @@ impl MemorySummary {
                 .iter()
                 .any(|tag| tag.to_lowercase().contains(&needle))
     }
+
+    /// Filtre par kind sémantique (`None` = tous).
+    #[must_use]
+    pub fn matches_kind(&self, kind: Option<MemoryKind>) -> bool {
+        kind.is_none_or(|k| self.kind == k)
+    }
+}
+
+/// Résumé léger d'un brouillon en attente de publication.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DraftSummary {
+    /// Identifiant du brouillon.
+    pub id: String,
+    /// Titre candidat.
+    pub title: String,
+    /// Type sémantique.
+    pub kind: MemoryKind,
+    /// Tags.
+    pub tags: Vec<String>,
+    /// Statut du cycle de vie (`pending`, `published`, `discarded`).
+    pub status: crate::draft::DraftStatus,
+    /// Date de création UTC.
+    pub created_at: DateTime<Utc>,
+    /// Fichier session source (watcher).
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "source_session"
+    )]
+    pub watcher_session: Option<String>,
+}
+
+/// Statut du watcher de sessions (bridge / UI).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct WatcherStatus {
+    /// Activé dans la configuration.
+    pub enabled: bool,
+    /// Tâche de surveillance en cours.
+    pub running: bool,
+    /// Répertoires surveillés.
+    pub watch_dirs: Vec<String>,
+    /// Sessions traitées depuis le démarrage.
+    pub sessions_processed: usize,
+    /// Brouillons créés depuis le démarrage.
+    pub drafts_created: usize,
+    /// Brouillons en attente (file disque).
+    pub drafts_pending: usize,
+    /// Dernière activité UTC.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_activity_at: Option<DateTime<Utc>>,
+    /// Dernière erreur lisible.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_error: Option<String>,
 }
 
 /// Résultat de recherche exposé au bridge (réutilise le type Cortex).
@@ -136,6 +219,9 @@ impl AppError {
             OrchestratorError::Llm(_) => "llm",
             OrchestratorError::Validation(_) => "validation",
             OrchestratorError::Security(_) => "security",
+            OrchestratorError::InsightSkipped { .. } => "insight_skipped",
+            OrchestratorError::Internal(_) => "internal",
+            OrchestratorError::Draft(_) => "draft",
         };
         Self {
             kind: kind.to_string(),

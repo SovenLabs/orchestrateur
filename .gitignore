@@ -1,5 +1,8 @@
 /target/
 /dist/
+node_modules/
+apps/tauri-desktop/dist/
+apps/tauri-desktop/node_modules/
 **/*.rs.bk
 .idea/
 .vscode/
@@ -14,7 +17,9 @@
 # Workspace runtime (données locales)
 workspace/memories/*.md
 workspace/logs/*.log
+workspace/logs/*.jsonl
 workspace/config/orchestrator.toml
+workspace/config/*.integrity.json
 
 # LanceDB local (généré au premier run)
 workspace/.orchestrateur/**

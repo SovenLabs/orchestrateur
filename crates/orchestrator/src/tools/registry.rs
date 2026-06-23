@@ -47,10 +47,20 @@ impl ToolRegistry {
         registry
     }
 
+    /// Registre complet incluant outils Hermess (fichiers, skills, session, shell, …).
+    #[must_use]
+    pub fn with_hermes_tools() -> Self {
+        let mut registry = Self::with_memory_and_mcp_tools();
+        super::hermes::register_all(&mut registry);
+        registry
+    }
+
     /// Construit le registre complet puis applique le profil de capacités Phase 10.
     #[must_use]
     pub fn build_for_deps(deps: &AppDependencies, profile_id: &str) -> Self {
-        let base = if deps.mcp.is_some() {
+        let base = if matches!(profile_id, "hermes" | "agent" | "full") {
+            Self::with_hermes_tools()
+        } else if deps.mcp.is_some() {
             Self::with_memory_and_mcp_tools()
         } else {
             Self::with_memory_tools()

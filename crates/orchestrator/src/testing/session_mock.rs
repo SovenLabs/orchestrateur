@@ -2,7 +2,10 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 
 use async_trait::async_trait;
-use cortex::{ConversationTurn, CortexError, Session, SessionKey, SessionRepository};
+use cortex::{
+    ConversationTurn, CortexError, Session, SessionKey, SessionRepository, SessionSummary,
+    SessionTurnHit, TurnRole,
+};
 
 /// Sessions agent en mémoire pour les tests.
 pub struct InMemorySessionRepository {
@@ -72,6 +75,62 @@ impl SessionRepository for InMemorySessionRepository {
             .map_err(|e| CortexError::GraphError(e.to_string()))?;
         guard.remove(key.as_str());
         Ok(())
+    }
+
+    async fn list_recent_sessions(&self, limit: usize) -> Result<Vec<SessionSummary>, CortexError> {
+        let guard = self
+            .inner
+            .read()
+            .map_err(|e| CortexError::GraphError(e.to_string()))?;
+        let mut sessions: Vec<_> = guard.values().cloned().collect();
+        sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        Ok(sessions
+            .into_iter()
+            .take(limit.max(1))
+            .map(|s| {
+                let preview = s
+                    .turns
+                    .iter()
+                    .rev()
+                    .find(|t| matches!(t.role, TurnRole::User | TurnRole::Assistant))
+                    .map(|t| t.content.chars().take(200).collect::<String>())
+                    .unwrap_or_default();
+                SessionSummary {
+                    key: s.key,
+                    turn_count: s.turns.len(),
+                    updated_at: s.updated_at,
+                    preview,
+                }
+            })
+            .collect())
+    }
+
+    async fn search_turns(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> Result<Vec<SessionTurnHit>, CortexError> {
+        let q = query.to_lowercase();
+        let guard = self
+            .inner
+            .read()
+            .map_err(|e| CortexError::GraphError(e.to_string()))?;
+        let mut hits = Vec::new();
+        for session in guard.values() {
+            for (idx, turn) in session.turns.iter().enumerate() {
+                if turn.content.to_lowercase().contains(&q) {
+                    hits.push(SessionTurnHit {
+                        key: session.key.clone(),
+                        turn_index: idx,
+                        role: turn.role,
+                        snippet: turn.content.chars().take(300).collect(),
+                    });
+                }
+            }
+        }
+        hits.sort_by(|a, b| b.turn_index.cmp(&a.turn_index));
+        hits.truncate(limit.max(1));
+        Ok(hits)
     }
 }
 

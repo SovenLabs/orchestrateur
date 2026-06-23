@@ -103,6 +103,32 @@ pub struct Session {
     pub updated_at: DateTime<Utc>,
 }
 
+/// Résumé d'une session pour navigation (`session_search` browse).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SessionSummary {
+    /// Clé de session.
+    pub key: SessionKey,
+    /// Nombre de tours.
+    pub turn_count: usize,
+    /// Dernière activité.
+    pub updated_at: DateTime<Utc>,
+    /// Aperçu du dernier message utilisateur/assistant.
+    pub preview: String,
+}
+
+/// Résultat de recherche dans l'historique des sessions.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SessionTurnHit {
+    /// Clé de session.
+    pub key: SessionKey,
+    /// Index du tour (0-based).
+    pub turn_index: usize,
+    /// Rôle du tour.
+    pub role: TurnRole,
+    /// Extrait de contenu.
+    pub snippet: String,
+}
+
 impl Session {
     /// Nouvelle session vide.
     #[must_use]

@@ -4,7 +4,7 @@
 
 Document canonique pour les extensions Esprit (P6). Le noyau Rust (P0–P5) expose des **contrats stables** ; les skills évoluent dans `workspace/skills/`, `plugins/` et le catalogue marketplace sans modifier le code orchestrateur.
 
-Voir aussi : [`project-hierarchy.md`](project-hierarchy.md) · [`workspace/skills/RESOLVER.md`](../workspace/skills/RESOLVER.md) · [`harness-integral.md`](harness-integral.md)
+Voir aussi : [`project-hierarchy.md`](project-hierarchy.md) · [`hermes-tools.md`](hermes-tools.md) · [`workspace/skills/RESOLVER.md`](../workspace/skills/RESOLVER.md) · [`harness-integral.md`](harness-integral.md)
 
 ---
 

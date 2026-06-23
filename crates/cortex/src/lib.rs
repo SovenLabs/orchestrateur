@@ -24,7 +24,7 @@ pub mod services;
 pub use domain::{
     Backlink, BacklinkDraft, BacklinkDraftKind, BacklinkKind, ConversationTurn, CortexError,
     DomainEvent, KnowledgeGraph, KnowledgeGraphValidated, Memory, MemoryAssimilated, MemoryDraft,
-    MemoryId, MemoryKind, Session, SessionKey, Tag, TurnRole,
+    MemoryId, MemoryKind, Session, SessionKey, SessionSummary, SessionTurnHit, Tag, TurnRole,
 };
 pub use ports::{
     AgentContext, AssimilationError, AssimilationPolicy, AssimilationResult,

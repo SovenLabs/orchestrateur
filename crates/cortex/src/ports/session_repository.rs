@@ -1,6 +1,8 @@
 use async_trait::async_trait;
 
-use crate::domain::{ConversationTurn, CortexError, Session, SessionKey};
+use crate::domain::{
+    ConversationTurn, CortexError, Session, SessionKey, SessionSummary, SessionTurnHit,
+};
 
 /// Port de persistance des sessions de conversation agent.
 ///
@@ -22,4 +24,14 @@ pub trait SessionRepository: Send + Sync {
 
     /// Supprime une session et son historique.
     async fn delete(&self, key: &SessionKey) -> Result<(), CortexError>;
+
+    /// Liste les sessions les plus récentes (mode browse `session_search`).
+    async fn list_recent_sessions(&self, limit: usize) -> Result<Vec<SessionSummary>, CortexError>;
+
+    /// Recherche textuelle dans le contenu des tours (mode discovery).
+    async fn search_turns(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> Result<Vec<SessionTurnHit>, CortexError>;
 }

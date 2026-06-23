@@ -1,5 +1,6 @@
 //! Registre d'outils agent Phase 7.
 
+mod hermes;
 mod mcp_call;
 mod mcp_list;
 mod memory_assimilate;
@@ -12,6 +13,7 @@ mod skill_list;
 mod skill_suggest;
 mod tool;
 mod capability_profiles;
+mod workspace_path;
 
 pub use capability_profiles::{
     CapabilityProfileDescriptor, CapabilityProfileRegistry, CAPABILITY_PROFILE_DESCRIPTORS,

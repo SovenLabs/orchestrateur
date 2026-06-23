@@ -3,7 +3,10 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
-use cortex::{ConversationTurn, CortexError, Session, SessionKey, SessionRepository, TurnRole};
+use cortex::{
+    ConversationTurn, CortexError, Session, SessionKey, SessionRepository, SessionSummary,
+    SessionTurnHit, TurnRole,
+};
 use rusqlite::{params, Connection};
 use tokio::task::spawn_blocking;
 
@@ -179,6 +182,102 @@ impl SessionRepository for SqliteSessionStore {
             conn.execute("DELETE FROM sessions WHERE key = ?1", params![key_str])
                 .map_err(|e| CortexError::GraphError(e.to_string()))?;
             Ok(())
+        })
+        .await
+    }
+
+    async fn list_recent_sessions(&self, limit: usize) -> Result<Vec<SessionSummary>, CortexError> {
+        let cap = limit.max(1).min(100);
+        self.with_conn(move |conn| {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT s.key, s.updated_at,
+                        (SELECT COUNT(*) FROM turns t WHERE t.session_key = s.key),
+                        (SELECT content FROM turns t WHERE t.session_key = s.key
+                         AND t.role IN ('user','assistant')
+                         ORDER BY t.id DESC LIMIT 1)
+                     FROM sessions s
+                     ORDER BY s.updated_at DESC
+                     LIMIT ?1",
+                )
+                .map_err(|e| CortexError::GraphError(e.to_string()))?;
+            let rows = stmt
+                .query_map(params![cap as i64], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, i64>(2)?,
+                        row.get::<_, Option<String>>(3)?,
+                    ))
+                })
+                .map_err(|e| CortexError::GraphError(e.to_string()))?;
+            let mut out = Vec::new();
+            for row in rows {
+                let (key, updated, count, preview) =
+                    row.map_err(|e| CortexError::GraphError(e.to_string()))?;
+                let updated_at = DateTime::parse_from_rfc3339(&updated)
+                    .map_err(|e| CortexError::GraphError(e.to_string()))?
+                    .with_timezone(&Utc);
+                let key = SessionKey::new(key).map_err(|e| CortexError::GraphError(e.to_string()))?;
+                let preview = preview.unwrap_or_default();
+                let preview: String = preview.chars().take(200).collect();
+                out.push(SessionSummary {
+                    key,
+                    turn_count: count as usize,
+                    updated_at,
+                    preview,
+                });
+            }
+            Ok(out)
+        })
+        .await
+    }
+
+    async fn search_turns(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> Result<Vec<SessionTurnHit>, CortexError> {
+        let q = query.trim().to_string();
+        if q.is_empty() {
+            return Ok(Vec::new());
+        }
+        let cap = limit.max(1).min(50);
+        let pattern = format!("%{q}%");
+        self.with_conn(move |conn| {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT session_key, id, role, content
+                     FROM turns
+                     WHERE content LIKE ?1 ESCAPE '\\'
+                     ORDER BY id DESC
+                     LIMIT ?2",
+                )
+                .map_err(|e| CortexError::GraphError(e.to_string()))?;
+            let rows = stmt
+                .query_map(params![pattern, cap as i64], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, i64>(1)?,
+                        row.get::<_, String>(2)?,
+                        row.get::<_, String>(3)?,
+                    ))
+                })
+                .map_err(|e| CortexError::GraphError(e.to_string()))?;
+            let mut out = Vec::new();
+            for row in rows {
+                let (key, id, role, content) =
+                    row.map_err(|e| CortexError::GraphError(e.to_string()))?;
+                let key = SessionKey::new(key).map_err(|e| CortexError::GraphError(e.to_string()))?;
+                let snippet: String = content.chars().take(300).collect();
+                out.push(SessionTurnHit {
+                    key,
+                    turn_index: id.saturating_sub(1) as usize,
+                    role: str_to_role(&role),
+                    snippet,
+                });
+            }
+            Ok(out)
         })
         .await
     }

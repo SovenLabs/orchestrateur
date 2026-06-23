@@ -17,5 +17,7 @@ pub use memory::Memory;
 pub use memory_draft::{BacklinkDraft, BacklinkDraftKind, MemoryDraft};
 pub use memory_id::MemoryId;
 pub use memory_kind::MemoryKind;
-pub use session::{ConversationTurn, Session, SessionKey, TurnRole};
+pub use session::{
+    ConversationTurn, Session, SessionKey, SessionSummary, SessionTurnHit, TurnRole,
+};
 pub use tag::Tag;

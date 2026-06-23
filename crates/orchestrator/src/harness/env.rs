@@ -62,14 +62,14 @@ pub fn ensure_daemon_token() -> Result<bool, HarnessError> {
             std::env::set_var(DAEMON_TOKEN_ENV, &existing);
             return Ok(false);
         }
-        let token = Uuid::new_v4().as_simple().to_string();
+        let token = Uuid::now_v7().as_simple().to_string();
         set_user_env_var(DAEMON_TOKEN_ENV, &token)?;
         return Ok(true);
     }
 
     #[cfg(not(windows))]
     {
-        let token = Uuid::new_v4().as_simple().to_string();
+        let token = Uuid::now_v7().as_simple().to_string();
         std::env::set_var(DAEMON_TOKEN_ENV, &token);
         Ok(true)
     }

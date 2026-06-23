@@ -133,49 +133,59 @@ Configurer `type = "lancedb"` dans `[vector_store]`. Les providers IA (xAI, Olla
 
 ---
 
-## 5. Installateur unique (`install.ps1`)
+## 5. Installateur (style Hermes)
 
-Un seul script — deux modes. Binaires release sur **[GitHub Releases](https://github.com/SovenLabs/orchestrateur/releases)**.
+Installateur par **étapes** (`scripts/install.ps1`) — clone le dépôt, installe Git/Rust si besoin, puis **binaire release** (zip GitHub) ou **compilation** en repli. Binaires sur **[GitHub Releases](https://github.com/SovenLabs/orchestrateur/releases)**.
 
-> **État Juin 2026 :** le dépôt est en **0.28.0** mais **aucune release GitHub n’est encore publiée** (`Orchestrateur-v*-Setup-win64.exe`).  
-> En attendant, utilisez le **mode dev** depuis un clone. Le one-liner `irm | iex` fonctionnera dès qu’une release sera publiée via `scripts/publish-github-release.ps1`.
+### One-liner Windows (recommandé)
+
+```powershell
+iex (irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/scripts/install.ps1)
+```
+
+> Utilisez `iex (irm …)` avec parenthèses (comme Hermes), pas `irm | iex`.
+
+### Linux / macOS
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.sh | bash
+```
 
 ### Windows — politique d’exécution
 
-Si PowerShell **refuse** `irm | iex` (« exécution de scripts désactivée »), utilisez l’une de ces formes :
+Si PowerShell **refuse** l’exécution (« scripts désactivés ») :
 
 ```powershell
-# Recommandé (bypass + évite le cache irm)
+# Recommandé
 $i = Join-Path $env:TEMP "orchestrateur-install.ps1"
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1" -OutFile $i -UseBasicParsing
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/scripts/install.ps1" -OutFile $i -UseBasicParsing
 powershell -NoProfile -ExecutionPolicy Bypass -File $i
 
-# One-liner (si cache CDN : ajoutez ?t=1 à l'URL)
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1?t=3' | iex"
-
-# Ou depuis un clone
+# Depuis un clone (dev)
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Dev
 ```
 
 ### Modes d’installation
 
-| Mode | Commande | Quand l’utiliser |
-|------|----------|------------------|
-| **Release** | `powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 \| iex"` | Après publication d’une release GitHub |
-| **Release + daemon auto** | `$env:ORCHESTRATEUR_INSTALL_DAEMON='1';` puis commande release ci-dessus | Post-install avec tâche planifiée daemon |
-| **Dev (recommandé aujourd’hui)** | `git clone …` puis `.\install.ps1 -Dev` avec `-ExecutionPolicy Bypass` | Contributeurs, version courante non packagée |
-| **Dev + daemon** | `.\install.ps1 -Dev -InstallDaemon` | Dev + daemon au logon |
+| Mode | Commande | Comportement |
+|------|----------|--------------|
+| **Release (défaut)** | `iex (irm …/scripts/install.ps1)` | Zip release si publié, sinon build auto |
+| **Release + daemon** | `$env:ORCHESTRATEUR_INSTALL_DAEMON='1';` puis one-liner | + tâche planifiée daemon |
+| **Dev** | `.\install.ps1 -Dev` depuis le clone | Compile `orch.exe` depuis les sources |
+| **Version fixe** | `$env:ORCHESTRATEUR_VERSION='0.28.0';` puis one-liner | Épingle la release |
 
-Après l’install release, le script exécute **`orch doctor`**, initialise le workspace `%APPDATA%\Orchestrateur\workspace`, génère `ORCHESTRATEUR_DAEMON_TOKEN` si absent, et affiche le snippet MCP.
+**Étapes installées :** Git (PortableGit) → clone → release ou `cargo build` → PATH (`%USERPROFILE%\.orchestrateur\bin`) → workspace `%APPDATA%\Orchestrateur\workspace` → `orch doctor` → `orch onboard` (interactif).
 
-Version fixe release (quand disponible) : `$env:ORCHESTRATEUR_VERSION = "0.28.0"`
+Le point d’entrée racine `install.ps1` délègue vers `scripts/install.ps1` (compatibilité anciennes URLs).
+
+Version fixe : `$env:ORCHESTRATEUR_VERSION = "0.28.0"`
 
 ### Dépannage rapide
 
 | Symptôme | Cause probable | Action |
 |----------|----------------|--------|
 | « exécution de scripts désactivée » | `ExecutionPolicy` Windows | `-ExecutionPolicy Bypass` (voir ci-dessus) |
-| « Aucune release GitHub publiée » | 0 release sur le dépôt | `git clone` + `.\install.ps1 -Dev` |
+| « Aucune release GitHub publiée » | 0 release sur le dépôt | Le one-liner compile automatiquement ; ou `.\install.ps1 -Dev` |
 | `orch` / `just` introuvable | PATH ou mauvais répertoire | Nouveau terminal après install ; `cd` vers le clone |
 | `npm` / `npm.ps1` refusé | Même politique PowerShell | `npm.cmd` au lieu de `npm` |
 

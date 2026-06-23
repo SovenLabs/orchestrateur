@@ -4,23 +4,34 @@
 
 ## Installation
 
-> **Juin 2026 :** aucune release GitHub packagée n’est encore publiée. Pour la version courante (0.28.0), installez en **mode dev** depuis un clone. Le one-liner release sera actif après `scripts/publish-github-release.ps1`.
+Installateur **style Hermes** : étapes automatisées (Git, clone, release ou build, PATH, workspace).
 
 ```powershell
-# Développement (recommandé tant qu'il n'y a pas de release)
+# Windows — one-liner (recommandé)
+iex (irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/scripts/install.ps1)
+
+# Version fixe
+$env:ORCHESTRATEUR_VERSION = "0.28.0"
+iex (irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/scripts/install.ps1)
+
+# Daemon auto au logon
+$env:ORCHESTRATEUR_INSTALL_DAEMON = "1"
+iex (irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/scripts/install.ps1)
+```
+
+```bash
+# Linux / macOS
+curl -fsSL https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.sh | bash
+```
+
+```powershell
+# Développement (depuis clone)
 git clone https://github.com/SovenLabs/orchestrateur.git
 cd orchestrateur
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Dev
-
-# Release (après publication GitHub Releases)
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 | iex"
-
-# Version fixe (quand Orchestrateur-v0.28.0-Setup-win64.exe existe)
-$env:ORCHESTRATEUR_VERSION = "0.28.0"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 | iex"
 ```
 
-Si PowerShell refuse `irm | iex` ou `npm`, c’est la politique d’exécution — utilisez toujours `-ExecutionPolicy Bypass` ou `npm.cmd`.
+Si aucune release GitHub n’est publiée, le one-liner **compile automatiquement** depuis les sources (comme Hermes installe Python/uv). Si PowerShell refuse l’exécution, utilisez `-ExecutionPolicy Bypass`.
 
 Première configuration :
 

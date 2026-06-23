@@ -48,7 +48,7 @@ Orchestrateur v$Version — Windows x64
 
 **PowerShell (recommande):**
 ``````powershell
-irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 | iex
+iex (irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/scripts/install.ps1)
 ``````
 
 **curl (Git Bash / WSL):**

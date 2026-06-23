@@ -1,19 +1,17 @@
-# Orchestrateur — installateur Windows unique
+# Orchestrateur — point d'entree installateur (delegue vers scripts/install.ps1)
 #
-# Desinstallation : powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
-#   irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/uninstall.ps1 | iex
+# One-liner recommande (style Hermes) :
+#   iex (irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/scripts/install.ps1)
 #
-# Release (Setup.exe depuis GitHub) :
-#   irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 | iex
-#   $env:ORCHESTRATEUR_VERSION = "0.28.0"; irm ... | iex
-#   $env:ORCHESTRATEUR_SILENT = "1"; irm ... | iex
-#   irm ... | iex; install.ps1 -InstallDaemon
+# Compatibilite racine :
+#   iex (irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1)
 #
-# Dev (compile depuis le dépôt, installe orch.exe dans PATH) :
+# Dev (depuis clone) :
 #   .\install.ps1 -Dev
 #   .\install.ps1 -Dev -InstallDaemon
-#   .\install.ps1 -Dev -AllUsers          # PATH systeme (CMD admin)
-#   $env:ORCHESTRATEUR_DEV = "1"; .\install.ps1
+#
+# Desinstallation :
+#   irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/uninstall.ps1 | iex
 
 #Requires -Version 5.1
 
@@ -26,163 +24,61 @@ param(
     [switch]$InstallDaemon,
     [switch]$SkipDoctor,
     [switch]$StartDaemon,
-    [switch]$AllUsers
+    [switch]$AllUsers,
+    [switch]$NonInteractive,
+    [string]$Branch = "main",
+    [string]$Commit = "",
+    [string]$Tag = "",
+    [string]$Stage = "",
+    [switch]$Manifest,
+    [switch]$ProtocolVersion,
+    [switch]$Json
 )
 
 $ErrorActionPreference = "Stop"
 $Repo = "SovenLabs/orchestrateur"
 $RawBase = "https://raw.githubusercontent.com/$Repo/main"
 
-function Import-OrchestrateurInstallLibs {
-    $localPost = if ($PSScriptRoot) { Join-Path $PSScriptRoot "scripts\lib\post-install.ps1" } else { "" }
-    if ($localPost -and (Test-Path -LiteralPath $localPost)) {
-        . $localPost
-        return
-    }
-    $libDir = Join-Path $env:TEMP "orchestrateur-install-lib"
-    if (-not (Test-Path $libDir)) {
-        New-Item -ItemType Directory -Path $libDir -Force | Out-Null
-    }
-    $files = @(
-        @{ Name = "cli.ps1"; Url = "$RawBase/scripts/lib/cli.ps1" },
-        @{ Name = "post-install.ps1"; Url = "$RawBase/scripts/lib/post-install.ps1" }
-    )
-    foreach ($f in $files) {
-        $dest = Join-Path $libDir $f.Name
-        Invoke-WebRequest -Uri $f.Url -OutFile $dest -UseBasicParsing
-    }
-    . (Join-Path $libDir "post-install.ps1")
-}
-
 if ($env:ORCHESTRATEUR_VERSION) { $Version = $env:ORCHESTRATEUR_VERSION }
-if ($env:ORCHESTRATEUR_SILENT -eq "1") { $Silent = $true }
+if ($env:ORCHESTRATEUR_SILENT -eq "1") { $NonInteractive = $true }
 if ($env:ORCHESTRATEUR_DEV -eq "1") { $Dev = $true }
 if ($env:ORCHESTRATEUR_INSTALL_DAEMON -eq "1") { $InstallDaemon = $true }
 if ($env:ORCHESTRATEUR_SKIP_DOCTOR -eq "1") { $SkipDoctor = $true }
 if ($env:ORCHESTRATEUR_START_DAEMON -eq "1") { $StartDaemon = $true }
 if ($env:ORCHESTRATEUR_ALL_USERS -eq "1") { $AllUsers = $true }
 
-if ($Dev) {
-    $Root = $PSScriptRoot
-    if (-not (Test-Path (Join-Path $Root "Cargo.toml"))) {
-        throw "Mode -Dev : exécutez install.ps1 depuis la racine du dépôt orchestrateur."
+$localInstaller = $null
+if ($PSScriptRoot) {
+    $candidate = Join-Path $PSScriptRoot "scripts\install.ps1"
+    if (Test-Path -LiteralPath $candidate) {
+        $localInstaller = $candidate
     }
-    Set-Location $Root
-    . (Join-Path $Root "scripts\lib\cli.ps1")
-    Initialize-OrchestrateurBuildEnv
-
-    $profile = if ($Debug) { "debug" } else { "release" }
-    if (-not $SkipBuild) {
-        Build-OrchestrateurCli -Root $Root -Profile $profile
-    } else {
-        Remove-OrchestrateurLegacyCliArtifacts -Root $Root -Profile $profile
-    }
-
-    Install-OrchestrateurCliToUserPath -Root $Root -Profile $profile
-    if ($AllUsers) {
-        Install-OrchestrateurCliToMachinePath -Root $Root -Profile $profile
-    }
-    $ws = Join-Path $Root "workspace"
-    Write-Host ""
-    Write-Host "Installation dev terminee."
-    . (Join-Path $Root "scripts\lib\post-install.ps1")
-    Complete-OrchestrateurPostInstall `
-        -PreferredRoot $Root `
-        -Workspace $ws `
-        -InstallDaemon:$InstallDaemon `
-        -SkipDoctor:$SkipDoctor `
-        -StartDaemon:$StartDaemon
-    Write-Host "Ouvrez un NOUVEAU terminal puis tapez : orchestrateur --version"
-    exit 0
 }
 
-function Get-LatestReleaseVersion {
-    $headers = @{ "User-Agent" = "Orchestrateur-Install-Script" }
-    $api = "https://api.github.com/repos/$Repo/releases/latest"
-    try {
-        $release = Invoke-RestMethod -Uri $api -Headers $headers -UseBasicParsing
-    } catch {
-        throw @"
-Aucune release GitHub publiee pour $Repo (API: $api).
-Le mode 'irm | iex' telecharge Orchestrateur-vVERSION-Setup-win64.exe depuis GitHub Releases.
-
-Options :
-  1) Clone + build local :
-       git clone https://github.com/$Repo.git
-       cd orchestrateur
-       powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Dev
-  2) Publier une release (maintainers) :
-       .\scripts\build-installer.ps1 -InstallInno
-       .\scripts\publish-github-release.ps1
-  3) Version fixe si une release existe deja :
-       `$env:ORCHESTRATEUR_VERSION = '0.28.0'; irm ... | iex
-
-Releases : https://github.com/$Repo/releases
-"@
-    }
-    $tag = [string]$release.tag_name
-    if ($tag.StartsWith("v")) { return $tag.Substring(1) }
-    return $tag
+if (-not $localInstaller) {
+    $localInstaller = Join-Path $env:TEMP "orchestrateur-scripts-install.ps1"
+    Write-Host "Telechargement de l'installateur complet..."
+    Invoke-WebRequest -Uri "$RawBase/scripts/install.ps1" -OutFile $localInstaller -UseBasicParsing
 }
 
-function Normalize-Version([string]$Value) {
-    $v = $Value.Trim()
-    if ($v.StartsWith("v")) { $v = $v.Substring(1) }
-    return $v
+$invokeArgs = @{
+    Dev            = $Dev
+    Debug          = $Debug
+    SkipBuild      = $SkipBuild
+    InstallDaemon  = $InstallDaemon
+    SkipDoctor     = $SkipDoctor
+    StartDaemon    = $StartDaemon
+    AllUsers       = $AllUsers
+    NonInteractive = $NonInteractive
+    Manifest       = $Manifest
+    ProtocolVersion = $ProtocolVersion
+    Json           = $Json
+    Branch         = $Branch
+    Commit         = $Commit
+    Tag            = $Tag
 }
+if ($Version) { $invokeArgs.Version = $Version }
+if ($Stage) { $invokeArgs.Stage = $Stage }
 
-if ([string]::IsNullOrWhiteSpace($Version)) {
-    Write-Host "Recherche de la derniere release GitHub..."
-    $Version = Get-LatestReleaseVersion
-}
-
-$Version = Normalize-Version $Version
-$AssetName = "Orchestrateur-v$Version-Setup-win64.exe"
-$DownloadUrl = "https://github.com/$Repo/releases/download/v$Version/$AssetName"
-$TempDir = Join-Path $env:TEMP "orchestrateur-install"
-$SetupPath = Join-Path $TempDir $AssetName
-
-if (-not (Test-Path $TempDir)) {
-    New-Item -ItemType Directory -Path $TempDir | Out-Null
-}
-
-Write-Host "Orchestrateur v$Version"
-Write-Host "Telechargement: $DownloadUrl"
-try {
-    Invoke-WebRequest -Uri $DownloadUrl -OutFile $SetupPath -UseBasicParsing
-} catch {
-    throw @"
-Echec du telechargement ($AssetName).
-Installez depuis le depot (dev) : .\install.ps1 -Dev
-Ou publiez une release : .\scripts\publish-github-release.ps1
-Releases : https://github.com/$Repo/releases
-"@
-}
-
-if (-not (Test-Path $SetupPath)) {
-    throw "Fichier installeur introuvable apres telechargement: $SetupPath"
-}
-
-Write-Host "Lancement de l'installeur Inno Setup... (install.ps1 rev 3)"
-$psi = New-Object System.Diagnostics.ProcessStartInfo
-$psi.FileName = $SetupPath
-$psi.UseShellExecute = $true
-if ($Silent) {
-    $psi.Arguments = "/SILENT /SUPPRESSMSGBOXES /NORESTART"
-}
-$setupProc = [System.Diagnostics.Process]::Start($psi)
-if (-not $setupProc) {
-    throw "Impossible de lancer l'installeur : $SetupPath"
-}
-$setupProc.WaitForExit()
-if ($setupProc.ExitCode -ne 0) {
-    throw "Installeur termine avec le code $($setupProc.ExitCode)"
-}
-
-Write-Host ""
-Write-Host "Setup.exe termine - finalisation harness..." -ForegroundColor Cyan
-Import-OrchestrateurInstallLibs
-Complete-OrchestrateurPostInstall `
-    -InstallDaemon:$InstallDaemon `
-    -SkipDoctor:$SkipDoctor `
-    -StartDaemon:$StartDaemon
+& $localInstaller @invokeArgs
+exit $LASTEXITCODE

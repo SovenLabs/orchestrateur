@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/shared-types",
     "crates/cortex",
+    "crates/b212",
     "crates/orchestrator",
     "crates/infrastructure",
     "crates/mcp",
@@ -37,6 +38,7 @@ async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 shared-types = { path = "crates/shared-types" }
 cortex = { path = "crates/cortex" }
+b212 = { path = "crates/b212" }
 orchestrator = { path = "crates/orchestrator" }
 orchestrator-client = { path = "crates/client" }
 infrastructure = { path = "crates/infrastructure" }

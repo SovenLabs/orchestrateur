@@ -529,6 +529,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "b212"
+version = "0.28.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
 name = "base64"
 version = "0.21.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3318,6 +3330,7 @@ dependencies = [
  "arrow-array",
  "arrow-schema",
  "async-trait",
+ "b212",
  "chrono",
  "cortex",
  "futures",
@@ -5195,6 +5208,7 @@ version = "0.28.0"
 dependencies = [
  "async-trait",
  "axum",
+ "b212",
  "blake3",
  "chrono",
  "cortex",

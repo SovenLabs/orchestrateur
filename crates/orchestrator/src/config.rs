@@ -401,6 +401,30 @@ impl Default for AgentsConfig {
     }
 }
 
+/// Configuration protocole B212 Phase 3 (TOML `[b212]`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct B212Config {
+    /// Active le protocole B212 (fixtures + pipeline).
+    pub enabled: bool,
+    /// Répertoire des fixtures OHLCV (`workspace/b212/fixtures`).
+    pub fixtures_dir: String,
+    /// Journal d'audit B212 (`workspace/b212/journal`).
+    pub journal_dir: String,
+    /// Propositions trade HITL (`workspace/b212/proposals`).
+    pub proposals_dir: String,
+}
+
+impl Default for B212Config {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            fixtures_dir: "b212/fixtures".into(),
+            journal_dir: "b212/journal".into(),
+            proposals_dir: "b212/proposals".into(),
+        }
+    }
+}
+
 /// Configuration agent Phase 10 (persistée TOML `[agent]`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentSettingsConfig {
@@ -624,6 +648,8 @@ pub struct OrchestratorConfig {
     pub agent: AgentSettingsConfig,
     /// Agents persistants — worker tick (Phase 2b).
     pub agents: AgentsConfig,
+    /// Protocole B212 trading (Phase 3).
+    pub b212: B212Config,
     /// Insights, dédup et extraction mémoire.
     pub memory: MemoryConfig,
     /// Watcher sessions → brouillons insight.
@@ -650,6 +676,7 @@ impl Default for OrchestratorConfig {
             mcp: McpConfig::default(),
             agent: AgentSettingsConfig::default(),
             agents: AgentsConfig::default(),
+            b212: B212Config::default(),
             memory: MemoryConfig::default(),
             watcher: WatcherConfig::default(),
             skills_hub: SkillsHubConfig::default(),
@@ -712,6 +739,30 @@ impl OrchestratorConfig {
     #[must_use]
     pub fn agents_registry_path(&self) -> PathBuf {
         self.workspace_root.join("registry").join("AGENTS_REGISTRY.md")
+    }
+
+    /// Répertoire des fixtures OHLCV B212.
+    #[must_use]
+    pub fn b212_fixtures_dir(&self) -> PathBuf {
+        self.workspace_root.join(&self.b212.fixtures_dir)
+    }
+
+    /// Journal d'audit B212.
+    #[must_use]
+    pub fn b212_journal_dir(&self) -> PathBuf {
+        self.workspace_root.join(&self.b212.journal_dir)
+    }
+
+    /// Propositions trade B212 (Human-in-the-Loop).
+    #[must_use]
+    pub fn b212_proposals_dir(&self) -> PathBuf {
+        self.workspace_root.join(&self.b212.proposals_dir)
+    }
+
+    /// Bible B212 de référence (`workspace/b212/bible/`).
+    #[must_use]
+    pub fn b212_bible_dir(&self) -> PathBuf {
+        self.workspace_root.join("b212").join("bible")
     }
 
     /// Chemin résolu du vector store `LanceDB`.
@@ -869,6 +920,9 @@ impl OrchestratorConfig {
         if let Some(a) = settings.agents {
             merge_agents(&mut self.agents, a);
         }
+        if let Some(b) = settings.b212 {
+            merge_b212(&mut self.b212, b);
+        }
         if let Some(m) = settings.memory {
             merge_memory(&mut self.memory, m);
         }
@@ -877,6 +931,27 @@ impl OrchestratorConfig {
         }
         if let Some(h) = settings.skills_hub {
             merge_skills_hub(&mut self.skills_hub, h);
+        }
+    }
+}
+
+fn merge_b212(target: &mut B212Config, section: B212Section) {
+    if let Some(v) = section.enabled {
+        target.enabled = v;
+    }
+    if let Some(v) = section.fixtures_dir {
+        if !v.trim().is_empty() {
+            target.fixtures_dir = v;
+        }
+    }
+    if let Some(v) = section.journal_dir {
+        if !v.trim().is_empty() {
+            target.journal_dir = v;
+        }
+    }
+    if let Some(v) = section.proposals_dir {
+        if !v.trim().is_empty() {
+            target.proposals_dir = v;
         }
     }
 }
@@ -1214,6 +1289,7 @@ struct SettingsToml {
     mcp: Option<McpSection>,
     agent: Option<AgentSection>,
     agents: Option<AgentsSection>,
+    b212: Option<B212Section>,
     memory: Option<MemorySection>,
     watcher: Option<WatcherSection>,
     skills_hub: Option<SkillsHubSection>,
@@ -1262,6 +1338,14 @@ struct AgentsSection {
     tick_interval_secs: Option<u64>,
     auto_turn_on_inbox: Option<bool>,
     default_worker_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct B212Section {
+    enabled: Option<bool>,
+    fixtures_dir: Option<String>,
+    journal_dir: Option<String>,
+    proposals_dir: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

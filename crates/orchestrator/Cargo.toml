@@ -22,6 +22,7 @@ async-trait.workspace = true
 blake3.workspace = true
 chrono.workspace = true
 cortex.workspace = true
+b212.workspace = true
 flume.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

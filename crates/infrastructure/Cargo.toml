@@ -12,6 +12,7 @@ chrono.workspace = true
 arrow-array.workspace = true
 arrow-schema.workspace = true
 cortex.workspace = true
+b212.workspace = true
 futures.workspace = true
 lancedb.workspace = true
 orchestrator.workspace = true

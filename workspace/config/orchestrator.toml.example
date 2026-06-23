@@ -67,6 +67,13 @@ tick_interval_secs = 60
 auto_turn_on_inbox = false
 default_worker_id = "default"
 
+# Protocole B212 Phase 3 — trading liquidity-driven (fixtures + HITL)
+[b212]
+enabled = true
+fixtures_dir = "b212/fixtures"
+journal_dir = "b212/journal"
+proposals_dir = "b212/proposals"
+
 # Daemon WebSocket local — Territoire Graphique (orchestrateur daemon run)
 [daemon]
 enabled = true

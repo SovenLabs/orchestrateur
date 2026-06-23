@@ -48,6 +48,8 @@ pub mod skills;
 pub mod daemon;
 /// Boucle agent Phase 7.
 pub mod agent;
+/// Protocole B212 (enfant Orchestrateur — Phase 3).
+pub mod b212;
 /// Messagerie inter-agents persistants (Phase 2).
 pub mod communication;
 /// Cycle de vie heartbeat des agents persistants (Phase 2).
@@ -80,7 +82,8 @@ pub use bridge::{
     OrchestratorHandle, OrchestratorThread, Response, SkillSummary, DraftSummary, WatcherStatus,
 };
 pub use config::{
-    AgentSettingsConfig, AgentsConfig, AuditConfig, BehavioralConfig, ConfigError, DaemonConfig,
+    AgentSettingsConfig, AgentsConfig, AuditConfig, B212Config, BehavioralConfig, ConfigError,
+    DaemonConfig,
     WatcherConfig,
     GatewayChannelConfig, GatewayConfig, IntegrityConfig, McpConfig, McpServerConfig, OllamaConfig,
     OrchestratorConfig,

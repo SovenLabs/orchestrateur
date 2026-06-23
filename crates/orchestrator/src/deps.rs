@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use b212::MarketDataProvider;
 use cortex::{EmbeddingProvider, MemoryRepository, SessionRepository, VectorStore};
 
 use crate::config::OrchestratorConfig;
@@ -32,6 +33,8 @@ pub struct AppDependencies {
     pub security: Arc<SecurityContext>,
     /// Gateway MCP optionnel (Phase 9).
     pub mcp: Option<Arc<dyn McpGateway>>,
+    /// Données marché B212 (fixtures Phase 3, adapters live ultérieurs).
+    pub market_data: Option<Arc<dyn MarketDataProvider>>,
 }
 
 impl AppDependencies {
@@ -47,6 +50,7 @@ impl AppDependencies {
         config: OrchestratorConfig,
         security: Arc<SecurityContext>,
         mcp: Option<Arc<dyn McpGateway>>,
+        market_data: Option<Arc<dyn MarketDataProvider>>,
     ) -> Self {
         Self::with_events(
             memory_repo,
@@ -59,6 +63,7 @@ impl AppDependencies {
             Arc::new(TracingEventPublisher),
             security,
             mcp,
+            market_data,
         )
     }
 
@@ -75,6 +80,7 @@ impl AppDependencies {
         events: Arc<dyn EventPublisher>,
         security: Arc<SecurityContext>,
         mcp: Option<Arc<dyn McpGateway>>,
+        market_data: Option<Arc<dyn MarketDataProvider>>,
     ) -> Self {
         Self {
             memory_repo,
@@ -87,6 +93,7 @@ impl AppDependencies {
             events,
             security,
             mcp,
+            market_data,
         }
     }
 
@@ -113,6 +120,7 @@ impl AppDependencies {
             config,
             events,
             security,
+            None,
             None,
         )
     }

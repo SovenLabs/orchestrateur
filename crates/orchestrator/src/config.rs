@@ -24,8 +24,8 @@ pub struct ProvidersConfig {
 impl Default for ProvidersConfig {
     fn default() -> Self {
         Self {
-            primary_llm: "xai".into(),
-            fallback_llm: vec!["ollama".into()],
+            primary_llm: "ollama".into(),
+            fallback_llm: vec!["xai".into()],
             primary_embedding: "ollama".into(),
             fallback_embedding: vec![],
         }
@@ -1362,7 +1362,7 @@ mod tests {
         assert!((cfg.similarity_thresholds.semantic_min - 0.75).abs() < f32::EPSILON);
         assert_eq!(cfg.similarity_thresholds.max_links, 10);
         assert_eq!(cfg.embedding_dim, 768);
-        assert_eq!(cfg.providers.primary_llm, "xai");
+        assert_eq!(cfg.providers.primary_llm, "ollama");
     }
 
     #[test]

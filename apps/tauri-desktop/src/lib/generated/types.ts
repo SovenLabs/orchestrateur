@@ -15,11 +15,17 @@ export const DEFAULT_CONNECTION_CONFIG: ConnectionConfig = {
   reconnect_max_ms: 30_000,
 };
 
+export type HarnessCapabilities = {
+  can_write_cortex: boolean;
+  can_run_skills: boolean;
+};
+
 export type ClientInfo = {
   window_kind: string;
   window_id?: string;
   panels: string[];
   subscriptions: string[];
+  harness?: HarnessCapabilities;
 };
 
 export const PROTOCOL_VERSION = "1.2.0";

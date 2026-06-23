@@ -1,7 +1,12 @@
+mod harness_commands;
 mod territory_launcher;
 
 use orchestrator_core::init as init_core;
 use tauri::Manager;
+use harness_commands::{
+    harness_apply_onboard, harness_list_channels, harness_probe_services, harness_save_channel,
+    harness_workspace_info,
+};
 use territory_launcher::{
     get_territory_launch_status, launch_sphere_window, launch_territory_window,
     TerritoryLauncherState,
@@ -26,6 +31,11 @@ pub fn run() {
             launch_sphere_window,
             launch_territory_window,
             get_territory_launch_status,
+            harness_workspace_info,
+            harness_probe_services,
+            harness_list_channels,
+            harness_save_channel,
+            harness_apply_onboard,
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").expect("fenêtre main");

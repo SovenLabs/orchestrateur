@@ -9,7 +9,8 @@ use std::path::Path;
 use ts_rs::TS;
 use shared_types::events::{BackendEvent, FrontendCommand};
 use shared_types::protocol::{
-    ClientInfo, DaemonClientMessage, DaemonServerMessage, TerritoryBroadcast,
+    ClientInfo, DaemonClientMessage, DaemonServerMessage, HarnessCapabilities,
+    TerritoryBroadcast,
 };
 
 fn main() {
@@ -25,6 +26,7 @@ fn main() {
     for export in [
         BackendEvent::export(&cfg),
         FrontendCommand::export(&cfg),
+        HarnessCapabilities::export(&cfg),
         ClientInfo::export(&cfg),
         TerritoryBroadcast::export(&cfg),
         DaemonClientMessage::export(&cfg),
@@ -41,6 +43,7 @@ fn main() {
     let index_body = r"// Auto-généré par `cargo run -p shared-types --bin export-ts` — ne pas éditer.
 export * from './BackendEvent';
 export * from './FrontendCommand';
+export * from './HarnessCapabilities';
 export * from './ClientInfo';
 export * from './TerritoryBroadcast';
 export * from './DaemonClientMessage';

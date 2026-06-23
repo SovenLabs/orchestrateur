@@ -648,3 +648,285 @@ html.reduce-motion .drawer-slide-right {
 .smart-input-dock {
   background: linear-gradient(180deg, transparent 0%, var(--void) 45%, var(--void) 100%);
 }
+
+/* Harness setup & messaging (style Hermes) */
+.harness-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(6, 6, 14, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.harness-setup {
+  position: fixed;
+  inset: 0;
+  z-index: 81;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.harness-card {
+  width: min(28rem, 100%);
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+}
+
+.harness-card--light {
+  background: #f8f9fc;
+  color: #1a1a24;
+}
+
+.harness-card__title {
+  margin: 0 0 0.5rem;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.harness-card__subtitle,
+.harness-card__status,
+.harness-card__meta {
+  margin: 0 0 1.25rem;
+  color: #5a5a6e;
+  line-height: 1.5;
+}
+
+.harness-card__percent {
+  margin: 0.5rem 0 1rem;
+  font-size: 0.875rem;
+  color: #5a5a6e;
+  text-align: right;
+}
+
+.harness-card__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1.25rem;
+}
+
+.harness-progress {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #e2e6ef;
+  overflow: hidden;
+}
+
+.harness-progress__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  transition: width 0.35s ease;
+}
+
+.harness-btn {
+  border-radius: 0.5rem;
+  padding: 0.55rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.harness-btn--primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.harness-btn--ghost {
+  background: transparent;
+  border-color: #c8cdd8;
+  color: #3a3a4a;
+}
+
+.harness-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+
+.harness-field--dark span {
+  color: var(--text-secondary);
+}
+
+.harness-input {
+  border-radius: 0.5rem;
+  border: 1px solid #c8cdd8;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.9rem;
+}
+
+.harness-input--dark {
+  background: var(--bg-input);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.harness-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.harness-check--dark {
+  color: var(--text-secondary);
+}
+
+.harness-messaging {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 70;
+  width: min(52rem, 100vw);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.harness-messaging__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.harness-messaging__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.harness-messaging__list {
+  width: 14rem;
+  flex-shrink: 0;
+  padding: 1rem;
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.harness-channel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  overflow: auto;
+}
+
+.harness-channel-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.harness-channel-item--active,
+.harness-channel-item:hover {
+  background: rgba(160, 196, 224, 0.12);
+}
+
+.harness-channel-item__name {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.harness-channel-item__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.harness-badge {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  background: rgba(122, 118, 136, 0.25);
+  color: var(--text-muted);
+  text-transform: lowercase;
+}
+
+.harness-badge--ok {
+  background: rgba(110, 207, 154, 0.2);
+  color: var(--status-green);
+}
+
+.harness-badge--warn {
+  background: rgba(232, 192, 128, 0.2);
+  color: var(--status-orange);
+}
+
+.harness-messaging__detail {
+  flex: 1;
+  padding: 1.25rem;
+  overflow: auto;
+}
+
+.harness-detail__head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.harness-detail__head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.harness-detail__hint {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin: 0 0 1.25rem;
+}
+
+.harness-detail__section {
+  margin-bottom: 1.25rem;
+}
+
+.harness-detail__label {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+}
+
+.harness-link {
+  color: var(--accent-cyan);
+  font-size: 0.875rem;
+}
+
+.harness-detail__footer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.harness-save-msg {
+  font-size: 0.85rem;
+  color: var(--status-green);
+}
+
+.harness-messaging__gateway {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0;
+}

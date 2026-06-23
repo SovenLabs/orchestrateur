@@ -196,6 +196,11 @@ fn launch_godot_scene(
     }
 }
 
+/// Racine du dépôt orchestrateur (Godot + harness).
+pub fn repo_root_for_harness() -> Option<PathBuf> {
+    workspace_root()
+}
+
 fn workspace_root() -> Option<PathBuf> {
     if let Ok(dir) = std::env::var("ORCHESTRATEUR_WORKSPACE") {
         let p = PathBuf::from(dir);

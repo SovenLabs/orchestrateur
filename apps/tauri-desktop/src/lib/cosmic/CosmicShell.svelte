@@ -10,8 +10,12 @@
   import { cosmicStore } from "$lib/stores/cosmic-store.svelte";
   import { cosmicCameraStore } from "$lib/stores/cosmic-camera.svelte";
   import { navigationStore } from "$lib/stores/navigation.svelte";
+  import { harnessStore } from "$lib/stores/harness.svelte";
+  import SetupOverlay from "$lib/harness/SetupOverlay.svelte";
+  import MessagingDrawer from "$lib/harness/MessagingDrawer.svelte";
 
   onMount(() => {
+    void harnessStore.init();
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const apply = () => document.documentElement.classList.toggle("reduce-motion", mq.matches);
     apply();
@@ -83,3 +87,5 @@
 <ConstellationDrawer />
 <InsightsPanel />
 <EscMenu />
+<SetupOverlay />
+<MessagingDrawer />

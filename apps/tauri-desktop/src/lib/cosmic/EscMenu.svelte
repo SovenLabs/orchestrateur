@@ -4,6 +4,7 @@
   import { connectionStore } from "$lib/stores/connection.svelte";
   import { navigationStore } from "$lib/stores/navigation.svelte";
   import { uiStore } from "$lib/stores/ui.svelte";
+  import { harnessStore } from "$lib/stores/harness.svelte";
   import { PANEL_META, type CommandAction, type PanelId } from "$lib/types/ui";
 
   const canLaunch = $derived(connectionStore.status === "connected");
@@ -46,6 +47,19 @@
     },
   ]);
 
+  const harnessActions = $derived<CommandAction[]>([
+    {
+      id: "messaging",
+      label: "◈ Messaging (Telegram, Discord…)",
+      action: () => harnessStore.openMessaging(),
+    },
+    {
+      id: "setup",
+      label: "◎ Setup / Onboard harness",
+      action: () => harnessStore.openSetup(),
+    },
+  ]);
+
   const toolActions = $derived<CommandAction[]>([
     { id: "health", label: "HealthCheck daemon", action: () => connectionStore.healthCheck() },
     { id: "ping", label: "Ping WebSocket", action: () => connectionStore.ping() },
@@ -67,7 +81,12 @@
     },
   ]);
 
-  const allActions = $derived([...navigationActions, ...toolActions, ...godotActions]);
+  const allActions = $derived([
+    ...harnessActions,
+    ...navigationActions,
+    ...toolActions,
+    ...godotActions,
+  ]);
 
   const filtered = $derived(
     allActions.filter((a) => !a.disabled).filter((a) => a.label.toLowerCase().includes(query.toLowerCase())),

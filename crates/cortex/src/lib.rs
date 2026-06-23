@@ -27,8 +27,10 @@ pub use domain::{
     MemoryId, MemoryKind, Session, SessionKey, Tag, TurnRole,
 };
 pub use ports::{
-    Embedding, EmbeddingCapabilities, EmbeddingError, EmbeddingProvider, MemoryRepository,
-    SearchFilter, SearchHit, SessionRepository, VectorStore,
+    AgentContext, AssimilationError, AssimilationPolicy, AssimilationResult,
+    AssimilationService, ContextProvider, ContextSearchHit, Embedding, EmbeddingCapabilities,
+    EmbeddingError, EmbeddingProvider, MemoryRepository, RetrievalError, SearchFilter, SearchHit,
+    SemanticSearch, SessionRepository, VectorStore,
 };
 pub use services::{
     cosine_similarity, find_injection_pattern, parse_memory_markdown, serialize_memory,

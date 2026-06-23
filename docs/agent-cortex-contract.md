@@ -1,6 +1,8 @@
 # Contrat Agent ↔ Cortex
 
-**Version :** 1.0 · **Date :** 23 juin 2026 · **Statut :** Figé pour v0.28+
+**Version :** 2.0 · **Date :** 23 juin 2026 · **Statut :** Figé pour v0.28+
+
+**Source de vérité Rust :** `crates/cortex/src/ports/agent_ports.rs`
 
 > Ce document formalise la frontière entre la **boucle agent** (`orchestrator::agent`) et le **Cortex** (`cortex` + adapters `infrastructure`). Il complète [`architecture.md`](architecture.md) et [`protocol-ws.md`](protocol-ws.md).
 
@@ -16,7 +18,41 @@ L'agent **ne persiste jamais directement** : il passe par des **outils** ou des 
 
 ---
 
-## 1. Ports Cortex (contrats async)
+## 1. Ports Agent ↔ Cortex (contrat v2)
+
+Définis dans `crates/cortex/src/ports/agent_ports.rs` — interface **vue agent** :
+
+| Trait | Rôle |
+|-------|------|
+| `ContextProvider` | `build_context(query, session_id, limit) → AgentContext` |
+| `AssimilationService` | `assimilate_turn(turn, policy) → AssimilationResult` |
+| `SemanticSearch` | `search(query, limit) → Vec<ContextSearchHit>` |
+
+### Types principaux
+
+```rust
+AgentContext { memories, graph_context, session_turns }
+AssimilationResult { created, updated, pending_drafts }
+AssimilationPolicy { AutoIfChange, RequireUserApproval, AlwaysAuto }
+```
+
+### Erreurs fines
+
+- `RetrievalError` — vector store, embedding, aucun hit pertinent
+- `AssimilationError` — validation, approbation requise, persistance, détection de changement
+
+### Session : qui fait quoi ?
+
+| Responsable | Rôle |
+|-------------|------|
+| **Cortex** (`SessionRepository`) | Source de vérité — persistance des tours |
+| **Agent Loop** | Cycle de vie session courante, orchestration LLM |
+
+> `ContextSearchHit` transporte une `Memory` complète + score. Distinct de `SearchHit` (vector store : `memory_id` + snippet).
+
+---
+
+## 2. Ports infrastructure (contrats bas niveau)
 
 Définis dans `crates/cortex/src/ports/` :
 
@@ -64,7 +100,7 @@ delete(key)            → purge session
 
 ---
 
-## 2. Boucle agent — séquence d'un tour
+## 3. Boucle agent — séquence d'un tour
 
 Point d'entrée : `orchestrator::agent::AgentLoop::run_turn_with_stream`.
 
@@ -109,7 +145,7 @@ sequenceDiagram
 
 ---
 
-## 3. Outils agent → Cortex
+## 4. Outils agent → Cortex
 
 Registre : `orchestrator::tools::ToolRegistry::build_for_agent`.
 
@@ -133,7 +169,7 @@ Profils capacités : `tools::capability_profiles` (restreint les outils selon `w
 
 ---
 
-## 4. Pipeline d'assimilation (Cortex pur)
+## 5. Pipeline d'assimilation (Cortex pur)
 
 Use case central : `AssimilateFromDraft::execute` — **aucun appel LLM**.
 
@@ -155,7 +191,7 @@ Use case avec LLM : `AssimilateFromText` = `GenerateInsightDraft` (LLM structure
 
 ---
 
-## 5. Types domaine partagés
+## 6. Types domaine partagés
 
 | Type | Rôle |
 |------|------|
@@ -171,7 +207,7 @@ Use case avec LLM : `AssimilateFromText` = `GenerateInsightDraft` (LLM structure
 
 ---
 
-## 6. Configuration minimale
+## 7. Configuration minimale
 
 Fichier : `workspace/config/orchestrator.toml`.
 
@@ -199,7 +235,7 @@ max_tool_iterations = 8
 
 ---
 
-## 7. Workspace requis
+## 8. Workspace requis
 
 Arborescence minimale (créée par `orchestrateur onboard` ou `harness_apply_onboard`) :
 
@@ -218,7 +254,7 @@ Validation : `orchestrateur doctor` (CLI) — pas encore de crate `WorkspaceVali
 
 ---
 
-## 8. Événements sortants (UI / daemon)
+## 9. Événements sortants (UI / daemon)
 
 Après assimilation, le daemon diffuse via WebSocket :
 
@@ -232,7 +268,7 @@ Clients : Tauri (`window_kind: desktop`), Godot (`main`, `sphere`). Voir `shared
 
 ---
 
-## 9. Invariants (à ne pas violer)
+## 10. Invariants (à ne pas violer)
 
 1. **Cortex sans I/O** — `cortex` ne dépend pas de `reqwest`, `sqlx`, ni du FS.
 2. **Assimilation = dry-run d'abord** — `AssimilateFromDraft` est déterministe une fois le draft obtenu.
@@ -242,15 +278,15 @@ Clients : Tauri (`window_kind: desktop`), Godot (`main`, `sphere`). Voir `shared
 
 ---
 
-## 10. Écarts connus / prochaines étapes
+## 11. Écarts connus / prochaines étapes
 
 | Item | Statut | Action suggérée |
 |------|--------|-----------------|
-| `docs/agent-cortex-contract.md` | ✅ Ce document | Maintenir à chaque changement de port |
-| `TurnLogger` dédié | Partiel | Service audit `workspace/logs/turns/` si replay requis |
+| `agent_ports.rs` | ✅ Traits + types figés | Implémenter dans `orchestrator` |
+| Implémentations `ContextProvider` / `AssimilationService` | À faire | Adapter `build_context` + `AssimilateFromText` |
+| Règles `AutoIfChange` | À définir | Seuil sémantique / longueur / entités nouvelles |
+| `TurnLogger` dédié | Partiel | Audit `workspace/logs/turns/` si replay requis |
 | `WorkspaceValidator` | Partiel | Extraire `doctor` du CLI vers `orchestrator` |
-| Alignement défaut LLM | Partiel | `ProvidersConfig::default()` → `ollama` |
-| Crate `agent` séparé | Non prévu | Logique dans `orchestrator::agent` ; `orchestrator-core` placeholder |
 
 ---
 
@@ -263,7 +299,8 @@ Clients : Tauri (`window_kind: desktop`), Godot (`main`, `sphere`). Voir `shared
 | AssimilateFromDraft | `crates/orchestrator/src/use_cases/assimilate_from_draft.rs` |
 | AssimilateFromText | `crates/orchestrator/src/use_cases/assimilate_from_text.rs` |
 | Wiring production | `crates/infrastructure/src/wiring.rs` |
-| Ports | `crates/cortex/src/ports/` |
+| Agent ports (v2) | `crates/cortex/src/ports/agent_ports.rs` |
+| Ports infra | `crates/cortex/src/ports/` |
 | FileMemoryRepository | `crates/infrastructure/src/memory_repository.rs` |
 | LancedbVectorStore | `crates/infrastructure/src/vector_store/lancedb_store.rs` |
 | Ollama LLM / Embedding | `crates/infrastructure/src/llm/`, `embedding/` |

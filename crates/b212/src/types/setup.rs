@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use super::cardinal::CardinalRulesResult;
 use super::lineage::B212Lineage;
 use super::module_output::ModuleOutput;
 use super::score::ScoreBundle;
@@ -35,6 +36,9 @@ pub struct B212SetupAnalysis {
     /// Bundle scoring (PR-4).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scores: Option<ScoreBundle>,
+    /// Règles cardinales (PR-5).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cardinal: Option<CardinalRulesResult>,
     /// Lignée audit.
     pub lineage: B212Lineage,
 }

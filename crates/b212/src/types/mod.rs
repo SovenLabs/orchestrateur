@@ -1,5 +1,7 @@
 //! Types auditables B212 (JSON strict).
 
+mod cardinal;
+mod journal;
 mod lineage;
 mod market;
 mod module_output;
@@ -8,6 +10,8 @@ mod score;
 mod setup;
 mod signal;
 
+pub use cardinal::{CardinalRuleId, CardinalRulesResult, CardinalViolation};
+pub use journal::{JournalEntry, JournalEventKind};
 pub use lineage::B212Lineage;
 pub use market::{Bar, MarketScenario, OhlcvSeries, Timeframe};
 pub use module_output::{ModuleId, ModuleOutput};

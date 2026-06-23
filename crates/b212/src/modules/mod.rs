@@ -15,6 +15,7 @@ pub use b2_5_timeframes::analyze as analyze_b2_5;
 pub use b2_structure::{analyze as analyze_b2, StructureBias};
 pub use context::ModuleContext;
 
+use crate::rules::evaluate_cardinal_rules;
 use crate::scoring::{build_score_bundle, ScoringContext};
 use crate::signals::{run_all_signals, SignalContext};
 use crate::types::{B212Lineage, B212SetupAnalysis, ModuleOutput};
@@ -47,12 +48,15 @@ pub fn build_setup_analysis(ctx: &ModuleContext, session: &str) -> B212SetupAnal
         session,
     };
     let scores = build_score_bundle(&score_ctx);
-    B212SetupAnalysis {
+    let mut analysis = B212SetupAnalysis {
         symbol: ctx.symbol.clone(),
         session: session.to_string(),
         modules,
         signals,
         scores: Some(scores),
+        cardinal: None,
         lineage: B212Lineage::fixture("b212_pipeline"),
-    }
+    };
+    analysis.cardinal = Some(evaluate_cardinal_rules(&analysis));
+    analysis
 }

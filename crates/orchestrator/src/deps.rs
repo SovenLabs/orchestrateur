@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use b212::MarketDataProvider;
+use b212::{B212Journal, MarketDataProvider, ProposalRepository};
 use cortex::{EmbeddingProvider, MemoryRepository, SessionRepository, VectorStore};
 
 use crate::config::OrchestratorConfig;
@@ -35,6 +35,10 @@ pub struct AppDependencies {
     pub mcp: Option<Arc<dyn McpGateway>>,
     /// Données marché B212 (fixtures Phase 3, adapters live ultérieurs).
     pub market_data: Option<Arc<dyn MarketDataProvider>>,
+    /// Journal audit B212 JSONL.
+    pub b212_journal: Option<Arc<dyn B212Journal>>,
+    /// Propositions trade HITL B212.
+    pub b212_proposals: Option<Arc<dyn ProposalRepository>>,
 }
 
 impl AppDependencies {
@@ -51,6 +55,8 @@ impl AppDependencies {
         security: Arc<SecurityContext>,
         mcp: Option<Arc<dyn McpGateway>>,
         market_data: Option<Arc<dyn MarketDataProvider>>,
+        b212_journal: Option<Arc<dyn B212Journal>>,
+        b212_proposals: Option<Arc<dyn ProposalRepository>>,
     ) -> Self {
         Self::with_events(
             memory_repo,
@@ -64,6 +70,8 @@ impl AppDependencies {
             security,
             mcp,
             market_data,
+            b212_journal,
+            b212_proposals,
         )
     }
 
@@ -81,6 +89,8 @@ impl AppDependencies {
         security: Arc<SecurityContext>,
         mcp: Option<Arc<dyn McpGateway>>,
         market_data: Option<Arc<dyn MarketDataProvider>>,
+        b212_journal: Option<Arc<dyn B212Journal>>,
+        b212_proposals: Option<Arc<dyn ProposalRepository>>,
     ) -> Self {
         Self {
             memory_repo,
@@ -94,6 +104,8 @@ impl AppDependencies {
             security,
             mcp,
             market_data,
+            b212_journal,
+            b212_proposals,
         }
     }
 
@@ -120,6 +132,8 @@ impl AppDependencies {
             config,
             events,
             security,
+            None,
+            None,
             None,
             None,
         )

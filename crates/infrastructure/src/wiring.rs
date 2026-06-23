@@ -11,8 +11,8 @@ use tracing::warn;
 use reqwest::Client;
 use thiserror::Error;
 
-use b212::MarketDataProvider;
-use crate::b212::FixtureMarketDataProvider;
+use b212::{B212Journal, MarketDataProvider, ProposalRepository};
+use crate::b212::{FileB212Journal, FileProposalRepository, FixtureMarketDataProvider};
 use crate::embedding::{build_embedding_provider, EmbeddingFactoryError};
 use crate::llm::{build_llm_provider, LlmFactoryError};
 use crate::draft_repository::FileDraftRepository;
@@ -94,7 +94,7 @@ pub async fn build_app_dependencies(
     let draft_repo: Arc<dyn orchestrator::draft::DraftRepository> =
         Arc::new(FileDraftRepository::new(config.drafts_dir()));
 
-    let market_data: Option<Arc<dyn MarketDataProvider>> = if config.b212.enabled {
+    let (market_data, b212_journal, b212_proposals) = if config.b212.enabled {
         let fixtures_dir = config.b212_fixtures_dir();
         std::fs::create_dir_all(&fixtures_dir).map_err(|e| {
             WiringError::VectorStore(VectorStoreFactoryError::Build(format!(
@@ -112,9 +112,20 @@ pub async fn build_app_dependencies(
                 "b212 proposals: {e}"
             )))
         })?;
-        Some(Arc::new(FixtureMarketDataProvider::new(fixtures_dir)))
+        (
+            Some(Arc::new(FixtureMarketDataProvider::new(fixtures_dir))
+                as Arc<dyn MarketDataProvider>),
+            Some(
+                Arc::new(FileB212Journal::new(config.b212_journal_dir()))
+                    as Arc<dyn B212Journal>,
+            ),
+            Some(
+                Arc::new(FileProposalRepository::new(config.b212_proposals_dir()))
+                    as Arc<dyn ProposalRepository>,
+            ),
+        )
     } else {
-        None
+        (None, None, None)
     };
 
     Ok(AppDependencies::new(
@@ -128,5 +139,7 @@ pub async fn build_app_dependencies(
         security,
         mcp,
         market_data,
+        b212_journal,
+        b212_proposals,
     ))
 }

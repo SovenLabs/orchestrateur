@@ -26,4 +26,19 @@ pub enum B212Error {
     /// Configuration B212 invalide.
     #[error("config: {0}")]
     Config(String),
+    /// Règles cardinales violées — proposition interdite.
+    #[error("cardinal rules: {0}")]
+    CardinalRules(String),
+    /// Proposition bloquée (scores ou gouvernance).
+    #[error("proposal blocked: {0}")]
+    ProposalBlocked(String),
+    /// Proposition introuvable.
+    #[error("proposal not found: {0}")]
+    ProposalNotFound(String),
+    /// Transition HITL invalide.
+    #[error("invalid proposal status: {0}")]
+    InvalidProposalStatus(String),
+    /// Erreur journal ou persistance.
+    #[error("journal: {0}")]
+    Journal(String),
 }

@@ -51,7 +51,7 @@ pub const LLM_DESCRIPTORS: &[ProviderDescriptor] = &[
         kind: ProviderKind::Llm,
         api_family: ApiFamily::Xai,
         default_base_url: "https://api.x.ai/v1",
-        default_model: "grok-3-latest",
+        default_model: "grok-4.3",
         default_api_key_env: "XAI_API_KEY",
     },
     ProviderDescriptor {

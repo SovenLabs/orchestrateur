@@ -70,7 +70,7 @@ impl Default for XaiConfig {
     fn default() -> Self {
         Self {
             api_key_env: "XAI_API_KEY".into(),
-            model: "grok-3-latest".into(),
+            model: "grok-4.3".into(),
             timeout_secs: 30,
             max_retries: 2,
         }

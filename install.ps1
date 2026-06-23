@@ -163,14 +163,20 @@ if (-not (Test-Path $SetupPath)) {
     throw "Fichier installeur introuvable apres telechargement: $SetupPath"
 }
 
-Write-Host "Lancement de l'installeur Inno Setup..."
+Write-Host "Lancement de l'installeur Inno Setup... (install.ps1 rev 3)"
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName = $SetupPath
+$psi.UseShellExecute = $true
 if ($Silent) {
-    $proc = Start-Process -FilePath $SetupPath -ArgumentList @("/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART") -PassThru -Wait
-} else {
-    $proc = Start-Process -FilePath $SetupPath -PassThru -Wait
+    $psi.Arguments = "/SILENT /SUPPRESSMSGBOXES /NORESTART"
 }
-if ($proc.ExitCode -ne 0) {
-    throw "Installeur termine avec le code $($proc.ExitCode)"
+$setupProc = [System.Diagnostics.Process]::Start($psi)
+if (-not $setupProc) {
+    throw "Impossible de lancer l'installeur : $SetupPath"
+}
+$setupProc.WaitForExit()
+if ($setupProc.ExitCode -ne 0) {
+    throw "Installeur termine avec le code $($setupProc.ExitCode)"
 }
 
 Write-Host ""

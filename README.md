@@ -145,8 +145,13 @@ Un seul script — deux modes. Binaires release sur **[GitHub Releases](https://
 Si PowerShell **refuse** `irm | iex` (« exécution de scripts désactivée »), utilisez l’une de ces formes :
 
 ```powershell
-# Recommandé (bypass session uniquement)
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1 | iex"
+# Recommandé (bypass + évite le cache irm)
+$i = Join-Path $env:TEMP "orchestrateur-install.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1" -OutFile $i -UseBasicParsing
+powershell -NoProfile -ExecutionPolicy Bypass -File $i
+
+# One-liner (si cache CDN : ajoutez ?t=1 à l'URL)
+powershell -NoProfile -ExecutionPolicy Bypass -Command "irm 'https://raw.githubusercontent.com/SovenLabs/orchestrateur/main/install.ps1?t=3' | iex"
 
 # Ou depuis un clone
 powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -Dev

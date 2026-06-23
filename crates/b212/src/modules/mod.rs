@@ -15,6 +15,7 @@ pub use b2_5_timeframes::analyze as analyze_b2_5;
 pub use b2_structure::{analyze as analyze_b2, StructureBias};
 pub use context::ModuleContext;
 
+use crate::scoring::{build_score_bundle, ScoringContext};
 use crate::signals::{run_all_signals, SignalContext};
 use crate::types::{B212Lineage, B212SetupAnalysis, ModuleOutput};
 
@@ -30,7 +31,7 @@ pub fn run_all(ctx: &ModuleContext) -> Vec<ModuleOutput> {
     ]
 }
 
-/// Agrège les sorties modules en analyse setup complète (PR-4 enrichira scores).
+/// Agrège modules, signaux et scores en analyse setup complète.
 #[must_use]
 pub fn build_setup_analysis(ctx: &ModuleContext, session: &str) -> B212SetupAnalysis {
     let modules = run_all(ctx);
@@ -39,12 +40,19 @@ pub fn build_setup_analysis(ctx: &ModuleContext, session: &str) -> B212SetupAnal
         modules: &modules,
     };
     let signals = run_all_signals(&sig_ctx);
+    let score_ctx = ScoringContext {
+        ctx,
+        modules: &modules,
+        signals: &signals,
+        session,
+    };
+    let scores = build_score_bundle(&score_ctx);
     B212SetupAnalysis {
         symbol: ctx.symbol.clone(),
         session: session.to_string(),
         modules,
         signals,
-        scores: None,
+        scores: Some(scores),
         lineage: B212Lineage::fixture("b212_pipeline"),
     }
 }

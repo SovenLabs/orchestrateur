@@ -111,4 +111,5 @@ async fn build_setup_analysis_runs_all_five_modules() {
     assert_eq!(analysis.modules.len(), 5);
     assert_eq!(analysis.lineage.data_source, "fixture");
     assert_eq!(analysis.signals.len(), 6);
+    assert!(analysis.scores.is_some());
 }

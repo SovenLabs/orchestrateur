@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use super::lineage::B212Lineage;
 use super::module_output::ModuleOutput;
+use super::score::ScoreBundle;
 use super::signal::SignalOutput;
 use super::Timeframe;
 
@@ -34,7 +34,7 @@ pub struct B212SetupAnalysis {
     pub signals: Vec<SignalOutput>,
     /// Bundle scoring (PR-4).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub scores: Option<Value>,
+    pub scores: Option<ScoreBundle>,
     /// Lignée audit.
     pub lineage: B212Lineage,
 }

@@ -108,6 +108,7 @@ async fn build_setup_analysis_includes_modules_and_signals() {
     assert_eq!(analysis.modules.len(), 5);
     assert_eq!(analysis.signals.len(), 6);
     assert_eq!(analysis.lineage.loader, "b212_pipeline");
+    assert!(analysis.scores.is_some());
 }
 
 #[test]

@@ -29,3 +29,6 @@ pub use plugin::SubprocessPluginSkill;
 pub use registry::SkillRegistry;
 pub use search::SearchMemoriesSkill;
 pub use skill::{NoopSkill, Skill, SkillContext, SkillEntry, SkillOutput, SkillSource};
+
+#[cfg(test)]
+mod workspace_fixture;

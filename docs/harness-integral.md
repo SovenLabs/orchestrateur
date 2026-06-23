@@ -63,7 +63,15 @@ orch harness smoke --workspace workspace
 orch watcher status --workspace workspace
 orch draft list --workspace workspace
 orch assimilate "idée à retenir" --tags insight --workspace workspace
+
+# Skills (P6 — hub + marketplace)
+orch skill list --workspace workspace
+orch skill run pong --workspace workspace
+orch skill install market-echo --workspace workspace
+orch skill update --workspace workspace
 ```
+
+Schémas hub / catalogue : [`skills-schema.md`](skills-schema.md).
 
 ## MCP (Claude Code, Cursor, …)
 

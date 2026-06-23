@@ -36,7 +36,7 @@ Le **cerveau et l’IA sont fusionnés** : l’agent n’est pas un chatbot auto
 | **Honeypots & intégrité** | Mémoires canari, empreinte BLAKE3 config, audit chaîné tamper-evident |
 | **Profils de capacités** | Groupes d’outils Cortex (`memory`, `agent`, `research`, …) — pas un catalogue de plugins distant |
 
-**Skills** : extensions optionnelles de l’Esprit (subprocess, natif, marketplace local) — jamais le substitut du Cortex.
+**Skills** : extensions optionnelles de l’Esprit (subprocess, natif, marketplace local) — jamais le substitut du Cortex. Schémas : [`docs/skills-schema.md`](docs/skills-schema.md).
 
 ---
 

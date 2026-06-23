@@ -96,7 +96,7 @@ flowchart BT
 | Clients → Harness | WS `1.2.0`, `/health` — UI remplaçable |
 | Gateway → Cœur | Inbound → tour agent (canal optionnel) |
 
-Référence skills : [`workspace/skills/RESOLVER.md`](../workspace/skills/RESOLVER.md).
+Référence skills : [`workspace/skills/RESOLVER.md`](../workspace/skills/RESOLVER.md) · Schémas hub/marketplace : [`skills-schema.md`](skills-schema.md).
 
 ---
 
@@ -221,7 +221,7 @@ Actions pré-gel techniques :
 
 - [x] Fusionner ou supprimer `orchestrator-core` (placeholder) — supprimé, logique dans `orchestrator`
 - [x] PR-G : binaire CLI unique (`orch.exe`)
-- [ ] Documenter version schéma hub / marketplace
+- [x] Documenter version schéma hub / marketplace — [`skills-schema.md`](skills-schema.md) (hub v1.0, catalogue v1)
 
 ---
 

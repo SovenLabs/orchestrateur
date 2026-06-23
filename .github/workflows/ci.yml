@@ -22,6 +22,8 @@ jobs:
         run: cargo check --workspace
       - name: cargo test (défaut)
         run: cargo test --workspace
+      - name: validate skills schema (P6 workspace fixture)
+        run: cargo test -p orchestrator workspace_fixture
       - name: clippy cortex
         run: cargo clippy -p cortex -- -D warnings
       - name: clippy orchestrator

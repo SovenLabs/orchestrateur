@@ -9,3 +9,5 @@ Routage des skills Esprit. La mémoire vit toujours dans le **Cortex** (outils b
 | Revue hebdomadaire sessions | `esprit-review` | Esprit + drafts |
 
 Fichiers : `cortex-capture/SKILL.md`, `cortex-lint/SKILL.md`, `esprit-review/SKILL.md`.
+
+Schémas `skill.toml` et `catalog.json` : [`docs/skills-schema.md`](../../docs/skills-schema.md).
